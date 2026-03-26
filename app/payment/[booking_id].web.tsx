@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,15 +14,11 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Lock, ShieldCheck, Calendar } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 const BG = '#F5F0E8';
 const GREEN = '#1B4332';
 const GREEN_LIGHT = '#ECEEE6';
 const GREEN_MID = '#8E9878';
-
-const stripePromise = loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface BookingData {
   id: string;
@@ -58,6 +54,41 @@ interface PaymentFormProps {
   totalNow: number;
 }
 
+function StripePaymentForm(props: PaymentFormProps) {
+  const [StripeComponents, setStripeComponents] = useState<any>(null);
+  const [stripePromise, setStripePromise] = useState<any>(null);
+
+  useEffect(() => {
+    Promise.all([
+      import('@stripe/stripe-js'),
+      import('@stripe/react-stripe-js'),
+    ]).then(([stripeJs, reactStripe]) => {
+      setStripePromise(stripeJs.loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!));
+      setStripeComponents(reactStripe);
+    });
+  }, []);
+
+  if (!StripeComponents || !stripePromise) {
+    return (
+      <View style={styles.intentLoadingWrapper}>
+        <ActivityIndicator size="small" color={GREEN} />
+        <Text style={styles.intentLoadingText}>Chargement du module de paiement...</Text>
+      </View>
+    );
+  }
+
+  const { Elements } = StripeComponents;
+
+  return (
+    <Elements
+      stripe={stripePromise}
+      options={{ clientSecret: props.rentalClientSecret, appearance: { theme: 'stripe' } }}
+    >
+      <PaymentForm {...props} StripeComponents={StripeComponents} />
+    </Elements>
+  );
+}
+
 function PaymentForm({
   rentalClientSecret,
   depositClientSecret,
@@ -66,7 +97,9 @@ function PaymentForm({
   rentalPaymentIntentId,
   depositPaymentIntentId,
   totalNow,
-}: PaymentFormProps) {
+  StripeComponents,
+}: PaymentFormProps & { StripeComponents: any }) {
+  const { useStripe, useElements, CardElement } = StripeComponents;
   const stripe = useStripe();
   const elements = useElements();
   const [cardComplete, setCardComplete] = useState(false);
@@ -135,7 +168,7 @@ function PaymentForm({
               },
               hidePostalCode: true,
             }}
-            onChange={(e) => setCardComplete(e.complete)}
+            onChange={(e: any) => setCardComplete(e.complete)}
           />
         </View>
         <View style={styles.securityRow}>
@@ -227,7 +260,6 @@ export default function PaymentScreen() {
           }
         );
         const data = await response.json();
-        console.log('create-payment-intent response:', data);
         if (data.error) throw new Error(data.error);
         if (!data.rental_client_secret) throw new Error('Client secret manquant');
         setRentalClientSecret(data.rental_client_secret);
@@ -334,7 +366,7 @@ export default function PaymentScreen() {
 
             <View style={styles.priceRow}>
               <View style={styles.depositLabelRow}>
-                <Text style={styles.priceLabelOrange}>Caution (bloquée ⏳)</Text>
+                <Text style={styles.priceLabelOrange}>Caution (bloquée)</Text>
               </View>
               <Text style={styles.priceValueOrange}>{booking.deposit_amount} €</Text>
             </View>
@@ -366,20 +398,15 @@ export default function PaymentScreen() {
         )}
 
         {rentalClientSecret && !loadingIntent && (
-          <Elements
-            stripe={stripePromise}
-            options={{ clientSecret: rentalClientSecret, appearance: { theme: 'stripe' } }}
-          >
-            <PaymentForm
-              rentalClientSecret={rentalClientSecret}
-              depositClientSecret={depositClientSecret}
-              depositAmount={booking.deposit_amount}
-              bookingId={booking_id!}
-              rentalPaymentIntentId={rentalPaymentIntentId}
-              depositPaymentIntentId={depositPaymentIntentId}
-              totalNow={totalNow}
-            />
-          </Elements>
+          <StripePaymentForm
+            rentalClientSecret={rentalClientSecret}
+            depositClientSecret={depositClientSecret}
+            depositAmount={booking.deposit_amount}
+            bookingId={booking_id!}
+            rentalPaymentIntentId={rentalPaymentIntentId}
+            depositPaymentIntentId={depositPaymentIntentId}
+            totalNow={totalNow}
+          />
         )}
       </ScrollView>
     </View>
