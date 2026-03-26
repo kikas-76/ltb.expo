@@ -1,0 +1,445 @@
+import { useEffect, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, TrendingUp, Eye, Heart } from 'lucide-react-native';
+import { Colors } from '@/constants/colors';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import ListingCard from '@/components/explore/ListingCard';
+import SkeletonCard from '@/components/explore/SkeletonCard';
+
+interface Listing {
+  id: string;
+  name: string;
+  price: number;
+  photos_url: string[] | null;
+  category_name: string | null;
+  category_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  view_count: number;
+  favorite_count: number;
+  score: number;
+  owner: {
+    id?: string;
+    username: string | null;
+    photo_url: string | null;
+  } | null;
+}
+
+const SORT_OPTIONS = [
+  { label: 'Score global', value: 'score' },
+  { label: 'Vues', value: 'views' },
+  { label: 'Favoris', value: 'favorites' },
+];
+
+const PAGE_SIZE = 20;
+
+export default function PopularPage() {
+  const router = useRouter();
+  const { profile, session } = useAuth();
+
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [sortBy, setSortBy] = useState<'score' | 'views' | 'favorites'>('score');
+  const [page, setPage] = useState(0);
+
+  const userLat = profile?.location_data?.lat ?? null;
+  const userLng = profile?.location_data?.lng ?? null;
+  const userId = session?.user.id ?? null;
+
+  const fetchListings = useCallback(async (pageNum: number, sort: typeof sortBy, reset = false) => {
+    if (pageNum === 0) setLoading(true);
+    else setLoadingMore(true);
+
+    const { data } = await supabase
+      .from('listings')
+      .select(
+        'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+      )
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .range(pageNum * PAGE_SIZE * 3, (pageNum + 1) * PAGE_SIZE * 3 - 1);
+
+    if (data && data.length > 0) {
+      const ids = data.map((l: any) => l.id);
+
+      const [viewsRes, favsRes] = await Promise.all([
+        supabase.from('listing_views').select('listing_id').in('listing_id', ids),
+        supabase.from('saved_listings').select('listing_id').in('listing_id', ids),
+      ]);
+
+      const viewCounts: Record<string, number> = {};
+      (viewsRes.data ?? []).forEach((v: any) => {
+        viewCounts[v.listing_id] = (viewCounts[v.listing_id] ?? 0) + 1;
+      });
+
+      const favCounts: Record<string, number> = {};
+      (favsRes.data ?? []).forEach((v: any) => {
+        favCounts[v.listing_id] = (favCounts[v.listing_id] ?? 0) + 1;
+      });
+
+      const mapped: Listing[] = data.map((l: any) => {
+        const views = viewCounts[l.id] ?? 0;
+        const favs = favCounts[l.id] ?? 0;
+        return {
+          ...l,
+          owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
+          view_count: views,
+          favorite_count: favs,
+          score: views + favs * 3,
+        };
+      });
+
+      const sorted = [...mapped].sort((a, b) => {
+        if (sort === 'views') return b.view_count - a.view_count;
+        if (sort === 'favorites') return b.favorite_count - a.favorite_count;
+        return b.score - a.score;
+      });
+
+      const paged = sorted.slice(0, PAGE_SIZE);
+      setListings((prev) => (reset || pageNum === 0 ? paged : [...prev, ...paged]));
+      setHasMore(sorted.length >= PAGE_SIZE);
+    }
+
+    setLoading(false);
+    setLoadingMore(false);
+  }, []);
+
+  useEffect(() => {
+    setPage(0);
+    fetchListings(0, sortBy, true);
+  }, [sortBy]);
+
+  const loadMore = () => {
+    if (loadingMore || !hasMore) return;
+    const next = page + 1;
+    setPage(next);
+    fetchListings(next, sortBy);
+  };
+
+  const totalViews = listings.reduce((s, l) => s + l.view_count, 0);
+  const totalFavs = listings.reduce((s, l) => s + l.favorite_count, 0);
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <ArrowLeft size={20} color={Colors.text} strokeWidth={2.5} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <TrendingUp size={18} color={Colors.primaryDark} strokeWidth={2} />
+          <Text style={styles.headerTitle}>Les plus populaires</Text>
+        </View>
+        <View style={styles.headerRight} />
+      </View>
+
+      <View style={styles.sortBar}>
+        <Text style={styles.sortLabel}>Classé par :</Text>
+        <View style={styles.sortOptions}>
+          {SORT_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.sortChip, sortBy === opt.value && styles.sortChipActive]}
+              onPress={() => setSortBy(opt.value as typeof sortBy)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.sortChipText, sortBy === opt.value && styles.sortChipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {!loading && listings.length > 0 && (
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Eye size={13} color={Colors.textMuted} strokeWidth={2} />
+            <Text style={styles.statText}>{totalViews} vues</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Heart size={13} color={Colors.textMuted} strokeWidth={2} />
+            <Text style={styles.statText}>{totalFavs} favoris</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <Text style={styles.statsCount}>{listings.length}+ annonces</Text>
+        </View>
+      )}
+
+      {loading ? (
+        <View style={styles.grid}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <View key={i} style={styles.gridItem}>
+              <SkeletonCard variant="grid" />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          data={listings}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          contentContainerStyle={styles.listContent}
+          columnWrapperStyle={styles.columnWrapper}
+          showsVerticalScrollIndicator={false}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          renderItem={({ item, index }) => (
+            <View style={styles.gridItem}>
+              <View style={styles.rankBadgeWrap}>
+                {index < 3 && (
+                  <View style={[styles.rankBadge, index === 0 && styles.rankBadgeGold, index === 1 && styles.rankBadgeSilver, index === 2 && styles.rankBadgeBronze]}>
+                    <Text style={styles.rankBadgeText}>#{index + 1}</Text>
+                  </View>
+                )}
+                <ListingCard
+                  listing={item}
+                  variant="grid"
+                  userLat={userLat}
+                  userLng={userLng}
+                  userId={userId}
+                />
+              </View>
+              <View style={styles.listingMeta}>
+                <View style={styles.metaItem}>
+                  <Eye size={11} color={Colors.textMuted} strokeWidth={2} />
+                  <Text style={styles.metaText}>{item.view_count}</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Heart size={11} color={Colors.textMuted} strokeWidth={2} />
+                  <Text style={styles.metaText}>{item.favorite_count}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.loadMoreIndicator}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <TrendingUp size={40} color={Colors.border} strokeWidth={1.5} />
+              <Text style={styles.emptyTitle}>Aucune annonce populaire</Text>
+              <Text style={styles.emptySubtitle}>Les annonces les plus consultées apparaîtront ici</Text>
+            </View>
+          }
+        />
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 16 : 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+    backgroundColor: Colors.background,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: Colors.text,
+    letterSpacing: -0.3,
+  },
+  headerRight: {
+    width: 38,
+  },
+  sortBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+    flexWrap: 'wrap',
+  },
+  sortLabel: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  sortOptions: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  sortChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sortChipActive: {
+    backgroundColor: Colors.primaryDark,
+    borderColor: Colors.primaryDark,
+  },
+  sortChipText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  sortChipTextActive: {
+    color: '#fff',
+  },
+  statsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  statDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: Colors.border,
+  },
+  statsCount: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.text,
+    marginLeft: 'auto',
+  },
+  listContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 32,
+    paddingTop: 4,
+  },
+  columnWrapper: {
+    gap: 10,
+    marginBottom: 10,
+  },
+  gridItem: {
+    flex: 1,
+  },
+  rankBadgeWrap: {
+    position: 'relative',
+  },
+  rankBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    zIndex: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.border,
+  },
+  rankBadgeGold: {
+    backgroundColor: '#F5C842',
+  },
+  rankBadgeSilver: {
+    backgroundColor: '#C0C0C0',
+  },
+  rankBadgeBronze: {
+    backgroundColor: '#CD7F32',
+  },
+  rankBadgeText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 9,
+    color: '#fff',
+  },
+  listingMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 6,
+    paddingTop: 5,
+    paddingBottom: 2,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  metaText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    gap: 10,
+  },
+  loadMoreIndicator: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+    gap: 12,
+  },
+  emptyTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
+    color: Colors.text,
+  },
+  emptySubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+});

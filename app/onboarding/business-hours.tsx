@@ -1,0 +1,519 @@
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import { router } from 'expo-router';
+import { ArrowLeft, Clock, ChevronDown, Store, Briefcase, Wrench, UtensilsCrossed, Dumbbell, Book, Car, Shirt } from 'lucide-react-native';
+import { supabase } from '@/lib/supabase';
+
+const BG = '#F5F0E8';
+const GREEN = '#B7BF9C';
+
+const BUSINESS_TYPES = [
+  { label: 'Magasin de location', icon: Store },
+  { label: 'Auto-entrepreneur', icon: Briefcase },
+  { label: 'Artisan / Bricolage', icon: Wrench },
+  { label: 'Restauration', icon: UtensilsCrossed },
+  { label: 'Sport & Loisirs', icon: Dumbbell },
+  { label: 'Culture & Éducation', icon: Book },
+  { label: 'Automobile', icon: Car },
+  { label: 'Mode & Textile', icon: Shirt },
+];
+
+const DAYS = [
+  { key: 'monday', label: 'Lundi' },
+  { key: 'tuesday', label: 'Mardi' },
+  { key: 'wednesday', label: 'Mercredi' },
+  { key: 'thursday', label: 'Jeudi' },
+  { key: 'friday', label: 'Vendredi' },
+  { key: 'saturday', label: 'Samedi' },
+  { key: 'sunday', label: 'Dimanche' },
+];
+
+type DayHours = { open: string; close: string; closed: boolean };
+type WeekHours = Record<string, DayHours>;
+
+const DEFAULT_HOURS: WeekHours = {
+  monday: { open: '09:00', close: '18:00', closed: false },
+  tuesday: { open: '09:00', close: '18:00', closed: false },
+  wednesday: { open: '09:00', close: '18:00', closed: false },
+  thursday: { open: '09:00', close: '18:00', closed: false },
+  friday: { open: '09:00', close: '18:00', closed: false },
+  saturday: { open: '09:00', close: '17:00', closed: false },
+  sunday: { open: '10:00', close: '13:00', closed: true },
+};
+
+function Stepper({ active }: { active: number }) {
+  return (
+    <View style={styles.stepper}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <View key={n} style={[styles.stepDot, active === n && styles.stepDotActive]} />
+      ))}
+    </View>
+  );
+}
+
+function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const handleChange = (text: string) => {
+    const digits = text.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) {
+      onChange(digits);
+    } else {
+      onChange(`${digits.slice(0, 2)}:${digits.slice(2)}`);
+    }
+  };
+
+  return (
+    <TextInput
+      style={styles.timeInput}
+      value={value}
+      onChangeText={handleChange}
+      placeholder="00:00"
+      placeholderTextColor="#C0B8A8"
+      keyboardType="numeric"
+      maxLength={5}
+    />
+  );
+}
+
+export default function BusinessHoursScreen() {
+  const [businessName, setBusinessName] = useState('');
+  const [businessType, setBusinessType] = useState<string | null>(null);
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const [hours, setHours] = useState<WeekHours>(DEFAULT_HOURS);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const updateDay = (dayKey: string, field: keyof DayHours, value: string | boolean) => {
+    setHours((prev) => ({
+      ...prev,
+      [dayKey]: { ...prev[dayKey], [field]: value },
+    }));
+  };
+
+  const handleSave = async () => {
+    setError(null);
+
+    if (!businessType) {
+      setError('Veuillez sélectionner un type de commerce.');
+      return;
+    }
+
+    setSubmitting(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError('Session expirée. Veuillez recommencer.');
+      setSubmitting(false);
+      return;
+    }
+
+    const updates: Record<string, any> = {
+      business_hours: hours,
+      business_type: businessType,
+      business_name: businessName.trim() || null,
+    };
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id);
+
+    if (updateError) {
+      setError('Erreur lors de la sauvegarde : ' + updateError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    setSubmitting(false);
+    router.replace('/onboarding/welcome');
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={22} color="#1C1C18" />
+          </TouchableOpacity>
+          <Image
+            source={require('@/assets/images/logoLTBwhitoutbaground.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Stepper active={5} />
+        </View>
+
+        <View style={styles.body}>
+          <Text style={styles.title}>Votre commerce</Text>
+          <Text style={styles.subtitle}>
+            Ces informations seront affichées sur votre profil professionnel
+          </Text>
+
+          {error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Nom du commerce (facultatif)</Text>
+            <View style={styles.inputRow}>
+              <Store size={18} color="#A8A8A0" />
+              <TextInput
+                style={styles.inputFlex}
+                placeholder="Ex: Atelier Dupont, Location Pro..."
+                placeholderTextColor="#A8A8A0"
+                value={businessName}
+                onChangeText={setBusinessName}
+                autoCorrect={false}
+              />
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Type d'activité</Text>
+            <TouchableOpacity
+              style={[styles.inputRow, businessType && styles.inputRowSelected]}
+              onPress={() => setShowTypeSelector(!showTypeSelector)}
+              activeOpacity={0.85}
+            >
+              <Briefcase size={18} color={businessType ? GREEN : '#A8A8A0'} />
+              <Text style={[styles.inputFlex, { color: businessType ? '#1C1C18' : '#A8A8A0', paddingVertical: 0, height: undefined }]}>
+                {businessType ?? 'Sélectionner un type...'}
+              </Text>
+              <ChevronDown size={16} color="#A8A8A0" />
+            </TouchableOpacity>
+
+            {showTypeSelector && (
+              <View style={styles.typeDropdown}>
+                {BUSINESS_TYPES.map((t) => {
+                  const Icon = t.icon;
+                  const selected = businessType === t.label;
+                  return (
+                    <TouchableOpacity
+                      key={t.label}
+                      style={[styles.typeOption, selected && styles.typeOptionSelected]}
+                      onPress={() => { setBusinessType(t.label); setShowTypeSelector(false); }}
+                      activeOpacity={0.8}
+                    >
+                      <Icon size={16} color={selected ? GREEN : '#7A7A70'} strokeWidth={1.8} />
+                      <Text style={[styles.typeOptionText, selected && styles.typeOptionTextSelected]}>
+                        {t.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionLabelRow}>
+              <Clock size={16} color="#1C1C18" strokeWidth={2} />
+              <Text style={styles.sectionLabel}>Horaires d'ouverture</Text>
+            </View>
+
+            <View style={styles.hoursCard}>
+              {DAYS.map((day, idx) => {
+                const dayHours = hours[day.key];
+                return (
+                  <View key={day.key} style={[styles.dayRow, idx < DAYS.length - 1 && styles.dayRowBorder]}>
+                    <View style={styles.dayLabelWrap}>
+                      <Text style={styles.dayLabel}>{day.label}</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.closedToggle, dayHours.closed && styles.closedToggleActive]}
+                      onPress={() => updateDay(day.key, 'closed', !dayHours.closed)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.closedToggleText, dayHours.closed && styles.closedToggleTextActive]}>
+                        {dayHours.closed ? 'Fermé' : 'Ouvert'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {!dayHours.closed && (
+                      <View style={styles.timeRange}>
+                        <TimeInput
+                          value={dayHours.open}
+                          onChange={(v) => updateDay(day.key, 'open', v)}
+                        />
+                        <Text style={styles.timeSeparator}>–</Text>
+                        <TimeInput
+                          value={dayHours.close}
+                          onChange={(v) => updateDay(day.key, 'close', v)}
+                        />
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.btn, submitting && { opacity: 0.65 }]}
+            onPress={handleSave}
+            disabled={submitting}
+            activeOpacity={0.85}
+          >
+            {submitting
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.btnText}>Terminer l'inscription</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingBottom: 48,
+  },
+  header: {
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 8,
+    gap: 20,
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 20,
+    top: 60,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: {
+    width: 200,
+    height: 52,
+  },
+  stepper: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  stepDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#D5CEBC',
+  },
+  stepDotActive: {
+    width: 28,
+    borderRadius: 5,
+    backgroundColor: GREEN,
+  },
+  body: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    gap: 20,
+    maxWidth: 430,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
+    color: '#1C1C18',
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#7A7A70',
+    marginTop: -8,
+    lineHeight: 22,
+  },
+  errorBox: {
+    backgroundColor: '#FDECEA',
+    borderRadius: 12,
+    padding: 12,
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+  },
+  section: {
+    gap: 8,
+  },
+  sectionLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#1C1C18',
+    marginLeft: 2,
+  },
+  sectionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#E0D8C8',
+    height: 54,
+    paddingHorizontal: 22,
+    gap: 10,
+  },
+  inputRowSelected: {
+    borderColor: GREEN,
+  },
+  inputFlex: {
+    flex: 1,
+    height: '100%',
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1C1C18',
+  },
+  typeDropdown: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E0D8C8',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  typeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0EBE0',
+  },
+  typeOptionSelected: {
+    backgroundColor: '#F2F5EC',
+  },
+  typeOptionText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#1C1C18',
+  },
+  typeOptionTextSelected: {
+    fontFamily: 'Inter-SemiBold',
+    color: GREEN,
+  },
+  hoursCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E0D8C8',
+    overflow: 'hidden',
+  },
+  dayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  dayRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0EBE0',
+  },
+  dayLabelWrap: {
+    width: 76,
+  },
+  dayLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: '#1C1C18',
+  },
+  closedToggle: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: '#ECEEE6',
+    borderWidth: 1,
+    borderColor: GREEN,
+  },
+  closedToggleActive: {
+    backgroundColor: '#F5EDE8',
+    borderColor: '#D9A99A',
+  },
+  closedToggleText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    color: GREEN,
+  },
+  closedToggleTextActive: {
+    color: '#C0392B',
+  },
+  timeRange: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  timeInput: {
+    backgroundColor: '#F5F0E8',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1C1C18',
+    width: 56,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#E0D8C8',
+  },
+  timeSeparator: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#A8A8A0',
+  },
+  btn: {
+    backgroundColor: GREEN,
+    height: 54,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  btnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    letterSpacing: 0.2,
+  },
+});

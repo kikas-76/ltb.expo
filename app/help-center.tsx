@@ -1,0 +1,496 @@
+import { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Platform,
+  Linking,
+} from 'react-native';
+import { router } from 'expo-router';
+import { ArrowLeft, Search, ChevronRight, Mail, X, Rocket, Package, Infinity, CreditCard, ShieldCheck, Circle as HelpCircle } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import helpData, { HelpCategory } from '@/data/help-data';
+
+const BG = '#F5F0E8';
+const GREEN = '#8E9878';
+const GREEN_LIGHT = '#D4DAC4';
+const GREEN_BG = '#EEF1E8';
+const CARD = '#FFFFFF';
+
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  Rocket,
+  Package,
+  Infinity,
+  CreditCard,
+  ShieldCheck,
+};
+
+const ICON_COLORS: Record<string, { bg: string; fg: string }> = {
+  Rocket:     { bg: '#E8EFF8', fg: '#4A7FC1' },
+  Package:    { bg: '#FDF3E7', fg: '#C47A2A' },
+  Infinity:   { bg: '#EAF4EE', fg: '#3A9E5F' },
+  CreditCard: { bg: '#F3EDF9', fg: '#8A5BBF' },
+  ShieldCheck:{ bg: '#FEF0ED', fg: '#C94E3A' },
+};
+
+function CategoryIcon({ iconName, size = 20 }: { iconName: string; size?: number }) {
+  const IconComponent = ICON_MAP[iconName] ?? HelpCircle;
+  const colors = ICON_COLORS[iconName] ?? { bg: GREEN_BG, fg: GREEN };
+  return (
+    <View style={[styles.iconWrap, { backgroundColor: colors.bg }]}>
+      <IconComponent size={size} color={colors.fg} strokeWidth={1.8} />
+    </View>
+  );
+}
+
+export default function HelpCenterScreen() {
+  const insets = useSafeAreaInsets();
+  const [query, setQuery] = useState('');
+
+  const searchResults = useMemo(() => {
+    if (!query.trim()) return null;
+    const q = query.toLowerCase();
+    const results: { categoryTitle: string; categoryId: string; question: string; answer: string; qId: string }[] = [];
+    for (const cat of helpData) {
+      for (const item of cat.questions) {
+        if (item.question.toLowerCase().includes(q) || item.answer.toLowerCase().includes(q)) {
+          results.push({
+            categoryTitle: cat.title,
+            categoryId: cat.id,
+            question: item.question,
+            answer: item.answer,
+            qId: item.id,
+          });
+        }
+      }
+    }
+    return results;
+  }, [query]);
+
+  return (
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <ArrowLeft size={20} color="#1C1C18" strokeWidth={2} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Centre d'aide</Text>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 56 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.heroSection}>
+          <View style={styles.heroIcon}>
+            <HelpCircle size={28} color={GREEN} strokeWidth={1.6} />
+          </View>
+          <Text style={styles.heroTitle}>Comment pouvons-nous{'\n'}vous aider ?</Text>
+        </View>
+
+        <View style={styles.searchBox}>
+          <Search size={16} color="#A8A8A0" strokeWidth={2} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Rechercher une question..."
+            placeholderTextColor="#A8A8A0"
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')} hitSlop={8}>
+              <View style={styles.clearBtn}>
+                <X size={11} color="#7A7A70" strokeWidth={2.5} />
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {searchResults !== null ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>
+              {searchResults.length === 0
+                ? 'Aucun résultat'
+                : `${searchResults.length} résultat${searchResults.length > 1 ? 's' : ''}`}
+            </Text>
+            {searchResults.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Search size={32} color={GREEN_LIGHT} strokeWidth={1.5} />
+                <Text style={styles.emptyTitle}>Aucun résultat trouvé</Text>
+                <Text style={styles.emptyText}>Essayez d'autres mots-clés ou contactez notre support.</Text>
+              </View>
+            ) : (
+              <View style={styles.card}>
+                {searchResults.map((r, i) => (
+                  <SearchResultRow
+                    key={r.qId}
+                    result={r}
+                    isLast={i === searchResults.length - 1}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Catégories</Text>
+            <View style={styles.categoriesGrid}>
+              {helpData.map((cat) => (
+                <CategoryCard key={cat.id} category={cat} />
+              ))}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.contactCard}>
+          <View style={styles.contactIconWrap}>
+            <Mail size={22} color={GREEN} strokeWidth={1.7} />
+          </View>
+          <Text style={styles.contactTitle}>Vous n'avez pas trouvé votre réponse ?</Text>
+          <Text style={styles.contactSubtitle}>Notre équipe répond généralement sous 24h ouvrées.</Text>
+          <TouchableOpacity
+            style={styles.contactBtn}
+            activeOpacity={0.82}
+            onPress={() => Linking.openURL('mailto:admin@louetonbien.fr')}
+          >
+            <Mail size={15} color="#FFF" strokeWidth={2} />
+            <Text style={styles.contactBtnText}>Contacter le support</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+function CategoryCard({ category }: { category: HelpCategory }) {
+  return (
+    <TouchableOpacity
+      style={styles.categoryCard}
+      activeOpacity={0.75}
+      onPress={() => router.push(`/help/${category.id}` as any)}
+    >
+      <CategoryIcon iconName={category.icon} size={20} />
+      <View style={styles.categoryInfo}>
+        <Text style={styles.categoryTitle} numberOfLines={2}>{category.title}</Text>
+        <Text style={styles.categoryDesc} numberOfLines={1}>{category.description}</Text>
+      </View>
+      <View style={styles.categoryMeta}>
+        <Text style={styles.categoryCount}>{category.questions.length}</Text>
+        <ChevronRight size={14} color="#C0B8A8" strokeWidth={2} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function SearchResultRow({
+  result,
+  isLast,
+}: {
+  result: { categoryTitle: string; question: string; answer: string };
+  isLast: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <TouchableOpacity
+        style={styles.searchResultRow}
+        activeOpacity={0.75}
+        onPress={() => setOpen((v) => !v)}
+      >
+        <View style={styles.searchResultContent}>
+          <Text style={styles.searchResultCategory}>{result.categoryTitle}</Text>
+          <Text style={styles.searchResultQuestion}>{result.question}</Text>
+          {open && <Text style={styles.searchResultAnswer}>{result.answer}</Text>}
+        </View>
+        <ChevronRight
+          size={15}
+          color={open ? GREEN : '#C0B8A8'}
+          strokeWidth={2}
+          style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}
+        />
+      </TouchableOpacity>
+      {!isLast && <View style={styles.divider} />}
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: BG,
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 16,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  headerTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
+    color: '#1C1C18',
+    letterSpacing: -0.2,
+  },
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    gap: 24,
+  },
+  heroSection: {
+    alignItems: 'center',
+    gap: 12,
+    paddingBottom: 4,
+  },
+  heroIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: GREEN_BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: GREEN_LIGHT,
+  },
+  heroTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 22,
+    color: '#1C1C18',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+    lineHeight: 30,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CARD,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 50,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#E8E3D8',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.05)' },
+    }),
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: 'Inter-Regular',
+    fontSize: 15,
+    color: '#1C1C18',
+    height: '100%',
+  },
+  clearBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E8E3D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  section: {
+    gap: 12,
+  },
+  sectionLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    color: '#A8A8A0',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginLeft: 2,
+  },
+  categoriesGrid: {
+    gap: 10,
+  },
+  categoryCard: {
+    backgroundColor: CARD,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderWidth: 1,
+    borderColor: '#F0EBE0',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6 },
+      android: { elevation: 1 },
+      web: { boxShadow: '0 1px 6px rgba(0,0,0,0.04)' },
+    }),
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  categoryInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  categoryTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#1C1C18',
+    letterSpacing: -0.2,
+    lineHeight: 19,
+  },
+  categoryDesc: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#A8A8A0',
+    lineHeight: 16,
+  },
+  categoryMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  categoryCount: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: '#C0B8A8',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F5F0E8',
+    marginHorizontal: 16,
+  },
+  card: {
+    backgroundColor: CARD,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F0EBE0',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.05)' },
+    }),
+  },
+  searchResultRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  searchResultContent: {
+    flex: 1,
+    gap: 3,
+  },
+  searchResultCategory: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 11,
+    color: GREEN,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  searchResultQuestion: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#1C1C18',
+    lineHeight: 20,
+  },
+  searchResultAnswer: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: '#7A7A70',
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  emptyCard: {
+    backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 32,
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#F0EBE0',
+  },
+  emptyTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
+    color: '#1C1C18',
+  },
+  emptyText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: '#A8A8A0',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  contactCard: {
+    backgroundColor: GREEN_BG,
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: GREEN_LIGHT,
+  },
+  contactIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: GREEN_LIGHT,
+  },
+  contactTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 15,
+    color: '#1C1C18',
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
+  contactSubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: '#6B6B6B',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 4,
+  },
+  contactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: GREEN,
+    borderRadius: 999,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  contactBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+});
