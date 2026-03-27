@@ -7,17 +7,12 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Lock, ShieldCheck, Calendar } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-
-const stripePromise = loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const BG = '#F5F0E8';
 const GREEN = '#1B4332';
@@ -48,7 +43,7 @@ function formatDate(iso: string): string {
   });
 }
 
-interface PaymentFormProps {
+interface StripeEmbedProps {
   rentalClientSecret: string;
   depositClientSecret: string | null;
   depositAmount: number;
@@ -58,18 +53,7 @@ interface PaymentFormProps {
   totalNow: number;
 }
 
-function StripePaymentForm(props: PaymentFormProps) {
-  return (
-    <Elements
-      stripe={stripePromise}
-      options={{ clientSecret: props.rentalClientSecret, appearance: { theme: 'stripe' } }}
-    >
-      <PaymentForm {...props} />
-    </Elements>
-  );
-}
-
-function PaymentForm({
+function StripeEmbedForm({
   rentalClientSecret,
   depositClientSecret,
   depositAmount,
@@ -77,103 +61,162 @@ function PaymentForm({
   rentalPaymentIntentId,
   depositPaymentIntentId,
   totalNow,
-}: PaymentFormProps) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [cardComplete, setCardComplete] = useState(false);
+}: StripeEmbedProps) {
+  const iframeRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
-  const handleSubmit = async () => {
-    if (!stripe || !elements || !cardComplete || loading) return;
-    setLoading(true);
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, -apple-system, sans-serif; background: transparent; padding: 0; }
+  #payment-element { margin-bottom: 16px; }
+  #submit {
+    width: 100%; height: 52px; border-radius: 999px;
+    background: #1B4332; color: #fff; border: none;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 16px rgba(27,67,50,0.35);
+  }
+  #submit:disabled { opacity: 0.55; cursor: not-allowed; }
+  #error-msg { color: #C0392B; font-size: 13px; margin-top: 10px; text-align: center; }
+  .secure-row { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:10px; color:#7A7A7A; font-size:11px; }
+</style>
+</head>
+<body>
+<form id="payment-form">
+  <div id="payment-element"></div>
+  <button id="submit" type="submit">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    Confirmer le paiement &nbsp;&nbsp;<span style="opacity:0.75">${totalNow} €</span>
+  </button>
+  <div id="error-msg"></div>
+  <div class="secure-row">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8E9878" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Paiement sécurisé par Stripe. Données jamais stockées sur nos serveurs.
+  </div>
+</form>
+<script>
+(async function() {
+  var stripe = Stripe(${JSON.stringify(publishableKey)});
+  var elements = stripe.elements({ clientSecret: ${JSON.stringify(rentalClientSecret)}, appearance: { theme: 'stripe' } });
+  var paymentElement = elements.create('payment');
+  paymentElement.mount('#payment-element');
+
+  document.getElementById('payment-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('submit');
+    var errDiv = document.getElementById('error-msg');
+    btn.disabled = true;
+    errDiv.textContent = '';
+    window.parent.postMessage({ type: 'stripe_loading', value: true }, '*');
 
     try {
-      const cardElement = elements.getElement(CardElement);
+      var rentalResult = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+      });
+      if (rentalResult.error) throw new Error(rentalResult.error.message);
 
-      const { error: rentalError, paymentIntent: rentalIntent } =
-        await stripe.confirmCardPayment(rentalClientSecret, {
-          payment_method: { card: cardElement! },
-        });
-      if (rentalError) throw new Error(rentalError.message);
-      if (rentalIntent?.status !== 'succeeded') throw new Error('Paiement location échoué');
-
-      if (depositClientSecret && depositAmount > 0) {
-        const { error: depositError, paymentIntent: depositIntent } =
-          await stripe.confirmCardPayment(depositClientSecret, {
-            payment_method: { card: cardElement! },
+      var depositSecret = ${JSON.stringify(depositClientSecret)};
+      var depositAmt = ${depositAmount};
+      if (depositSecret && depositAmt > 0) {
+        var depositElements = stripe.elements({ clientSecret: depositSecret });
+        var depositResult = await stripe.confirmCardSetup(depositSecret);
+        if (depositResult.error) {
+          var piResult = await stripe.confirmCardPayment(depositSecret, {
+            payment_method: rentalResult.paymentIntent.payment_method,
           });
-        if (depositError) throw new Error(depositError.message);
-        if (depositIntent?.status !== 'requires_capture' && depositIntent?.status !== 'succeeded') {
-          throw new Error('Autorisation caution échouée');
+          if (piResult.error) throw new Error(piResult.error.message);
         }
       }
 
-      await supabase
-        .from('bookings')
-        .update({
-          status: 'active',
-          stripe_payment_intent_id: depositPaymentIntentId,
-          stripe_transfer_id: rentalPaymentIntentId,
-        })
-        .eq('id', bookingId);
-
-      router.replace({
-        pathname: '/payment-success',
-        params: { booking_id: bookingId },
-      } as any);
-    } catch (err: any) {
-      Alert.alert('Erreur paiement', err.message);
-    } finally {
-      setLoading(false);
+      window.parent.postMessage({
+        type: 'stripe_success',
+        bookingId: ${JSON.stringify(bookingId)},
+        rentalPaymentIntentId: ${JSON.stringify(rentalPaymentIntentId)},
+        depositPaymentIntentId: ${JSON.stringify(depositPaymentIntentId)},
+      }, '*');
+    } catch(err) {
+      errDiv.textContent = err.message || 'Une erreur est survenue';
+      btn.disabled = false;
+      window.parent.postMessage({ type: 'stripe_loading', value: false }, '*');
     }
-  };
+  });
+})();
+</script>
+</body>
+</html>`;
+
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      const msg = event.data;
+      if (!msg || typeof msg !== 'object') return;
+
+      if (msg.type === 'stripe_loading') {
+        setLoading(msg.value);
+        setError(null);
+      }
+
+      if (msg.type === 'stripe_success') {
+        setLoading(true);
+        try {
+          await supabase
+            .from('bookings')
+            .update({
+              status: 'active',
+              stripe_payment_intent_id: msg.depositPaymentIntentId,
+              stripe_transfer_id: msg.rentalPaymentIntentId,
+            })
+            .eq('id', msg.bookingId);
+
+          router.replace({
+            pathname: '/payment-success',
+            params: { booking_id: msg.bookingId },
+          } as any);
+        } catch (err: any) {
+          setError(err.message);
+          setLoading(false);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>Carte bancaire</Text>
       <View style={styles.card}>
-        <View style={styles.cardElementWrapper}>
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#1B4332',
-                  fontFamily: 'Inter, sans-serif',
-                  '::placeholder': { color: '#9CA3AF' },
-                },
-                invalid: { color: '#C0392B' },
-              },
-              hidePostalCode: true,
-            }}
-            onChange={(e: any) => setCardComplete(e.complete)}
-          />
-        </View>
-        <View style={styles.securityRow}>
-          <ShieldCheck size={13} color={GREEN_MID} strokeWidth={2} />
-          <Text style={styles.securityText}>
-            Paiement sécurisé par Stripe. Données jamais stockées sur nos serveurs.
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.payBtnWrapper}>
-        <TouchableOpacity
-          style={[styles.payBtn, (!cardComplete || loading) && styles.payBtnDisabled]}
-          onPress={handleSubmit}
-          activeOpacity={0.88}
-          disabled={!cardComplete || loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Lock size={16} color="#fff" strokeWidth={2.5} />
-              <Text style={styles.payBtnText}>Confirmer le paiement</Text>
-              <Text style={styles.payBtnAmount}>{totalNow} €</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {loading && (
+          <View style={styles.iframeOverlay}>
+            <ActivityIndicator size="small" color={GREEN} />
+            <Text style={styles.intentLoadingText}>Traitement du paiement...</Text>
+          </View>
+        )}
+        <iframe
+          ref={iframeRef}
+          srcDoc={html}
+          style={{
+            width: '100%',
+            minHeight: 260,
+            border: 'none',
+            borderRadius: 12,
+            background: 'transparent',
+          } as any}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        />
+        {error && (
+          <View style={styles.intentErrorWrapper}>
+            <Text style={styles.intentErrorText}>{error}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -376,7 +419,7 @@ export default function PaymentScreen() {
         )}
 
         {rentalClientSecret && !loadingIntent && (
-          <StripePaymentForm
+          <StripeEmbedForm
             rentalClientSecret={rentalClientSecret}
             depositClientSecret={depositClientSecret}
             depositAmount={booking.deposit_amount}
@@ -471,14 +514,12 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
     }),
   },
-  cardElementWrapper: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 14,
-    minHeight: 48,
+  iframeOverlay: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 12,
   },
   listingRow: {
     flexDirection: 'row',
@@ -594,21 +635,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     paddingHorizontal: 4,
     marginTop: 2,
-  },
-  securityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    justifyContent: 'center',
-    paddingTop: 4,
-  },
-  securityText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 11,
-    color: '#7A7A7A',
-    textAlign: 'center',
-    flex: 1,
-    lineHeight: 16,
   },
   payBtnWrapper: {
     marginTop: 4,
