@@ -14,6 +14,10 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Lock, ShieldCheck, Calendar } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+const stripePromise = loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const BG = '#F5F0E8';
 const GREEN = '#1B4332';
@@ -55,36 +59,12 @@ interface PaymentFormProps {
 }
 
 function StripePaymentForm(props: PaymentFormProps) {
-  const [StripeComponents, setStripeComponents] = useState<any>(null);
-  const [stripePromise, setStripePromise] = useState<any>(null);
-
-  useEffect(() => {
-    Promise.all([
-      import('@stripe/stripe-js'),
-      import('@stripe/react-stripe-js'),
-    ]).then(([stripeJs, reactStripe]) => {
-      setStripePromise(stripeJs.loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!));
-      setStripeComponents(reactStripe);
-    });
-  }, []);
-
-  if (!StripeComponents || !stripePromise) {
-    return (
-      <View style={styles.intentLoadingWrapper}>
-        <ActivityIndicator size="small" color={GREEN} />
-        <Text style={styles.intentLoadingText}>Chargement du module de paiement...</Text>
-      </View>
-    );
-  }
-
-  const { Elements } = StripeComponents;
-
   return (
     <Elements
       stripe={stripePromise}
       options={{ clientSecret: props.rentalClientSecret, appearance: { theme: 'stripe' } }}
     >
-      <PaymentForm {...props} StripeComponents={StripeComponents} />
+      <PaymentForm {...props} />
     </Elements>
   );
 }
@@ -97,9 +77,7 @@ function PaymentForm({
   rentalPaymentIntentId,
   depositPaymentIntentId,
   totalNow,
-  StripeComponents,
-}: PaymentFormProps & { StripeComponents: any }) {
-  const { useStripe, useElements, CardElement } = StripeComponents;
+}: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [cardComplete, setCardComplete] = useState(false);
