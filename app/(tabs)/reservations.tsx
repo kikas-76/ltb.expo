@@ -12,7 +12,8 @@ import {
   Modal,
 } from 'react-native';
 import { useResponsive } from '@/hooks/useResponsive';
-import { MessageCircle, CheckCheck, CalendarDays, Package, Bell, Check, CircleX, Clock, CirclePlay as PlayCircle, CircleCheck as CheckCircle2, Trash2, CircleAlert as AlertCircle, Euro, Wallet, MapPin } from 'lucide-react-native';
+import { MessageCircle, CheckCheck, CalendarDays, Package, Bell, Trash2, CircleAlert as AlertCircle, Euro, Wallet, MapPin } from 'lucide-react-native';
+import BookingBadge from '@/components/BookingBadge';
 import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,7 +55,7 @@ function isReadInStorage(id: string): boolean {
 const moduleReadIds = new Set<string>();
 const pendingMarkReadIds = new Set<string>();
 
-type ConvDisplayStatus = 'pending' | 'accepted' | 'refused' | 'in_progress' | 'completed';
+type ConvDisplayStatus = 'pending' | 'accepted' | 'refused' | 'in_progress' | 'completed' | 'active' | 'pending_return' | 'disputed' | 'cancelled';
 
 interface ConversationItem {
   id: string;
@@ -72,7 +73,7 @@ interface ConversationItem {
   endDate: string;
   isIncomingRequest: boolean;
   hasUnreadDot: boolean;
-  status: 'pending' | 'accepted' | 'refused';
+  status: 'pending' | 'accepted' | 'refused' | string;
   displayStatus: ConvDisplayStatus;
   bookingId: string | null;
   bookingStatus: string | null;
@@ -97,46 +98,23 @@ function formatTime(isoString: string): string {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
-function StatusPill({ displayStatus }: { displayStatus: ConvDisplayStatus }) {
-  const configs: Record<ConvDisplayStatus, { icon: React.ReactNode; label: string; containerStyle: any; textStyle: any }> = {
-    pending: {
-      icon: <Clock size={9} color="#8B6A3A" strokeWidth={2.5} />,
-      label: 'En attente',
-      containerStyle: styles.statusPillPending,
-      textStyle: styles.statusPillTextPending,
-    },
-    accepted: {
-      icon: <Check size={9} color="#2A7A3A" strokeWidth={3} />,
-      label: 'Acceptée',
-      containerStyle: [styles.statusPill, styles.statusPillAccepted],
-      textStyle: [styles.statusPillText, styles.statusPillTextAccepted],
-    },
-    refused: {
-      icon: <CircleX size={9} color="#C0392B" strokeWidth={2.5} />,
-      label: 'Refusée',
-      containerStyle: [styles.statusPill, styles.statusPillRefused],
-      textStyle: [styles.statusPillText, styles.statusPillTextRefused],
-    },
-    in_progress: {
-      icon: <PlayCircle size={9} color="#1A5FAD" strokeWidth={2.5} />,
-      label: 'En cours',
-      containerStyle: styles.statusPillInProgress,
-      textStyle: styles.statusPillTextInProgress,
-    },
-    completed: {
-      icon: <CheckCircle2 size={9} color="#5A5A5A" strokeWidth={2.5} />,
-      label: 'Terminée',
-      containerStyle: styles.statusPillCompleted,
-      textStyle: styles.statusPillTextCompleted,
-    },
-  };
-  const cfg = configs[displayStatus];
-  return (
-    <View style={cfg.containerStyle}>
-      {cfg.icon}
-      <Text style={cfg.textStyle}>{cfg.label}</Text>
-    </View>
-  );
+function getConvSubtext(displayStatus: ConvDisplayStatus, isRequester: boolean): string | null {
+  switch (displayStatus) {
+    case 'pending':
+      return null;
+    case 'accepted':
+      return isRequester
+        ? 'Finalise ta réservation en payant'
+        : 'En attente du paiement du locataire';
+    case 'active':
+      return 'Paiement confirmé — Rendez-vous pour la remise';
+    case 'pending_return':
+      return 'En attente de confirmation du retour';
+    case 'completed':
+      return 'Location terminée';
+    default:
+      return null;
+  }
 }
 
 function PaymentDeadlineBanner({
@@ -309,7 +287,12 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
             )}
           </View>
 
-          <StatusPill displayStatus={item.displayStatus} />
+          <BookingBadge status={item.displayStatus} />
+          {(() => {
+            const subtext = getConvSubtext(item.displayStatus, item.isRequester);
+            if (!subtext) return null;
+            return <Text style={styles.statusSubtext}>{subtext}</Text>;
+          })()}
 
           {item.isRequester && item.displayStatus === 'accepted' && item.bookingStatus !== 'active' && (
             <PaymentDeadlineBanner
@@ -413,16 +396,24 @@ export default function MessagesScreen() {
     const convStatus = (conv.status as 'pending' | 'accepted' | 'refused') ?? 'pending';
     const hasUnreadFromRequester = !isRequester && hasUnread && convStatus === 'pending';
 
-    const rawStatus = (conv.status as 'pending' | 'accepted' | 'refused') ?? 'pending';
+    const rawStatus = (conv.status as string) ?? 'pending';
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const startD = new Date(conv.start_date);
     const endD = new Date(conv.end_date);
-    let displayStatus: ConvDisplayStatus = rawStatus;
-    if (rawStatus === 'accepted') {
+    const bookingStatusRaw = booking?.status ?? null;
+
+    let displayStatus: ConvDisplayStatus;
+    if (bookingStatusRaw && ['active', 'pending_return', 'completed', 'disputed', 'cancelled'].includes(bookingStatusRaw)) {
+      displayStatus = bookingStatusRaw as ConvDisplayStatus;
+    } else if (rawStatus === 'refused' || rawStatus === 'rejected') {
+      displayStatus = 'refused';
+    } else if (rawStatus === 'accepted') {
       if (today > endD) displayStatus = 'completed';
       else if (today >= startD) displayStatus = 'in_progress';
       else displayStatus = 'accepted';
+    } else {
+      displayStatus = rawStatus as ConvDisplayStatus;
     }
 
     const listingCity =
@@ -721,7 +712,7 @@ export default function MessagesScreen() {
                 <View style={desktopStyles.detailBody}>
                   <Text style={desktopStyles.detailTitle}>{conv.listingTitle}</Text>
                   <Text style={desktopStyles.detailWith}>Avec {conv.otherUsername}</Text>
-                  <StatusPill displayStatus={conv.displayStatus} />
+                  <BookingBadge status={conv.displayStatus} />
                   <View style={desktopStyles.detailDates}>
                     <CalendarDays size={14} color={GREEN_DARK} strokeWidth={2} />
                     <Text style={desktopStyles.detailDatesText}>
@@ -1124,6 +1115,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 10,
     color: '#5A5A5A',
+  },
+  statusSubtext: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: '#7A7A7A',
+    marginTop: 2,
+    marginBottom: 2,
+    lineHeight: 15,
   },
   emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
   emptyIconWrap: {

@@ -14,6 +14,7 @@ import {
   Animated,
 } from 'react-native';
 import { ArrowLeft, Send, MapPin, CalendarDays, Plus, Image as ImageIcon, Camera, FileText, X, CircleAlert as AlertCircle, Check, CircleX, Flag } from 'lucide-react-native';
+import BookingBadge from '@/components/BookingBadge';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -843,16 +844,18 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Status banner: accepted or refused */}
+      {/* Status badge banner */}
       {meta && meta.status !== 'pending' && (
-        <View style={[styles.statusBanner, meta.status === 'accepted' ? styles.statusBannerAccepted : styles.statusBannerRefused]}>
-          {meta.status === 'accepted' ? (
-            <Check size={15} color="#2A7A3A" strokeWidth={2.5} />
-          ) : (
-            <CircleX size={15} color="#C0392B" strokeWidth={2.5} />
-          )}
-          <Text style={[styles.statusBannerText, meta.status === 'accepted' ? styles.statusBannerTextAccepted : styles.statusBannerTextRefused]}>
-            {meta.status === 'accepted' ? 'Demande acceptée' : 'Demande refusée'}
+        <View style={styles.statusBadgeRow}>
+          <BookingBadge status={bookingStatus ?? meta.status} />
+        </View>
+      )}
+
+      {/* Active confirmation card */}
+      {bookingStatus === 'active' && (
+        <View style={styles.activeConfirmCard}>
+          <Text style={styles.activeConfirmText}>
+            Paiement confirmé — Vous pouvez vous retrouver pour la remise
           </Text>
         </View>
       )}
@@ -1607,32 +1610,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#fff',
   },
-  statusBanner: {
+  statusBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
     paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingVertical: 10,
     borderBottomWidth: 1,
+    borderBottomColor: '#EAE6D8',
+    backgroundColor: '#FFFDF7',
   },
-  statusBannerAccepted: {
-    backgroundColor: '#F0FBF2',
+  activeConfirmCard: {
+    backgroundColor: '#D4EDDA',
+    borderBottomWidth: 1,
     borderBottomColor: '#B7DFC0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  statusBannerRefused: {
-    backgroundColor: '#FEF2F2',
-    borderBottomColor: '#FECACA',
-  },
-  statusBannerText: {
+  activeConfirmText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
-  },
-  statusBannerTextAccepted: {
-    color: '#2A7A3A',
-  },
-  statusBannerTextRefused: {
-    color: '#C0392B',
+    color: '#155724',
+    textAlign: 'center',
+    lineHeight: 19,
   },
   bubblePending: { opacity: 0.65 },
   bubbleImage: {
