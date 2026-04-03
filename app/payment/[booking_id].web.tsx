@@ -139,6 +139,7 @@ function StripeEmbedForm({
     try {
       var rentalResult = await stripe.confirmCardPayment(${JSON.stringify(rentalClientSecret)}, {
         payment_method: { card: cardElement, billing_details: { name: name || undefined } },
+        setup_future_usage: 'off_session',
       });
       if (rentalResult.error) throw new Error(rentalResult.error.message);
       if (rentalResult.paymentIntent.status !== 'succeeded') throw new Error('Paiement location échoué');
@@ -150,6 +151,7 @@ function StripeEmbedForm({
         var pmId = typeof paymentMethodId === 'string' ? paymentMethodId : (paymentMethodId && paymentMethodId.id);
         var depositResult = await stripe.confirmCardPayment(depositSecret, {
           payment_method: pmId,
+          return_url: window.location.href,
         });
         if (depositResult.error) throw new Error(depositResult.error.message);
         var ds = depositResult.paymentIntent.status;

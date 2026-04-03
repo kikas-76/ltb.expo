@@ -7,6 +7,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+async function stripePost(path: string, body: URLSearchParams, key: string, stripeAccount?: string) {
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${key}`,
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Stripe-Version": "2024-06-20",
+  };
+  if (stripeAccount) headers["Stripe-Account"] = stripeAccount;
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    method: "POST",
+    headers,
+    body: body.toString(),
+  });
+  return res.json();
+}
+
+async function stripeGet(path: string, key: string) {
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    headers: {
+      "Authorization": `Bearer ${key}`,
+      "Stripe-Version": "2024-06-20",
+    },
+  });
+  return res.json();
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -61,6 +86,51 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const { data: renterProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_customer_id, email")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    let customerId: string | null = renterProfile?.stripe_customer_id ?? null;
+
+    if (!customerId) {
+      const email = user.email ?? renterProfile?.email ?? undefined;
+      const customerBody = new URLSearchParams({ "metadata[user_id]": user.id });
+      if (email) customerBody.set("email", email);
+      const customer = await stripePost("/customers", customerBody, stripeKey);
+      if (customer.error) {
+        return new Response(
+          JSON.stringify({ error: customer.error.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      customerId = customer.id;
+      await supabaseAdmin
+        .from("profiles")
+        .update({ stripe_customer_id: customerId })
+        .eq("id", user.id);
+    } else {
+      const existing = await stripeGet(`/customers/${customerId}`, stripeKey);
+      if (existing.deleted || existing.error) {
+        const email = user.email ?? renterProfile?.email ?? undefined;
+        const customerBody = new URLSearchParams({ "metadata[user_id]": user.id });
+        if (email) customerBody.set("email", email);
+        const customer = await stripePost("/customers", customerBody, stripeKey);
+        if (customer.error) {
+          return new Response(
+            JSON.stringify({ error: customer.error.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        customerId = customer.id;
+        await supabaseAdmin
+          .from("profiles")
+          .update({ stripe_customer_id: customerId })
+          .eq("id", user.id);
+      }
+    }
+
     const ownerStripeAccountId = booking.owner_profile?.stripe_account_id;
 
     const feePercent = 0.07;
@@ -80,15 +150,11 @@ Deno.serve(async (req: Request) => {
 
     const depositAmount = Math.round(rawDeposit * 100);
 
-    const stripeHeaders = {
-      "Authorization": `Bearer ${stripeKey}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Stripe-Version": "2024-06-20",
-    };
-
     const rentalBody = new URLSearchParams({
       amount: String(rentalAmount + serviceFee),
       currency: "eur",
+      customer: customerId!,
+      setup_future_usage: "off_session",
       "metadata[booking_id]": booking_id,
       "metadata[type]": "rental",
     });
@@ -98,13 +164,7 @@ Deno.serve(async (req: Request) => {
       rentalBody.set("application_fee_amount", String(serviceFee));
     }
 
-    const rentalRes = await fetch("https://api.stripe.com/v1/payment_intents", {
-      method: "POST",
-      headers: stripeHeaders,
-      body: rentalBody.toString(),
-    });
-
-    const rentalIntent = await rentalRes.json();
+    const rentalIntent = await stripePost("/payment_intents", rentalBody, stripeKey);
     if (rentalIntent.error) {
       return new Response(
         JSON.stringify({ error: rentalIntent.error.message }),
@@ -116,17 +176,12 @@ Deno.serve(async (req: Request) => {
       amount: String(depositAmount),
       currency: "eur",
       capture_method: "manual",
+      customer: customerId!,
       "metadata[booking_id]": booking_id,
       "metadata[type]": "deposit",
     });
 
-    const depositRes = await fetch("https://api.stripe.com/v1/payment_intents", {
-      method: "POST",
-      headers: stripeHeaders,
-      body: depositBody.toString(),
-    });
-
-    const depositIntent = await depositRes.json();
+    const depositIntent = await stripePost("/payment_intents", depositBody, stripeKey);
     if (depositIntent.error) {
       return new Response(
         JSON.stringify({ error: depositIntent.error.message }),
