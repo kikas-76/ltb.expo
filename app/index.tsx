@@ -1,43 +1,74 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   StatusBar,
   Platform,
   Animated,
   ScrollView,
-  ActivityIndicator,
+  Easing,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useResponsive } from '@/hooks/useResponsive';
+import { InfinityHero } from '@/components/landing/InfinityHero';
 
 const VALUE_PROPS = [
   {
     icon: 'search-outline' as const,
-    title: 'Trouve',
-    description: 'Des objets près de chez toi',
+    title: 'Trouve près de chez toi',
+    description: 'Perceuses, vélos, appareils photo — des milliers d\'objets disponibles autour de toi.',
+    accent: Colors.primaryDark,
   },
   {
     icon: 'shield-checkmark-outline' as const,
-    title: 'Loue en confiance',
-    description: 'Paiement sécurisé et caution protégée',
+    title: 'Loue en toute confiance',
+    description: 'Paiement sécurisé, caution protégée et profils vérifiés.',
+    accent: '#7A9E7E',
   },
   {
     icon: 'cash-outline' as const,
-    title: "Gagne de l'argent",
-    description: 'Rentabilise tes objets inutilisés',
+    title: "Rentabilise tes objets",
+    description: "Fais travailler ce qui dort chez toi et génère un revenu régulier.",
+    accent: Colors.primary,
   },
 ];
 
+function ValueCard({ icon, title, description, accent, delay, masterAnim }: any) {
+  const anim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(28)).current;
+  const scale = useRef(new Animated.Value(0.94)).current;
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(anim, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(scale, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
+      ]).start();
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  return (
+    <Animated.View style={[styles.valueCard, { opacity: anim, transform: [{ translateY }, { scale }] }]}>
+      <View style={[styles.valueCardIcon, { backgroundColor: accent + '18' }]}>
+        <Ionicons name={icon} size={24} color={accent} />
+      </View>
+      <View style={styles.valueCardText}>
+        <Text style={styles.valueCardTitle}>{title}</Text>
+        <Text style={styles.valueCardDesc}>{description}</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function LandingScreen() {
   const { signInWithGoogle } = useAuth();
-  const [googleLoading, setGoogleLoading] = useState(false);
   const { isMobile } = useResponsive();
 
   useEffect(() => {
@@ -50,124 +81,70 @@ export default function LandingScreen() {
   }, []);
 
   const logoAnim = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.88)).current;
-  const heroAnim = useRef(new Animated.Value(0)).current;
-  const heroTranslate = useRef(new Animated.Value(18)).current;
-  const prop1Anim = useRef(new Animated.Value(0)).current;
-  const prop1Translate = useRef(new Animated.Value(20)).current;
-  const prop2Anim = useRef(new Animated.Value(0)).current;
-  const prop2Translate = useRef(new Animated.Value(20)).current;
-  const prop3Anim = useRef(new Animated.Value(0)).current;
-  const prop3Translate = useRef(new Animated.Value(20)).current;
-  const btn1Anim = useRef(new Animated.Value(0)).current;
-  const btn1Translate = useRef(new Animated.Value(24)).current;
-  const btn2Anim = useRef(new Animated.Value(0)).current;
-  const btn2Translate = useRef(new Animated.Value(24)).current;
-  const loginAnim = useRef(new Animated.Value(0)).current;
-  const loginTranslate = useRef(new Animated.Value(16)).current;
+  const logoTranslate = useRef(new Animated.Value(-10)).current;
+  const taglineAnim = useRef(new Animated.Value(0)).current;
+  const taglineTranslate = useRef(new Animated.Value(16)).current;
+  const heroContainerAnim = useRef(new Animated.Value(0)).current;
+  const heroScale = useRef(new Animated.Value(0.82)).current;
+  const ctaAnim = useRef(new Animated.Value(0)).current;
+  const ctaTranslate = useRef(new Animated.Value(32)).current;
+  const badgeAnim = useRef(new Animated.Value(0)).current;
+  const badgeScale = useRef(new Animated.Value(0.7)).current;
 
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(logoAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
+        Animated.timing(logoAnim, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(logoTranslate, { toValue: 0, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(heroAnim, { toValue: 1, duration: 450, useNativeDriver: true }),
-        Animated.timing(heroTranslate, { toValue: 0, duration: 450, useNativeDriver: true }),
-      ]),
-      Animated.stagger(100, [
-        Animated.parallel([
-          Animated.timing(prop1Anim, { toValue: 1, duration: 350, useNativeDriver: true }),
-          Animated.timing(prop1Translate, { toValue: 0, duration: 350, useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.timing(prop2Anim, { toValue: 1, duration: 350, useNativeDriver: true }),
-          Animated.timing(prop2Translate, { toValue: 0, duration: 350, useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.timing(prop3Anim, { toValue: 1, duration: 350, useNativeDriver: true }),
-          Animated.timing(prop3Translate, { toValue: 0, duration: 350, useNativeDriver: true }),
-        ]),
+        Animated.timing(heroContainerAnim, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(heroScale, { toValue: 1, tension: 45, friction: 7, useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(btn1Anim, { toValue: 1, duration: 380, useNativeDriver: true }),
-        Animated.timing(btn1Translate, { toValue: 0, duration: 380, useNativeDriver: true }),
+        Animated.timing(taglineAnim, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(taglineTranslate, { toValue: 0, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(btn2Anim, { toValue: 1, duration: 320, useNativeDriver: true }),
-        Animated.timing(btn2Translate, { toValue: 0, duration: 320, useNativeDriver: true }),
+        Animated.timing(badgeAnim, { toValue: 1, duration: 350, easing: Easing.out(Easing.back(1.4)), useNativeDriver: true }),
+        Animated.spring(badgeScale, { toValue: 1, tension: 80, friction: 6, useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(loginAnim, { toValue: 1, duration: 280, useNativeDriver: true }),
-        Animated.timing(loginTranslate, { toValue: 0, duration: 280, useNativeDriver: true }),
+        Animated.timing(ctaAnim, { toValue: 1, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(ctaTranslate, { toValue: 0, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
     ]).start();
   }, []);
 
-  const handleGoogleRegister = async () => {
-    setGoogleLoading(true);
-    const { error, emailConflict } = await signInWithGoogle();
-    setGoogleLoading(false);
-    if (emailConflict) {
-      router.replace({ pathname: '/link-google-account', params: { email: emailConflict } } as any);
-    }
-  };
-
-  const propAnims = [
-    { opacity: prop1Anim, translateY: prop1Translate },
-    { opacity: prop2Anim, translateY: prop2Translate },
-    { opacity: prop3Anim, translateY: prop3Translate },
-  ];
-
   const ctaBlock = (
-    <View style={[styles.ctaBlock, !isMobile && styles.ctaBlockDesktop]}>
-      <Animated.View style={{ opacity: btn1Anim, transform: [{ translateY: btn1Translate }] }}>
-        <TouchableOpacity
-          style={styles.mailBtn}
-          onPress={() => router.push('/register')}
-          activeOpacity={0.82}
-        >
+    <Animated.View style={[styles.ctaBlock, { opacity: ctaAnim, transform: [{ translateY: ctaTranslate }] }]}>
+      <TouchableOpacity
+        style={styles.mailBtn}
+        onPress={() => router.push('/register')}
+        activeOpacity={0.82}
+      >
+        <View style={styles.mailBtnInner}>
           <Ionicons name="mail-outline" size={20} color={Colors.white} />
-          <Text style={styles.mailBtnText}>S'inscrire par Mail</Text>
-        </TouchableOpacity>
-      </Animated.View>
+          <Text style={styles.mailBtnText}>Commencer gratuitement</Text>
+        </View>
+        <View style={styles.mailBtnArrow}>
+          <Ionicons name="arrow-forward" size={16} color={Colors.white} />
+        </View>
+      </TouchableOpacity>
 
-      <Animated.View style={[styles.separator, { opacity: btn1Anim }]}>
-        <View style={styles.separatorLine} />
-        <Text style={styles.separatorText}>ou</Text>
-        <View style={styles.separatorLine} />
-      </Animated.View>
+      <TouchableOpacity
+        onPress={() => router.push('/login')}
+        activeOpacity={0.7}
+        style={styles.loginRow}
+      >
+        <Text style={styles.loginText}>Déjà un compte ? </Text>
+        <Text style={styles.loginLink}>Se connecter</Text>
+      </TouchableOpacity>
 
-      <Animated.View style={{ opacity: btn2Anim, transform: [{ translateY: btn2Translate }] }}>
-        <TouchableOpacity
-          style={[styles.googleBtn, googleLoading && { opacity: 0.65 }]}
-          activeOpacity={0.82}
-          disabled={googleLoading}
-          onPress={handleGoogleRegister}
-        >
-          {googleLoading ? (
-            <ActivityIndicator size="small" color={Colors.text} />
-          ) : (
-            <>
-              <Text style={styles.googleG}>G</Text>
-              <Text style={styles.googleBtnText}>S'inscrire via Google</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </Animated.View>
-
-      <Animated.View style={{ opacity: loginAnim, transform: [{ translateY: loginTranslate }] }}>
-        <TouchableOpacity
-          onPress={() => router.push('/login')}
-          activeOpacity={0.7}
-          style={styles.loginRow}
-        >
-          <Text style={styles.loginText}>Vous avez déjà un compte ? </Text>
-          <Text style={styles.loginLink}>Se connecter</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+      <TouchableOpacity onPress={() => router.push('/legal')} activeOpacity={0.7} style={styles.legalRow}>
+        <Text style={styles.legalLink}>Mentions légales · CGU · Confidentialité</Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 
   if (!isMobile) {
@@ -175,59 +152,60 @@ export default function LandingScreen() {
       <View style={styles.rootDesktop}>
         <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-        <View style={styles.decCircle1} />
-        <View style={styles.decCircle2} />
-        <View style={styles.decCircle3} />
+        <View style={[styles.blob, styles.blob1]} />
+        <View style={[styles.blob, styles.blob2]} />
+        <View style={[styles.blob, styles.blob3]} />
 
         <View style={styles.desktopInner}>
           <View style={styles.desktopLeft}>
             <Animated.Image
               source={require('@/assets/images/logoLTBwhitoutbaground.png')}
-              style={[styles.logoDesktop, { opacity: logoAnim, transform: [{ scale: logoScale }] }]}
+              style={[styles.logoDesktop, { opacity: logoAnim, transform: [{ translateY: logoTranslate }] }]}
               resizeMode="contain"
             />
 
-            <Animated.View style={{ opacity: heroAnim, transform: [{ translateY: heroTranslate }] }}>
-              <Text style={styles.heroTitleDesktop}>Louez tout,{'\n'}entre voisins</Text>
+            <Animated.View style={{ opacity: taglineAnim, transform: [{ translateY: taglineTranslate }] }}>
+              <View style={styles.taglineBadge}>
+                <View style={styles.taglineDot} />
+                <Text style={styles.taglineBadgeText}>Plateforme de location entre particuliers</Text>
+              </View>
+              <Text style={styles.heroTitleDesktop}>
+                Louez tout,{'\n'}
+                <Text style={styles.heroTitleAccent}>sans limites</Text>
+              </Text>
               <Text style={styles.heroSubDesktop}>
-                La plateforme de location d'objets entre particuliers.{'\n'}Simple, sécurisé, local.
+                La première plateforme qui connecte voisins et objets. Simple, sécurisé, local — comme un cycle infini d'échanges.
               </Text>
             </Animated.View>
 
-            <View style={styles.valuePropsList}>
+            <View style={styles.valueCardsDesktop}>
               {VALUE_PROPS.map((vp, i) => (
-                <Animated.View
-                  key={vp.icon}
-                  style={[
-                    styles.valuePropRow,
-                    {
-                      opacity: propAnims[i].opacity,
-                      transform: [{ translateY: propAnims[i].translateY }],
-                    },
-                  ]}
-                >
-                  <View style={styles.valuePropIcon}>
-                    <Ionicons name={vp.icon} size={22} color={Colors.primaryDark} />
-                  </View>
-                  <View style={styles.valuePropText}>
-                    <Text style={styles.valuePropTitle}>{vp.title}</Text>
-                    <Text style={styles.valuePropDesc}>{vp.description}</Text>
-                  </View>
-                </Animated.View>
+                <ValueCard key={vp.icon} {...vp} delay={900 + i * 130} />
               ))}
             </View>
-
-            <Animated.View style={{ opacity: loginAnim }}>
-              <TouchableOpacity onPress={() => router.push('/legal')} activeOpacity={0.7}>
-                <Text style={styles.legalLink}>Mentions légales · CGU · Confidentialité</Text>
-              </TouchableOpacity>
-            </Animated.View>
           </View>
 
           <View style={styles.desktopRight}>
-            <View style={styles.ctaCard}>
-              <Text style={styles.ctaCardTitle}>Commencer maintenant</Text>
-              <Text style={styles.ctaCardSub}>Rejoins des milliers de voisins qui partagent déjà leurs objets.</Text>
+            <Animated.View
+              style={[
+                styles.infinityWrapper,
+                { opacity: heroContainerAnim, transform: [{ scale: heroScale }] },
+              ]}
+            >
+              <InfinityHero size={320} />
+
+              <Animated.View style={[styles.badge, styles.badgeTopLeft, { opacity: badgeAnim, transform: [{ scale: badgeScale }] }]}>
+                <Ionicons name="people-outline" size={14} color={Colors.primaryDark} />
+                <Text style={styles.badgeText}>+12k voisins actifs</Text>
+              </Animated.View>
+
+              <Animated.View style={[styles.badge, styles.badgeBottomRight, { opacity: badgeAnim, transform: [{ scale: badgeScale }] }]}>
+                <Ionicons name="star-outline" size={14} color={Colors.primaryDark} />
+                <Text style={styles.badgeText}>4.8 / 5 de moyenne</Text>
+              </Animated.View>
+            </Animated.View>
+
+            <View style={styles.ctaCardDesktop}>
               {ctaBlock}
             </View>
           </View>
@@ -240,8 +218,8 @@ export default function LandingScreen() {
     <View style={styles.rootMobile}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.decCircle1} />
-      <View style={styles.decCircle2Mobile} />
+      <View style={[styles.blob, styles.blob1Mobile]} />
+      <View style={[styles.blob, styles.blob2Mobile]} />
 
       <ScrollView
         contentContainerStyle={styles.mobileScroll}
@@ -250,47 +228,50 @@ export default function LandingScreen() {
       >
         <Animated.Image
           source={require('@/assets/images/logoLTBwhitoutbaground.png')}
-          style={[styles.logoMobile, { opacity: logoAnim, transform: [{ scale: logoScale }] }]}
+          style={[styles.logoMobile, { opacity: logoAnim, transform: [{ translateY: logoTranslate }] }]}
           resizeMode="contain"
         />
 
-        <Animated.View style={[styles.heroMobile, { opacity: heroAnim, transform: [{ translateY: heroTranslate }] }]}>
-          <Text style={styles.heroTitleMobile}>Louez tout,{'\n'}entre voisins</Text>
+        <Animated.View style={{ opacity: taglineAnim, transform: [{ translateY: taglineTranslate }], marginBottom: 6 }}>
+          <View style={[styles.taglineBadge, { alignSelf: 'flex-start' }]}>
+            <View style={styles.taglineDot} />
+            <Text style={styles.taglineBadgeText}>Location entre voisins</Text>
+          </View>
+          <Text style={styles.heroTitleMobile}>
+            Louez tout,{'\n'}
+            <Text style={styles.heroTitleAccent}>sans limites</Text>
+          </Text>
           <Text style={styles.heroSubMobile}>
-            La plateforme de location d'objets entre particuliers. Simple, sécurisé, local.
+            Simple, sécurisé, local — comme un cycle infini d'échanges.
           </Text>
         </Animated.View>
 
-        <View style={styles.valuePropsList}>
+        <Animated.View
+          style={[
+            styles.infinityWrapperMobile,
+            { opacity: heroContainerAnim, transform: [{ scale: heroScale }] },
+          ]}
+        >
+          <InfinityHero size={240} />
+
+          <Animated.View style={[styles.badge, styles.badgeMobileLeft, { opacity: badgeAnim, transform: [{ scale: badgeScale }] }]}>
+            <Ionicons name="people-outline" size={12} color={Colors.primaryDark} />
+            <Text style={styles.badgeText}>+12k actifs</Text>
+          </Animated.View>
+
+          <Animated.View style={[styles.badge, styles.badgeMobileRight, { opacity: badgeAnim, transform: [{ scale: badgeScale }] }]}>
+            <Ionicons name="star-outline" size={12} color={Colors.primaryDark} />
+            <Text style={styles.badgeText}>4.8 / 5</Text>
+          </Animated.View>
+        </Animated.View>
+
+        <View style={styles.valuePropsMobile}>
           {VALUE_PROPS.map((vp, i) => (
-            <Animated.View
-              key={vp.icon}
-              style={[
-                styles.valuePropRow,
-                {
-                  opacity: propAnims[i].opacity,
-                  transform: [{ translateY: propAnims[i].translateY }],
-                },
-              ]}
-            >
-              <View style={styles.valuePropIcon}>
-                <Ionicons name={vp.icon} size={22} color={Colors.primaryDark} />
-              </View>
-              <View style={styles.valuePropText}>
-                <Text style={styles.valuePropTitle}>{vp.title}</Text>
-                <Text style={styles.valuePropDesc}>{vp.description}</Text>
-              </View>
-            </Animated.View>
+            <ValueCard key={vp.icon} {...vp} delay={800 + i * 120} />
           ))}
         </View>
 
         {ctaBlock}
-
-        <Animated.View style={{ opacity: loginAnim, alignItems: 'center', marginBottom: 32 }}>
-          <TouchableOpacity onPress={() => router.push('/legal')} activeOpacity={0.7}>
-            <Text style={styles.legalLink}>Mentions légales · CGU · Confidentialité</Text>
-          </TouchableOpacity>
-        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -306,186 +287,290 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     overflow: 'hidden',
   },
-  decCircle1: {
+
+  blob: {
     position: 'absolute',
-    top: -120,
-    right: -100,
-    width: 360,
-    height: 360,
-    borderRadius: 180,
+    borderRadius: 999,
+  },
+  blob1: {
+    top: -180,
+    right: -140,
+    width: 500,
+    height: 500,
     backgroundColor: Colors.primary,
-    opacity: 0.08,
+    opacity: 0.07,
   },
-  decCircle2: {
-    position: 'absolute',
-    bottom: -160,
-    left: -120,
-    width: 440,
-    height: 440,
-    borderRadius: 220,
+  blob2: {
+    bottom: -200,
+    left: -160,
+    width: 560,
+    height: 560,
     backgroundColor: Colors.primaryDark,
-    opacity: 0.06,
+    opacity: 0.055,
   },
-  decCircle2Mobile: {
-    position: 'absolute',
-    bottom: 80,
-    left: -80,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: Colors.primaryDark,
-    opacity: 0.06,
-  },
-  decCircle3: {
-    position: 'absolute',
-    top: '40%',
-    left: '30%',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+  blob3: {
+    top: '35%',
+    right: '20%',
+    width: 240,
+    height: 240,
     backgroundColor: Colors.primaryLight,
-    opacity: 0.1,
+    opacity: 0.09,
   },
+  blob1Mobile: {
+    top: -100,
+    right: -80,
+    width: 300,
+    height: 300,
+    backgroundColor: Colors.primary,
+    opacity: 0.07,
+  },
+  blob2Mobile: {
+    bottom: 100,
+    left: -100,
+    width: 320,
+    height: 320,
+    backgroundColor: Colors.primaryDark,
+    opacity: 0.055,
+  },
+
   mobileScroll: {
-    paddingTop: Platform.OS === 'web' ? 52 : 60,
-    paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === 'web' ? 52 : 58,
+    paddingHorizontal: 22,
+    paddingBottom: 32,
   },
+
   logoMobile: {
-    width: '70%',
-    height: 44,
+    width: '65%',
+    height: 40,
     alignSelf: 'center',
+    marginBottom: 28,
+  },
+  logoDesktop: {
+    width: 190,
+    height: 46,
     marginBottom: 36,
   },
-  heroMobile: {
-    marginBottom: 32,
+
+  taglineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.primaryLight + '55',
+    borderRadius: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
   },
+  taglineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primaryDark,
+  },
+  taglineBadgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: Colors.primaryDark,
+    letterSpacing: 0.2,
+  },
+
   heroTitleMobile: {
-    fontSize: 30,
+    fontSize: 32,
     fontFamily: 'Inter-Bold',
     color: Colors.text,
-    lineHeight: 38,
+    lineHeight: 40,
     marginBottom: 10,
+  },
+  heroTitleDesktop: {
+    fontSize: 46,
+    fontFamily: 'Inter-Bold',
+    color: Colors.text,
+    lineHeight: 56,
+    marginBottom: 14,
+  },
+  heroTitleAccent: {
+    color: Colors.primaryDark,
   },
   heroSubMobile: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
     color: Colors.textSecondary,
     lineHeight: 22,
-  },
-  desktopInner: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    maxWidth: 1100,
-    alignSelf: 'center',
-    width: '100%',
-    paddingHorizontal: 48,
-    paddingVertical: 40,
-  },
-  desktopLeft: {
-    flex: 55,
-    paddingRight: 48,
-    justifyContent: 'center',
-  },
-  desktopRight: {
-    flex: 45,
-    justifyContent: 'center',
-  },
-  logoDesktop: {
-    width: 180,
-    height: 44,
-    marginBottom: 40,
-  },
-  heroTitleDesktop: {
-    fontSize: 40,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    lineHeight: 50,
-    marginBottom: 14,
+    marginBottom: 8,
   },
   heroSubDesktop: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: Colors.textSecondary,
-    lineHeight: 24,
+    lineHeight: 25,
     marginBottom: 36,
+    maxWidth: 440,
   },
-  valuePropsList: {
-    gap: 16,
-    marginBottom: 36,
+
+  infinityWrapper: {
+    alignSelf: 'center',
+    position: 'relative',
+    marginBottom: 32,
   },
-  valuePropRow: {
+  infinityWrapperMobile: {
+    alignSelf: 'center',
+    position: 'relative',
+    marginVertical: 16,
+  },
+
+  badge: {
+    position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 5,
+    backgroundColor: Colors.white,
+    borderRadius: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
-  valuePropIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primaryLight,
+  badgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.text,
+  },
+  badgeTopLeft: {
+    top: 12,
+    left: -24,
+  },
+  badgeBottomRight: {
+    bottom: 12,
+    right: -24,
+  },
+  badgeMobileLeft: {
+    top: '40%',
+    left: -8,
+  },
+  badgeMobileRight: {
+    top: '40%',
+    right: -8,
+  },
+
+  valueCardsDesktop: {
+    gap: 10,
+  },
+  valuePropsMobile: {
+    gap: 10,
+    marginBottom: 24,
+  },
+  valueCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  valueCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  valuePropText: {
+  valueCardText: {
     flex: 1,
   },
-  valuePropTitle: {
-    fontSize: 15,
+  valueCardTitle: {
+    fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: Colors.text,
     marginBottom: 2,
   },
-  valuePropDesc: {
+  valueCardDesc: {
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     color: Colors.textSecondary,
     lineHeight: 18,
   },
-  ctaCard: {
+
+  desktopInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 1160,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 56,
+    paddingVertical: 40,
+    gap: 40,
+  },
+  desktopLeft: {
+    flex: 52,
+    justifyContent: 'center',
+  },
+  desktopRight: {
+    flex: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 28,
+  },
+  ctaCardDesktop: {
+    width: '100%',
     backgroundColor: Colors.white,
     borderRadius: 24,
-    padding: 40,
+    padding: 32,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 24,
     elevation: 6,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
-  ctaCardTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    marginBottom: 6,
-  },
-  ctaCardSub: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: Colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 28,
-  },
+
   ctaBlock: {
-    gap: 14,
-  },
-  ctaBlockDesktop: {
-    gap: 14,
+    gap: 12,
   },
   mailBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: Colors.primary,
-    height: 56,
-    borderRadius: 100,
+    justifyContent: 'space-between',
+    backgroundColor: Colors.primaryDark,
+    height: 58,
+    borderRadius: 16,
+    paddingHorizontal: 20,
     shadowColor: Colors.primaryDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  mailBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  mailBtnArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mailBtnText: {
     color: Colors.white,
@@ -493,51 +578,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.2,
   },
-  separator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 2,
-  },
-  separatorLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.border,
-  },
-  separatorText: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: Colors.textMuted,
-  },
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: Colors.background,
-    height: 56,
-    borderRadius: 100,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-  },
-  googleG: {
-    fontSize: 17,
-    fontFamily: 'Inter-Bold',
-    color: '#4285F4',
-  },
-  googleBtnText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    letterSpacing: 0.15,
-  },
   loginRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexWrap: 'wrap',
-    paddingTop: 4,
-    paddingBottom: 4,
+    paddingVertical: 8,
   },
   loginText: {
     fontSize: 14,
@@ -547,11 +592,15 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 14,
     fontFamily: 'Inter-Bold',
-    color: Colors.text,
+    color: Colors.primaryDark,
     textDecorationLine: 'underline',
   },
+  legalRow: {
+    alignItems: 'center',
+    paddingTop: 4,
+  },
   legalLink: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'Inter-Regular',
     color: Colors.textMuted,
     textDecorationLine: 'underline',
