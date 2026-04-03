@@ -36,19 +36,43 @@ Deno.serve(async (req: Request) => {
 
     const results = [];
     for (const booking of (bookings ?? [])) {
+      const { data: bookingDetail } = await supabase
+        .from("bookings")
+        .select("stripe_payment_intent_id")
+        .eq("id", booking.id)
+        .maybeSingle();
+
       const { error: updateError } = await supabase
         .from("bookings")
         .update({ status: "completed", owner_validated: true })
         .eq("id", booking.id);
 
-      if (!updateError && booking.conversation_id) {
-        await supabase.from("chat_messages").insert({
-          conversation_id: booking.conversation_id,
-          sender_id: null,
-          content: "Location validée automatiquement — Le délai de 24h est écoulé sans signalement de problème. La caution a été libérée.",
-          is_system: true,
-        });
-        results.push({ id: booking.id, status: "auto_completed" });
+      if (!updateError) {
+        if (bookingDetail?.stripe_payment_intent_id) {
+          const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+          if (stripeKey) {
+            await fetch(
+              `https://api.stripe.com/v1/payment_intents/${bookingDetail.stripe_payment_intent_id}/cancel`,
+              {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${stripeKey}`,
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+              }
+            );
+          }
+        }
+
+        if (booking.conversation_id) {
+          await supabase.from("chat_messages").insert({
+            conversation_id: booking.conversation_id,
+            sender_id: null,
+            content: "Location validée automatiquement — Le délai de 24h est écoulé sans signalement de problème. La caution a été libérée.",
+            is_system: true,
+          });
+          results.push({ id: booking.id, status: "auto_completed" });
+        }
       }
     }
 

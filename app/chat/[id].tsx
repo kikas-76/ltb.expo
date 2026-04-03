@@ -816,6 +816,35 @@ export default function ChatScreen() {
     setConfirmLoading(true);
     try {
       await supabase.from('bookings').update({ status: 'completed', owner_validated: true }).eq('id', bookingId);
+
+      const { data: bookingData } = await supabase
+        .from('bookings')
+        .select('stripe_payment_intent_id')
+        .eq('id', bookingId)
+        .maybeSingle();
+
+      if (bookingData?.stripe_payment_intent_id) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await fetch(
+            `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/manage-deposit`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                action: 'release',
+                booking_id: bookingId,
+                payment_intent_id: bookingData.stripe_payment_intent_id,
+              }),
+            }
+          );
+        }
+      }
+
       await supabase.from('chat_messages').insert({
         conversation_id: id,
         sender_id: null,
