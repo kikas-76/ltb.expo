@@ -25,6 +25,8 @@ export function getBookingBadge(status: string): BadgeConfig {
     case 'rejected':
     case 'refused':
       return { label: 'Refusée', backgroundColor: '#F8D7DA', textColor: '#721C24', iconName: 'close-circle-outline' };
+    case 'pending_owner_validation':
+      return { label: 'Validation propriétaire', backgroundColor: '#FFF0CD', textColor: '#92400E', iconName: 'shield-checkmark-outline' };
     case 'disputed':
       return { label: 'Litige en cours', backgroundColor: '#FFE5D0', textColor: '#B45309', iconName: 'warning-outline' };
     case 'cancelled':
@@ -34,13 +36,14 @@ export function getBookingBadge(status: string): BadgeConfig {
   }
 }
 
-export type RentalStep = 'accepted' | 'active' | 'in_progress' | 'pending_return' | 'completed';
+export type RentalStep = 'accepted' | 'active' | 'in_progress' | 'pending_return' | 'pending_owner_validation' | 'completed';
 
 const STEPS: { key: RentalStep; label: string }[] = [
   { key: 'accepted', label: 'Payé' },
   { key: 'active', label: 'Remise' },
   { key: 'in_progress', label: 'En cours' },
   { key: 'pending_return', label: 'Retour' },
+  { key: 'pending_owner_validation', label: 'Validation' },
   { key: 'completed', label: 'Terminé' },
 ];
 
@@ -49,7 +52,8 @@ const STEP_ORDER: Record<string, number> = {
   active: 1,
   in_progress: 2,
   pending_return: 3,
-  completed: 4,
+  pending_owner_validation: 4,
+  completed: 5,
 };
 
 interface BookingProgressProps {

@@ -117,6 +117,9 @@ export default function ChatScreen() {
   const [confirmCardExpanded, setConfirmCardExpanded] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [ownerValidated, setOwnerValidated] = useState(false);
+  const [returnConfirmedAt, setReturnConfirmedAt] = useState<string | null>(null);
+  const [validationDeadlineMs, setValidationDeadlineMs] = useState<number | null>(null);
+  const [validationCountdown, setValidationCountdown] = useState<string>('');
 
   const fetchData = useCallback(async () => {
     if (!id || !user) return;
@@ -176,7 +179,7 @@ export default function ChatScreen() {
         const queries: Promise<any>[] = [
           supabase
             .from('bookings')
-            .select('id, total_price, status, renter_id, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter, owner_validated')
+            .select('id, total_price, status, renter_id, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter, owner_validated, return_confirmed_at')
             .eq('conversation_id', id)
             .maybeSingle(),
         ];
@@ -201,6 +204,10 @@ export default function ChatScreen() {
           setReturnConfirmedOwner(booking.return_confirmed_owner ?? false);
           setReturnConfirmedRenter(booking.return_confirmed_renter ?? false);
           setOwnerValidated(booking.owner_validated ?? false);
+          if (booking.return_confirmed_at) {
+            setReturnConfirmedAt(booking.return_confirmed_at);
+            setValidationDeadlineMs(new Date(booking.return_confirmed_at).getTime() + 24 * 3600 * 1000);
+          }
         }
         if (isRequester) {
           setStripeReady(profile?.stripe_onboarding_complete === true);
@@ -208,7 +215,7 @@ export default function ChatScreen() {
       } else if (['active', 'in_progress', 'pending_return', 'completed', 'pending_owner_validation', 'disputed'].some(s => conv.status === s)) {
         const { data: booking } = await supabase
           .from('bookings')
-          .select('id, total_price, status, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter, owner_validated')
+          .select('id, total_price, status, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter, owner_validated, return_confirmed_at')
           .eq('conversation_id', id)
           .maybeSingle();
         if (booking) {
@@ -220,6 +227,10 @@ export default function ChatScreen() {
           setReturnConfirmedOwner(booking.return_confirmed_owner ?? false);
           setReturnConfirmedRenter(booking.return_confirmed_renter ?? false);
           setOwnerValidated(booking.owner_validated ?? false);
+          if (booking.return_confirmed_at) {
+            setReturnConfirmedAt(booking.return_confirmed_at);
+            setValidationDeadlineMs(new Date(booking.return_confirmed_at).getTime() + 24 * 3600 * 1000);
+          }
         }
       }
     }
@@ -284,6 +295,24 @@ export default function ChatScreen() {
   }, [fetchData]);
 
   useEffect(() => {
+    if (!validationDeadlineMs) return;
+    const tick = () => {
+      const remaining = validationDeadlineMs - Date.now();
+      if (remaining <= 0) {
+        setValidationCountdown('Délai expiré');
+        return;
+      }
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      setValidationCountdown(`${h}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [validationDeadlineMs]);
+
+  useEffect(() => {
     if (!id) return;
     const channel = supabase
       .channel(`chat-${id}`)
@@ -309,6 +338,10 @@ export default function ChatScreen() {
             setReturnConfirmedOwner(b.return_confirmed_owner ?? false);
             setReturnConfirmedRenter(b.return_confirmed_renter ?? false);
             setOwnerValidated(b.owner_validated ?? false);
+            if (b.return_confirmed_at) {
+              setReturnConfirmedAt(b.return_confirmed_at);
+              setValidationDeadlineMs(new Date(b.return_confirmed_at).getTime() + 24 * 3600 * 1000);
+            }
             if (b.status === 'pending_owner_validation') {
               setShowValidationModal(true);
             }
@@ -750,11 +783,14 @@ export default function ChatScreen() {
       await supabase.from('bookings').update(updateField).eq('id', bookingId);
 
       if (newOwnerVal && newRenterVal) {
-        await supabase.from('bookings').update({ status: 'pending_owner_validation' }).eq('id', bookingId);
+        const confirmedAt = new Date().toISOString();
+        await supabase.from('bookings').update({ status: 'pending_owner_validation', return_confirmed_at: confirmedAt }).eq('id', bookingId);
+        setReturnConfirmedAt(confirmedAt);
+        setValidationDeadlineMs(new Date(confirmedAt).getTime() + 24 * 3600 * 1000);
         await supabase.from('chat_messages').insert({
           conversation_id: id,
           sender_id: null,
-          content: "Retour confirmé par les deux parties — En attente de la validation finale du propriétaire",
+          content: "Retour confirmé par les deux parties — Le propriétaire a 24h pour signaler un problème, sinon la location est validée automatiquement.",
           is_system: true,
         });
         if (isOwner) setShowValidationModal(true);
@@ -1022,7 +1058,7 @@ export default function ChatScreen() {
       {meta && meta.status !== 'pending' && (
         <View style={styles.statusBadgeRow}>
           <BookingBadge status={bookingStatus ?? meta.status} />
-          {bookingStatus && ['active', 'in_progress', 'pending_return', 'completed'].includes(bookingStatus) && (
+          {bookingStatus && ['active', 'in_progress', 'pending_return', 'pending_owner_validation', 'completed'].includes(bookingStatus) && (
             <View style={styles.progressWrapper}>
               <BookingProgress status={bookingStatus} />
             </View>
@@ -1196,21 +1232,38 @@ export default function ChatScreen() {
         );
       })()}
 
-      {/* Owner pending validation banner — shown when bookingStatus === 'pending_owner_validation' */}
-      {bookingStatus === 'pending_owner_validation' && meta?.isOwner && !ownerValidated && (
-        <TouchableOpacity
-          style={styles.validationBanner}
-          activeOpacity={0.88}
-          onPress={() => setShowValidationModal(true)}
-        >
-          <View style={styles.validationBannerLeft}>
-            <Ionicons name="shield-checkmark-outline" size={16} color="#1A5C38" />
-            <Text style={styles.validationBannerText}>Valider l'état de l'objet rendu</Text>
+      {/* Validation banner — shown for both parties during pending_owner_validation */}
+      {bookingStatus === 'pending_owner_validation' && !ownerValidated && meta && (
+        meta.isOwner ? (
+          <TouchableOpacity
+            style={styles.validationBanner}
+            activeOpacity={0.88}
+            onPress={() => setShowValidationModal(true)}
+          >
+            <View style={styles.validationBannerLeft}>
+              <Ionicons name="shield-checkmark-outline" size={16} color="#1A5C38" />
+              <View>
+                <Text style={styles.validationBannerText}>Valider l'état de l'objet rendu</Text>
+                {validationCountdown ? (
+                  <Text style={styles.validationCountdown}>Temps restant : {validationCountdown}</Text>
+                ) : null}
+              </View>
+            </View>
+            <View style={styles.validationBannerBtn}>
+              <Text style={styles.validationBannerBtnText}>Vérifier →</Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.validationBannerWaiting}>
+            <Ionicons name="time-outline" size={16} color="#92400E" />
+            <View>
+              <Text style={styles.validationBannerWaitingText}>En attente de la validation du propriétaire</Text>
+              {validationCountdown ? (
+                <Text style={styles.validationCountdown}>Validation auto dans : {validationCountdown}</Text>
+              ) : null}
+            </View>
           </View>
-          <View style={styles.validationBannerBtn}>
-            <Text style={styles.validationBannerBtnText}>Vérifier →</Text>
-          </View>
-        </TouchableOpacity>
+        )
       )}
 
       {/* Payment action banner for renter when booking is accepted and not yet paid */}
@@ -2189,6 +2242,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 12,
     color: '#fff',
+  },
+  validationCountdown: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: '#B45309',
+    marginTop: 2,
+  },
+  validationBannerWaiting: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFF7ED',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FDE68A',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  validationBannerWaitingText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: '#92400E',
   },
   validationOverlay: {
     flex: 1,

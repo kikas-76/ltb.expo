@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Ionicons } from '@expo/vector-icons';
-import BookingBadge from '@/components/BookingBadge';
+import BookingBadge, { BookingProgress } from '@/components/BookingBadge';
 import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -55,7 +55,7 @@ function isReadInStorage(id: string): boolean {
 const moduleReadIds = new Set<string>();
 const pendingMarkReadIds = new Set<string>();
 
-type ConvDisplayStatus = 'pending' | 'accepted' | 'refused' | 'in_progress' | 'completed' | 'active' | 'pending_return' | 'disputed' | 'cancelled';
+type ConvDisplayStatus = 'pending' | 'accepted' | 'refused' | 'in_progress' | 'completed' | 'active' | 'pending_return' | 'pending_owner_validation' | 'disputed' | 'cancelled';
 
 interface ConversationItem {
   id: string;
@@ -117,6 +117,10 @@ function getConvSubtext(displayStatus: ConvDisplayStatus, isRequester: boolean):
       return isRequester
         ? 'Confirme le retour sur place avec le loueur'
         : 'Confirme le retour sur place avec le locataire';
+    case 'pending_owner_validation':
+      return isRequester
+        ? 'En attente de la validation du propriétaire'
+        : 'Validez l\'état de l\'objet rendu (24h)';
     case 'completed':
       return 'Location terminée';
     case 'refused':
@@ -315,6 +319,11 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
                 if (!subtext) return null;
                 return <Text style={styles.statusSubtext}>{subtext}</Text>;
               })()}
+              {['pending_return', 'pending_owner_validation', 'completed'].includes(item.displayStatus) && (
+                <View style={styles.progressContainer}>
+                  <BookingProgress status={item.displayStatus} />
+                </View>
+              )}
               {item.isRequester && item.displayStatus === 'accepted' && item.bookingStatus !== 'active' && (
                 <PaymentDeadlineBanner
                   stripeReady={stripeReady}
@@ -427,7 +436,7 @@ export default function MessagesScreen() {
     const bookingStatusRaw = booking?.status ?? null;
 
     let displayStatus: ConvDisplayStatus;
-    if (bookingStatusRaw && ['active', 'in_progress', 'pending_return', 'completed', 'disputed', 'cancelled'].includes(bookingStatusRaw)) {
+    if (bookingStatusRaw && ['active', 'in_progress', 'pending_return', 'pending_owner_validation', 'completed', 'disputed', 'cancelled'].includes(bookingStatusRaw)) {
       displayStatus = bookingStatusRaw as ConvDisplayStatus;
     } else if (rawStatus === 'refused' || rawStatus === 'rejected') {
       displayStatus = 'refused';
@@ -941,6 +950,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#92400E',
     flex: 1,
+  },
+  progressContainer: {
+    marginTop: 6,
+    marginBottom: 2,
   },
   imageWrap: {
     position: 'relative',
