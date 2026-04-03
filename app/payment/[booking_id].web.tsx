@@ -126,14 +126,10 @@ function StripeEmbedForm({
       var depositSecret = ${JSON.stringify(depositClientSecret)};
       var depositAmt = ${depositAmount};
       if (depositSecret && depositAmt > 0) {
-        var depositElements = stripe.elements({ clientSecret: depositSecret });
-        var depositResult = await stripe.confirmCardSetup(depositSecret);
-        if (depositResult.error) {
-          var piResult = await stripe.confirmCardPayment(depositSecret, {
-            payment_method: rentalResult.paymentIntent.payment_method,
-          });
-          if (piResult.error) throw new Error(piResult.error.message);
-        }
+        var depositResult = await stripe.confirmCardPayment(depositSecret, {
+          payment_method: rentalResult.paymentIntent.payment_method,
+        });
+        if (depositResult.error) throw new Error(depositResult.error.message);
       }
 
       window.parent.postMessage({
