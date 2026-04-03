@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, Platform, LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ interface ApproximateLocationMapProps {
 
 export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLocationMapProps) {
   const [containerWidth, setContainerWidth] = useState(0);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   const onLayout = (e: LayoutChangeEvent) => {
     setContainerWidth(e.nativeEvent.layout.width);
@@ -27,24 +28,46 @@ export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLo
     ? getStaticMapUrl(lat, lng, 13, apiSize)
     : null;
 
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !mapUrl) return;
+    let revoked = false;
+    fetch(mapUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+        apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+        'X-Maps-Key': process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? '',
+      },
+    })
+      .then((res) => res.blob())
+      .then((blob) => {
+        if (!revoked) {
+          const url = URL.createObjectURL(blob);
+          setBlobUrl(url);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      revoked = true;
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, [mapUrl]);
+
   const cx = containerWidth / 2;
   const cy = mapHeight / 2;
   const r = Math.round(containerWidth * 0.14);
 
+  const webImageSrc = Platform.OS === 'web' ? blobUrl : mapUrl;
+
   return (
     <View style={styles.card}>
       <View style={styles.mapContainer} onLayout={onLayout}>
-        {mapUrl && containerWidth > 0 && (
+        {containerWidth > 0 && webImageSrc && (
           <>
             <Image
-              source={{
-                uri: mapUrl,
-                headers: Platform.OS === 'web' ? {
-                  Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-                  apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
-                  'X-Maps-Key': process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? '',
-                } : undefined,
-              }}
+              source={{ uri: webImageSrc }}
               style={[StyleSheet.absoluteFill, { width: containerWidth, height: mapHeight }]}
               resizeMode="cover"
             />
