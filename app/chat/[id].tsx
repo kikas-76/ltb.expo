@@ -114,6 +114,7 @@ export default function ChatScreen() {
   const [returnConfirmedOwner, setReturnConfirmedOwner] = useState(false);
   const [returnConfirmedRenter, setReturnConfirmedRenter] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmCardExpanded, setConfirmCardExpanded] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!id || !user) return;
@@ -996,124 +997,174 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Handover confirmation card — shown when bookingStatus === 'active' */}
-      {bookingStatus === 'active' && bookingId && meta && (
-        <View style={styles.confirmCard}>
-          <View style={styles.confirmCardHeader}>
-            <Ionicons name="hand-left-outline" size={16} color="#1B4332" />
-            <Text style={styles.confirmCardTitle}>Confirmez la remise de l'objet</Text>
-          </View>
-          <Text style={styles.confirmCardSub}>
-            Les deux parties doivent confirmer sur place pour démarrer la location.
-          </Text>
-          <View style={styles.confirmPeers}>
-            <View style={styles.confirmPeerItem}>
-              <Ionicons
-                name={handoverConfirmedOwner ? 'checkmark-circle' : 'ellipse-outline'}
-                size={16}
-                color={handoverConfirmedOwner ? '#1B4332' : '#A0A0A0'}
-              />
-              <Text style={[styles.confirmPeerName, handoverConfirmedOwner && styles.confirmPeerDone]}>
-                {meta.ownerUsername} (loueur)
-              </Text>
-            </View>
-            <View style={styles.confirmPeerItem}>
-              <Ionicons
-                name={handoverConfirmedRenter ? 'checkmark-circle' : 'ellipse-outline'}
-                size={16}
-                color={handoverConfirmedRenter ? '#1B4332' : '#A0A0A0'}
-              />
-              <Text style={[styles.confirmPeerName, handoverConfirmedRenter && styles.confirmPeerDone]}>
-                {meta.requesterUsername} (locataire)
-              </Text>
-            </View>
-          </View>
-          {!(meta.isOwner ? handoverConfirmedOwner : handoverConfirmedRenter) && (
+      {/* Handover confirmation card — collapsible, shown when bookingStatus === 'active' */}
+      {bookingStatus === 'active' && bookingId && meta && (() => {
+        const myConfirmed = meta.isOwner ? handoverConfirmedOwner : handoverConfirmedRenter;
+        const otherConfirmed = meta.isOwner ? handoverConfirmedRenter : handoverConfirmedOwner;
+        return (
+          <View style={styles.confirmCard}>
             <TouchableOpacity
-              style={[styles.confirmBtn, confirmLoading && { opacity: 0.6 }]}
-              activeOpacity={0.85}
-              onPress={handleConfirmHandover}
-              disabled={confirmLoading}
+              style={styles.confirmCardPill}
+              activeOpacity={0.75}
+              onPress={() => setConfirmCardExpanded(v => !v)}
             >
-              {confirmLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-outline" size={16} color="#fff" />
-                  <Text style={styles.confirmBtnText}>Je confirme la remise</Text>
-                </>
-              )}
+              <View style={styles.confirmCardPillLeft}>
+                <Ionicons name="hand-left-outline" size={14} color="#1B4332" />
+                <Text style={styles.confirmCardPillTitle}>Confirmer la remise</Text>
+                {myConfirmed && (
+                  <View style={styles.confirmCardPillBadge}>
+                    <Ionicons name="checkmark" size={10} color="#1B4332" />
+                    <Text style={styles.confirmCardPillBadgeText}>Confirmé</Text>
+                  </View>
+                )}
+              </View>
+              <Ionicons
+                name={confirmCardExpanded ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color="#1B4332"
+              />
             </TouchableOpacity>
-          )}
-          {(meta.isOwner ? handoverConfirmedOwner : handoverConfirmedRenter) && !(meta.isOwner ? handoverConfirmedRenter : handoverConfirmedOwner) && (
-            <View style={styles.confirmWaitingRow}>
-              <ActivityIndicator size="small" color="#8E9878" />
-              <Text style={styles.confirmWaitingText}>En attente de la confirmation de l'autre partie...</Text>
-            </View>
-          )}
-        </View>
-      )}
+            {confirmCardExpanded && (
+              <View style={styles.confirmCardBody}>
+                <Text style={styles.confirmCardSub}>
+                  Les deux parties doivent confirmer sur place pour démarrer la location.
+                </Text>
+                <View style={styles.confirmPeers}>
+                  <View style={styles.confirmPeerItem}>
+                    <Ionicons
+                      name={handoverConfirmedOwner ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={16}
+                      color={handoverConfirmedOwner ? '#1B4332' : '#A0A0A0'}
+                    />
+                    <Text style={[styles.confirmPeerName, handoverConfirmedOwner && styles.confirmPeerDone]}>
+                      {meta.ownerUsername} (loueur)
+                    </Text>
+                  </View>
+                  <View style={styles.confirmPeerItem}>
+                    <Ionicons
+                      name={handoverConfirmedRenter ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={16}
+                      color={handoverConfirmedRenter ? '#1B4332' : '#A0A0A0'}
+                    />
+                    <Text style={[styles.confirmPeerName, handoverConfirmedRenter && styles.confirmPeerDone]}>
+                      {meta.requesterUsername} (locataire)
+                    </Text>
+                  </View>
+                </View>
+                {!myConfirmed && (
+                  <TouchableOpacity
+                    style={[styles.confirmBtn, confirmLoading && { opacity: 0.6 }]}
+                    activeOpacity={0.85}
+                    onPress={handleConfirmHandover}
+                    disabled={confirmLoading}
+                  >
+                    {confirmLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-outline" size={16} color="#fff" />
+                        <Text style={styles.confirmBtnText}>Je confirme la remise</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+                {myConfirmed && !otherConfirmed && (
+                  <View style={styles.confirmWaitingRow}>
+                    <ActivityIndicator size="small" color="#8E9878" />
+                    <Text style={styles.confirmWaitingText}>En attente de l'autre partie...</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        );
+      })()}
 
-      {/* Return confirmation card — shown when bookingStatus === 'in_progress' */}
-      {bookingStatus === 'in_progress' && bookingId && meta && (
-        <View style={[styles.confirmCard, styles.confirmCardReturn]}>
-          <View style={styles.confirmCardHeader}>
-            <Ionicons name="return-down-back-outline" size={16} color="#004085" />
-            <Text style={[styles.confirmCardTitle, { color: '#004085' }]}>Confirmez le retour de l'objet</Text>
-          </View>
-          <Text style={styles.confirmCardSub}>
-            Confirmez ensemble quand l'objet a été restitué pour clôturer la location.
-          </Text>
-          <View style={styles.confirmPeers}>
-            <View style={styles.confirmPeerItem}>
-              <Ionicons
-                name={returnConfirmedOwner ? 'checkmark-circle' : 'ellipse-outline'}
-                size={16}
-                color={returnConfirmedOwner ? '#004085' : '#A0A0A0'}
-              />
-              <Text style={[styles.confirmPeerName, returnConfirmedOwner && { color: '#004085', fontFamily: 'Inter-SemiBold' }]}>
-                {meta.ownerUsername} (loueur)
-              </Text>
-            </View>
-            <View style={styles.confirmPeerItem}>
-              <Ionicons
-                name={returnConfirmedRenter ? 'checkmark-circle' : 'ellipse-outline'}
-                size={16}
-                color={returnConfirmedRenter ? '#004085' : '#A0A0A0'}
-              />
-              <Text style={[styles.confirmPeerName, returnConfirmedRenter && { color: '#004085', fontFamily: 'Inter-SemiBold' }]}>
-                {meta.requesterUsername} (locataire)
-              </Text>
-            </View>
-          </View>
-          {!(meta.isOwner ? returnConfirmedOwner : returnConfirmedRenter) && (
+      {/* Return confirmation card — collapsible, shown when bookingStatus === 'in_progress' */}
+      {bookingStatus === 'in_progress' && bookingId && meta && (() => {
+        const myConfirmed = meta.isOwner ? returnConfirmedOwner : returnConfirmedRenter;
+        const otherConfirmed = meta.isOwner ? returnConfirmedRenter : returnConfirmedOwner;
+        return (
+          <View style={[styles.confirmCard, styles.confirmCardReturn]}>
             <TouchableOpacity
-              style={[styles.confirmBtn, styles.confirmBtnReturn, confirmLoading && { opacity: 0.6 }]}
-              activeOpacity={0.85}
-              onPress={handleConfirmReturn}
-              disabled={confirmLoading}
+              style={[styles.confirmCardPill, styles.confirmCardPillReturn]}
+              activeOpacity={0.75}
+              onPress={() => setConfirmCardExpanded(v => !v)}
             >
-              {confirmLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-outline" size={16} color="#fff" />
-                  <Text style={styles.confirmBtnText}>Je confirme le retour</Text>
-                </>
-              )}
+              <View style={styles.confirmCardPillLeft}>
+                <Ionicons name="return-down-back-outline" size={14} color="#004085" />
+                <Text style={[styles.confirmCardPillTitle, { color: '#004085' }]}>Confirmer le retour</Text>
+                {myConfirmed && (
+                  <View style={[styles.confirmCardPillBadge, styles.confirmCardPillBadgeReturn]}>
+                    <Ionicons name="checkmark" size={10} color="#004085" />
+                    <Text style={[styles.confirmCardPillBadgeText, { color: '#004085' }]}>Confirmé</Text>
+                  </View>
+                )}
+              </View>
+              <Ionicons
+                name={confirmCardExpanded ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color="#004085"
+              />
             </TouchableOpacity>
-          )}
-          {(meta.isOwner ? returnConfirmedOwner : returnConfirmedRenter) && !(meta.isOwner ? returnConfirmedRenter : returnConfirmedOwner) && (
-            <View style={styles.confirmWaitingRow}>
-              <ActivityIndicator size="small" color="#8E9878" />
-              <Text style={styles.confirmWaitingText}>En attente de la confirmation de l'autre partie...</Text>
-            </View>
-          )}
-        </View>
-      )}
+            {confirmCardExpanded && (
+              <View style={styles.confirmCardBody}>
+                <Text style={styles.confirmCardSub}>
+                  Confirmez ensemble quand l'objet a été restitué pour clôturer la location.
+                </Text>
+                <View style={styles.confirmPeers}>
+                  <View style={styles.confirmPeerItem}>
+                    <Ionicons
+                      name={returnConfirmedOwner ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={16}
+                      color={returnConfirmedOwner ? '#004085' : '#A0A0A0'}
+                    />
+                    <Text style={[styles.confirmPeerName, returnConfirmedOwner && { color: '#004085', fontFamily: 'Inter-SemiBold' }]}>
+                      {meta.ownerUsername} (loueur)
+                    </Text>
+                  </View>
+                  <View style={styles.confirmPeerItem}>
+                    <Ionicons
+                      name={returnConfirmedRenter ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={16}
+                      color={returnConfirmedRenter ? '#004085' : '#A0A0A0'}
+                    />
+                    <Text style={[styles.confirmPeerName, returnConfirmedRenter && { color: '#004085', fontFamily: 'Inter-SemiBold' }]}>
+                      {meta.requesterUsername} (locataire)
+                    </Text>
+                  </View>
+                </View>
+                {!myConfirmed && (
+                  <TouchableOpacity
+                    style={[styles.confirmBtn, styles.confirmBtnReturn, confirmLoading && { opacity: 0.6 }]}
+                    activeOpacity={0.85}
+                    onPress={handleConfirmReturn}
+                    disabled={confirmLoading}
+                  >
+                    {confirmLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-outline" size={16} color="#fff" />
+                        <Text style={styles.confirmBtnText}>Je confirme le retour</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+                {myConfirmed && !otherConfirmed && (
+                  <View style={styles.confirmWaitingRow}>
+                    <ActivityIndicator size="small" color="#8E9878" />
+                    <Text style={styles.confirmWaitingText}>En attente de l'autre partie...</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        );
+      })()}
 
       {/* Payment action banner for renter when booking is accepted and not yet paid */}
-      {meta && meta.status === 'accepted' && !meta.isOwner && bookingStatus !== 'active' && (
+      {meta && meta.status === 'accepted' && !meta.isOwner && !['active', 'in_progress', 'pending_return', 'completed'].includes(bookingStatus ?? '') && (
         stripeReady ? (
           <TouchableOpacity
             style={styles.payBannerGreen}
@@ -1881,12 +1932,50 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#A7F3D0',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 10,
+    paddingVertical: 0,
   },
   confirmCardReturn: {
     backgroundColor: '#EFF6FF',
     borderBottomColor: '#BFDBFE',
+  },
+  confirmCardPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+  },
+  confirmCardPillReturn: {},
+  confirmCardPillLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    flex: 1,
+  },
+  confirmCardPillTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: '#1B4332',
+  },
+  confirmCardPillBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#D1FAE5',
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  confirmCardPillBadgeReturn: {
+    backgroundColor: '#DBEAFE',
+  },
+  confirmCardPillBadgeText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 10,
+    color: '#1B4332',
+  },
+  confirmCardBody: {
+    paddingBottom: 14,
+    gap: 10,
   },
   confirmCardHeader: {
     flexDirection: 'row',
