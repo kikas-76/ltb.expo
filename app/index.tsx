@@ -15,48 +15,51 @@ import { Colors } from '@/constants/colors';
 import { useResponsive } from '@/hooks/useResponsive';
 import { InfinityHero } from '@/components/landing/InfinityHero';
 
-const FLOATING_ITEMS = [
-  { icon: 'bicycle-outline',      top: '12%', left: '6%',   delay: 0,    size: 28 },
-  { icon: 'camera-outline',       top: '8%',  left: '62%',  delay: 300,  size: 26 },
-  { icon: 'musical-notes-outline',top: '22%', left: '82%',  delay: 600,  size: 24 },
-  { icon: 'hammer-outline',       top: '62%', left: '80%',  delay: 200,  size: 26 },
-  { icon: 'game-controller-outline', top: '72%', left: '5%', delay: 500, size: 28 },
-  { icon: 'shirt-outline',        top: '54%', left: '88%',  delay: 800,  size: 22 },
-  { icon: 'football-outline',     top: '82%', left: '72%',  delay: 400,  size: 24 },
-  { icon: 'tv-outline',           top: '16%', left: '20%',  delay: 700,  size: 22 },
-  { icon: 'car-outline',          top: '38%', left: '3%',   delay: 150,  size: 24 },
-  { icon: 'cube-outline',         top: '88%', left: '25%',  delay: 650,  size: 20 },
+const FLOATING_ICONS = [
+  { icon: 'bicycle-outline',         top: '10%', left: '5%',  delay: 0,   size: 24, rotate: '-8deg' },
+  { icon: 'camera-outline',          top: '7%',  left: '68%', delay: 200, size: 22, rotate: '6deg'  },
+  { icon: 'musical-note-outline',    top: '26%', left: '84%', delay: 450, size: 20, rotate: '10deg' },
+  { icon: 'hammer-outline',          top: '55%', left: '82%', delay: 150, size: 22, rotate: '-5deg' },
+  { icon: 'game-controller-outline', top: '68%', left: '4%',  delay: 380, size: 24, rotate: '4deg'  },
+  { icon: 'shirt-outline',           top: '46%', left: '87%', delay: 620, size: 20, rotate: '8deg'  },
+  { icon: 'football-outline',        top: '80%', left: '70%', delay: 280, size: 20, rotate: '-6deg' },
+  { icon: 'tv-outline',              top: '20%', left: '4%',  delay: 520, size: 20, rotate: '5deg'  },
+  { icon: 'car-outline',             top: '36%', left: '2%',  delay: 100, size: 22, rotate: '-4deg' },
 ] as const;
 
-function FloatingIcon({ icon, top, left, delay, size }: typeof FLOATING_ITEMS[number]) {
-  const anim = useRef(new Animated.Value(0)).current;
-  const floatY = useRef(new Animated.Value(0)).current;
+function FloatingIcon({ icon, top, left, delay, size, rotate }: typeof FLOATING_ICONS[number]) {
+  const appear = useRef(new Animated.Value(0)).current;
+  const floatY  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(anim, {
+    Animated.timing(appear, {
       toValue: 1,
-      duration: 600,
+      duration: 550,
       delay,
-      easing: Easing.out(Easing.back(1.2)),
+      easing: Easing.out(Easing.back(1.1)),
       useNativeDriver: true,
     }).start();
 
-    const randomDuration = 2800 + Math.random() * 1400;
+    const dur = 2600 + Math.random() * 1200;
     Animated.loop(
       Animated.sequence([
-        Animated.timing(floatY, { toValue: 1, duration: randomDuration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(floatY, { toValue: 0, duration: randomDuration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(floatY, { toValue: 1, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(floatY, { toValue: 0, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
-  const translateY = floatY.interpolate({ inputRange: [0, 1], outputRange: [0, -9] });
+  const ty = floatY.interpolate({ inputRange: [0, 1], outputRange: [0, -8] });
 
   return (
     <Animated.View
       style={[
         styles.floatingIcon,
-        { top, left, opacity: anim, transform: [{ scale: anim }, { translateY }] },
+        {
+          top, left,
+          opacity: appear,
+          transform: [{ scale: appear }, { translateY: ty }, { rotate: rotate }],
+        },
       ]}
     >
       <Ionicons name={icon as any} size={size} color={Colors.primaryDark} />
@@ -66,7 +69,7 @@ function FloatingIcon({ icon, top, left, delay, size }: typeof FLOATING_ITEMS[nu
 
 export default function LandingScreen() {
   const { isMobile } = useResponsive();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -75,146 +78,89 @@ export default function LandingScreen() {
     }
   }, []);
 
-  const logoAnim = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.8)).current;
-  const heroAnim = useRef(new Animated.Value(0)).current;
-  const heroScale = useRef(new Animated.Value(0.72)).current;
-  const titleAnim = useRef(new Animated.Value(0)).current;
-  const titleY = useRef(new Animated.Value(24)).current;
-  const subAnim = useRef(new Animated.Value(0)).current;
-  const subY = useRef(new Animated.Value(16)).current;
-  const ctaAnim = useRef(new Animated.Value(0)).current;
-  const ctaY = useRef(new Animated.Value(20)).current;
+  const a0 = useRef(new Animated.Value(0)).current;
+  const s0 = useRef(new Animated.Value(0.85)).current;
+  const a1 = useRef(new Animated.Value(0)).current;
+  const s1 = useRef(new Animated.Value(0.78)).current;
+  const a2 = useRef(new Animated.Value(0)).current;
+  const y2 = useRef(new Animated.Value(20)).current;
+  const a3 = useRef(new Animated.Value(0)).current;
+  const y3 = useRef(new Animated.Value(16)).current;
+  const a4 = useRef(new Animated.Value(0)).current;
+  const y4 = useRef(new Animated.Value(18)).current;
 
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(logoAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.spring(logoScale, { toValue: 1, tension: 55, friction: 8, useNativeDriver: true }),
+        Animated.timing(a0, { toValue: 1, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(s0, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(heroAnim, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.spring(heroScale, { toValue: 1, tension: 42, friction: 7, useNativeDriver: true }),
+        Animated.timing(a1, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(s1, { toValue: 1, tension: 40, friction: 7, useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(titleAnim, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(titleY, { toValue: 0, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(subAnim, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(subY, { toValue: 0, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(a2, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(y2, { toValue: 0, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(a3, { toValue: 1, duration: 340, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(y3, { toValue: 0, duration: 340, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(ctaAnim, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(ctaY, { toValue: 0, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(a4, { toValue: 1, duration: 360, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(y4, { toValue: 0, duration: 360, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
     ]).start();
   }, []);
 
-  const heroSize = isMobile ? Math.min(width * 0.7, 290) : Math.min(width * 0.3, 380);
-
-  if (!isMobile) {
-    return (
-      <View style={styles.root}>
-        {FLOATING_ITEMS.map((item) => (
-          <FloatingIcon key={item.icon} {...item} />
-        ))}
-
-        <View style={styles.desktopLayout}>
-          <View style={styles.desktopTop}>
-            <Animated.Image
-              source={require('@/assets/images/logoLTBwhitoutbaground.png')}
-              style={[styles.logoDesktop, { opacity: logoAnim, transform: [{ scale: logoScale }] }]}
-              resizeMode="contain"
-            />
-          </View>
-
-          <Animated.View style={[styles.heroWrap, { opacity: heroAnim, transform: [{ scale: heroScale }] }]}>
-            <InfinityHero size={heroSize} />
-          </Animated.View>
-
-          <Animated.View style={[styles.titleBlock, { opacity: titleAnim, transform: [{ translateY: titleY }] }]}>
-            <Text style={styles.titleDesktop}>
-              L'échange infini{'\n'}
-              <Text style={styles.titleAccent}>commence ici</Text>
-            </Text>
-          </Animated.View>
-
-          <Animated.View style={[styles.subBlock, { opacity: subAnim, transform: [{ translateY: subY }] }]}>
-            <Text style={styles.subtitle}>
-              Louez, empruntez, partagez avec vos voisins.{'\n'}
-              <Text style={styles.subtitleAccent}>Une communauté infinie de possibilités.</Text>
-            </Text>
-          </Animated.View>
-
-          <Animated.View style={[styles.ctaWrap, { opacity: ctaAnim, transform: [{ translateY: ctaY }] }]}>
-            <TouchableOpacity style={styles.ctaBtn} onPress={() => router.push('/register')} activeOpacity={0.82}>
-              <Ionicons name="sparkles-outline" size={18} color={Colors.primaryDark} />
-              <Text style={styles.ctaBtnText}>Commencer l'aventure</Text>
-              <Ionicons name="arrow-forward" size={17} color={Colors.primaryDark} />
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => router.push('/login')} activeOpacity={0.7} style={styles.loginRow}>
-              <Text style={styles.loginText}>Déjà un compte ? </Text>
-              <Text style={styles.loginLink}>Se connecter</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <TouchableOpacity onPress={() => router.push('/legal')} activeOpacity={0.7} style={styles.legalRow}>
-            <Text style={styles.legalLink}>Mentions légales · CGU · Confidentialité</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
+  const heroSize = isMobile ? Math.min(width * 0.65, 260) : Math.min(width * 0.28, 340);
 
   return (
     <View style={styles.root}>
-      {FLOATING_ITEMS.map((item) => (
+      {FLOATING_ICONS.map((item) => (
         <FloatingIcon key={item.icon} {...item} />
       ))}
 
-      <View style={styles.mobileLayout}>
+      <View style={[styles.layout, !isMobile && styles.layoutDesktop]}>
         <Animated.Image
           source={require('@/assets/images/logoLTBwhitoutbaground.png')}
-          style={[styles.logoMobile, { opacity: logoAnim, transform: [{ scale: logoScale }] }]}
+          style={[styles.logo, { opacity: a0, transform: [{ scale: s0 }] }]}
           resizeMode="contain"
         />
 
-        <Animated.View style={[styles.heroWrap, { opacity: heroAnim, transform: [{ scale: heroScale }] }]}>
+        <Animated.View style={{ opacity: a1, transform: [{ scale: s1 }] }}>
           <InfinityHero size={heroSize} />
         </Animated.View>
 
-        <Animated.View style={[styles.titleBlock, { opacity: titleAnim, transform: [{ translateY: titleY }] }]}>
-          <Text style={styles.titleMobile}>
-            L'échange infini{'\n'}
-            <Text style={styles.titleAccent}>commence ici</Text>
+        <Animated.View style={[styles.titleWrap, { opacity: a2, transform: [{ translateY: y2 }] }]}>
+          <Text style={[styles.title, !isMobile && styles.titleDesktop]}>
+            Tout ce dont vous avez{'\n'}besoin,{' '}
+            <Text style={styles.titleAccent}>autour de vous.</Text>
           </Text>
         </Animated.View>
 
-        <Animated.View style={[styles.subBlock, { opacity: subAnim, transform: [{ translateY: subY }] }]}>
-          <Text style={styles.subtitle}>
-            Louez, empruntez, partagez avec vos voisins.{'\n'}
-            <Text style={styles.subtitleAccent}>Une communauté infinie de possibilités.</Text>
+        <Animated.View style={[styles.subWrap, { opacity: a3, transform: [{ translateY: y3 }] }]}>
+          <Text style={styles.sub}>
+            Louez, prêtez et partagez des objets{'\n'}avec vos voisins en toute confiance.
           </Text>
         </Animated.View>
 
-        <View style={styles.bottomFixed}>
-          <Animated.View style={[{ opacity: ctaAnim, transform: [{ translateY: ctaY }] }]}>
-            <TouchableOpacity style={styles.ctaBtn} onPress={() => router.push('/register')} activeOpacity={0.82}>
-              <Ionicons name="sparkles-outline" size={18} color={Colors.primaryDark} />
-              <Text style={styles.ctaBtnText}>Commencer l'aventure</Text>
-              <Ionicons name="arrow-forward" size={17} color={Colors.primaryDark} />
-            </TouchableOpacity>
+        <View style={styles.spacer} />
 
-            <TouchableOpacity onPress={() => router.push('/login')} activeOpacity={0.7} style={styles.loginRow}>
-              <Text style={styles.loginText}>Déjà un compte ? </Text>
-              <Text style={styles.loginLink}>Se connecter</Text>
-            </TouchableOpacity>
+        <Animated.View style={[styles.cta, { opacity: a4, transform: [{ translateY: y4 }] }, !isMobile && styles.ctaDesktop]}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push('/register')} activeOpacity={0.82}>
+            <Text style={styles.primaryBtnText}>Commencer gratuitement</Text>
+            <Ionicons name="arrow-forward" size={18} color={Colors.white} />
+          </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.push('/legal')} activeOpacity={0.7} style={styles.legalRow}>
-              <Text style={styles.legalLink}>Mentions légales · CGU · Confidentialité</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
+          <TouchableOpacity onPress={() => router.push('/login')} activeOpacity={0.7} style={styles.loginRow}>
+            <Text style={styles.loginText}>Déjà un compte ?</Text>
+            <Text style={styles.loginLink}> Se connecter</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push('/legal')} activeOpacity={0.7}>
+            <Text style={styles.legal}>Mentions légales · CGU · Confidentialité</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </View>
   );
@@ -229,138 +175,115 @@ const styles = StyleSheet.create({
 
   floatingIcon: {
     position: 'absolute',
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: Colors.white,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: Colors.cardBackground,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.07, shadowRadius: 8 },
-      android: { elevation: 3 },
-      web: { boxShadow: '0 3px 12px rgba(0,0,0,0.08)' },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 2px 10px rgba(0,0,0,0.07)' } as any,
     }),
   },
 
-  desktopLayout: {
+  layout: {
     flex: 1,
     alignItems: 'center',
+    paddingTop: Platform.OS === 'web' ? 56 : 64,
+    paddingHorizontal: 28,
+    paddingBottom: 32,
+    gap: 10,
+  },
+  layoutDesktop: {
     justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 40,
-    gap: 18,
+    paddingTop: 40,
+    gap: 16,
   },
-  desktopTop: {
+
+  logo: {
+    width: 180,
+    height: 42,
+    marginBottom: 4,
+  },
+
+  titleWrap: {
     alignItems: 'center',
+    marginTop: 8,
   },
-
-  mobileLayout: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: Platform.OS === 'web' ? 54 : 60,
-    paddingHorizontal: 24,
-    paddingBottom: 160,
-    gap: 12,
-  },
-
-  logoDesktop: {
-    width: 240,
-    height: 56,
-  },
-  logoMobile: {
-    width: 200,
-    height: 46,
-  },
-
-  heroWrap: {
-    alignSelf: 'center',
-  },
-
-  titleBlock: {
-    alignItems: 'center',
+  title: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 28,
+    color: Colors.text,
+    textAlign: 'center',
+    lineHeight: 36,
+    letterSpacing: -0.6,
   },
   titleDesktop: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 46,
-    color: Colors.text,
-    textAlign: 'center',
-    lineHeight: 56,
-    letterSpacing: -1,
-  },
-  titleMobile: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 32,
-    color: Colors.text,
-    textAlign: 'center',
-    lineHeight: 40,
-    letterSpacing: -0.8,
+    fontSize: 42,
+    lineHeight: 52,
   },
   titleAccent: {
     color: Colors.primaryDark,
   },
 
-  subBlock: {
+  subWrap: {
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
   },
-  subtitle: {
+  sub: {
     fontFamily: 'Inter-Regular',
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 23,
-  },
-  subtitleAccent: {
-    fontFamily: 'Inter-Medium',
-    color: Colors.primaryDark,
+    lineHeight: 22,
   },
 
-  ctaWrap: {
+  spacer: {
+    flex: 1,
+  },
+
+  cta: {
     width: '100%',
-    maxWidth: 440,
-    gap: 10,
-    marginTop: 8,
+    gap: 8,
+    alignItems: 'center',
+  },
+  ctaDesktop: {
+    maxWidth: 400,
+    marginTop: 16,
   },
 
-  bottomFixed: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 36 : 28,
-    left: 20,
-    right: 20,
-  },
-
-  ctaBtn: {
+  primaryBtn: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: Colors.white,
-    height: 60,
-    borderRadius: 18,
+    backgroundColor: Colors.primaryDark,
+    height: 58,
+    borderRadius: 16,
     paddingHorizontal: 24,
-    borderWidth: 1,
-    borderColor: Colors.border,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 14 },
-      android: { elevation: 4 },
-      web: { boxShadow: '0 4px 20px rgba(0,0,0,0.1)' },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12 },
+      android: { elevation: 5 },
+      web: { boxShadow: `0 4px 18px ${Colors.primaryDark}55` } as any,
     }),
   },
-  ctaBtnText: {
+  primaryBtnText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 17,
-    color: Colors.text,
-    flex: 1,
-    textAlign: 'center',
+    fontSize: 16,
+    color: Colors.white,
+    letterSpacing: 0.2,
   },
 
   loginRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   loginText: {
     fontFamily: 'Inter-Regular',
@@ -368,21 +291,16 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   loginLink: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'Inter-SemiBold',
     fontSize: 14,
     color: Colors.primaryDark,
-    textDecorationLine: 'underline',
   },
 
-  legalRow: {
-    alignItems: 'center',
-    paddingTop: 2,
-  },
-  legalLink: {
+  legal: {
     fontFamily: 'Inter-Regular',
     fontSize: 11,
     color: Colors.textMuted,
-    textDecorationLine: 'underline',
     textAlign: 'center',
+    marginTop: 2,
   },
 });
