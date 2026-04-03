@@ -1,29 +1,27 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
   StatusBar,
   Platform,
   Animated,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
-
-const FEATURES = [
-  { icon: 'tool', label: 'Outillage' },
-  { icon: 'truck', label: 'Véhicules' },
-  { icon: 'camera', label: 'Photo & Vidéo' },
-  { icon: 'home', label: 'Maison' },
-  { icon: 'music', label: 'Événements' },
-  { icon: 'layers', label: 'Et bien plus…' },
-];
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LandingScreen() {
-  const { width } = useWindowDimensions();
+  const { signInWithGoogle } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { width, height } = useWindowDimensions();
+  const HERO_HEIGHT = height * 0.62;
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -34,121 +32,151 @@ export default function LandingScreen() {
     }
   }, []);
 
-  const heroAnim = useRef(new Animated.Value(0)).current;
-  const heroTranslate = useRef(new Animated.Value(-18)).current;
-  const cardsAnim = useRef(new Animated.Value(0)).current;
-  const cardsTranslate = useRef(new Animated.Value(20)).current;
-  const btnAnim = useRef(new Animated.Value(0)).current;
-  const btnTranslate = useRef(new Animated.Value(24)).current;
+  const logoAnim = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const btn1Anim = useRef(new Animated.Value(0)).current;
+  const btn2Anim = useRef(new Animated.Value(0)).current;
   const loginAnim = useRef(new Animated.Value(0)).current;
+  const btn1Translate = useRef(new Animated.Value(30)).current;
+  const btn2Translate = useRef(new Animated.Value(30)).current;
+  const loginTranslate = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(heroAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.timing(heroTranslate, { toValue: 0, duration: 600, useNativeDriver: true }),
+        Animated.timing(logoAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.spring(logoScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
       ]),
       Animated.parallel([
-        Animated.timing(cardsAnim, { toValue: 1, duration: 450, useNativeDriver: true }),
-        Animated.timing(cardsTranslate, { toValue: 0, duration: 450, useNativeDriver: true }),
+        Animated.timing(btn1Anim, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(btn1Translate, { toValue: 0, duration: 400, useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(btnAnim, { toValue: 1, duration: 380, useNativeDriver: true }),
-        Animated.timing(btnTranslate, { toValue: 0, duration: 380, useNativeDriver: true }),
+        Animated.timing(btn2Anim, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(btn2Translate, { toValue: 0, duration: 350, useNativeDriver: true }),
       ]),
-      Animated.timing(loginAnim, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(loginAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(loginTranslate, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]),
     ]).start();
   }, []);
 
-  const maxWidth = Math.min(width, 480);
+  const handleGoogleRegister = async () => {
+    setGoogleLoading(true);
+    const { error, emailConflict } = await signInWithGoogle();
+    setGoogleLoading(false);
+    if (emailConflict) {
+      router.replace({ pathname: '/link-google-account', params: { email: emailConflict } } as any);
+    }
+  };
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+    <View style={[styles.root, { backgroundColor: Colors.background }]}>
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-      <View style={[styles.inner, { maxWidth }]}>
-        <Animated.View
-          style={[
-            styles.heroSection,
-            { opacity: heroAnim, transform: [{ translateY: heroTranslate }] },
-          ]}
-        >
-          <View style={styles.badgeRow}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Location entre particuliers</Text>
-            </View>
-          </View>
+      <Image
+        source={{ uri: 'https://images.pexels.com/photos/1249611/pexels-photo-1249611.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2' }}
+        style={[styles.heroImage, { height: HERO_HEIGHT }]}
+        resizeMode="cover"
+      />
 
-          <Text style={styles.headline}>
-            Louez ce dont{'\n'}vous avez besoin,{'\n'}
-            <Text style={styles.headlineAccent}>près de chez vous.</Text>
-          </Text>
+      <LinearGradient
+        colors={[
+          'transparent',
+          'rgba(245,242,227,0.15)',
+          'rgba(245,242,227,0.6)',
+          'rgba(245,242,227,0.92)',
+          Colors.background,
+        ]}
+        locations={[0, 0.38, 0.6, 0.8, 1]}
+        style={[styles.gradient, { top: HERO_HEIGHT * 0.28, height: HERO_HEIGHT * 0.72 }]}
+      />
 
-          <Text style={styles.subline}>
-            Des milliers d'objets disponibles autour de vous. Économisez, partagez et consommez autrement.
-          </Text>
-        </Animated.View>
+      <Animated.View
+        style={[
+          styles.logoWrap,
+          { top: HERO_HEIGHT * 0.28 },
+          {
+            opacity: logoAnim,
+            transform: [{ scale: logoScale }],
+          },
+        ]}
+      >
+        <Image
+          source={require('@/assets/images/logoLTBwhitoutbaground.png')}
+          style={[styles.logo, { width: Math.min(width * 0.82, 340) }]}
+          resizeMode="contain"
+        />
+      </Animated.View>
 
-        <Animated.View
-          style={[
-            styles.categoriesGrid,
-            { opacity: cardsAnim, transform: [{ translateY: cardsTranslate }] },
-          ]}
-        >
-          {FEATURES.map((f) => (
-            <View key={f.label} style={styles.catCard}>
-              <View style={styles.catIconWrap}>
-                <Feather name={f.icon as any} size={18} color={Colors.primaryDark} />
-              </View>
-              <Text style={styles.catLabel}>{f.label}</Text>
-            </View>
-          ))}
-        </Animated.View>
-
-        <View style={styles.actionsSection}>
+      <View style={[styles.bottom, { paddingBottom: Platform.OS === 'web' ? 52 : 44, paddingHorizontal: Math.min(width * 0.07, 32) }]}>
+        <View style={styles.actions}>
           <Animated.View
             style={{
-              opacity: btnAnim,
-              transform: [{ translateY: btnTranslate }],
+              opacity: btn1Anim,
+              transform: [{ translateY: btn1Translate }],
             }}
           >
             <TouchableOpacity
-              style={styles.mainBtn}
+              style={styles.mailBtn}
               onPress={() => router.push('/register')}
               activeOpacity={0.82}
             >
               <Ionicons name="mail-outline" size={20} color={Colors.white} />
-              <Text style={styles.mainBtnText}>Commencer avec un email</Text>
+              <Text style={styles.mailBtnText}>S'inscrire par Mail</Text>
             </TouchableOpacity>
           </Animated.View>
 
-          <Animated.View style={{ opacity: loginAnim }}>
+          <Animated.View style={[styles.separator, { opacity: btn1Anim }]}>
+            <View style={styles.separatorLine} />
+            <Text style={styles.separatorText}>ou</Text>
+            <View style={styles.separatorLine} />
+          </Animated.View>
+
+          <Animated.View
+            style={{
+              opacity: btn2Anim,
+              transform: [{ translateY: btn2Translate }],
+            }}
+          >
             <TouchableOpacity
-              onPress={() => router.push('/login')}
-              activeOpacity={0.7}
-              style={styles.loginRow}
+              style={[styles.googleBtn, googleLoading && { opacity: 0.65 }]}
+              activeOpacity={0.82}
+              disabled={googleLoading}
+              onPress={handleGoogleRegister}
             >
-              <Text style={styles.loginText}>Déjà un compte ? </Text>
-              <Text style={styles.loginLink}>Se connecter</Text>
+              {googleLoading ? (
+                <ActivityIndicator size="small" color={Colors.text} />
+              ) : (
+                <>
+                  <Text style={styles.googleG}>G</Text>
+                  <Text style={styles.googleBtnText}>S'inscrire via Google</Text>
+                </>
+              )}
             </TouchableOpacity>
           </Animated.View>
         </View>
 
-        <Animated.View style={[styles.trustRow, { opacity: loginAnim }]}>
-          <View style={styles.trustItem}>
-            <Text style={styles.trustNumber}>10k+</Text>
-            <Text style={styles.trustLabel}>Annonces</Text>
-          </View>
-          <View style={styles.trustDivider} />
-          <View style={styles.trustItem}>
-            <Text style={styles.trustNumber}>4.8★</Text>
-            <Text style={styles.trustLabel}>Note moyenne</Text>
-          </View>
-          <View style={styles.trustDivider} />
-          <View style={styles.trustItem}>
-            <Text style={styles.trustNumber}>100%</Text>
-            <Text style={styles.trustLabel}>Sécurisé</Text>
-          </View>
+        <Animated.View
+          style={{
+            opacity: loginAnim,
+            transform: [{ translateY: loginTranslate }],
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => router.push('/login')}
+            activeOpacity={0.7}
+            style={styles.loginRow}
+          >
+            <Text style={styles.loginText}>Vous avez déjà un compte ? </Text>
+            <Text style={styles.loginLink}>Se connecter</Text>
+          </TouchableOpacity>
         </Animated.View>
       </View>
     </View>
@@ -158,117 +186,103 @@ export default function LandingScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  inner: {
-    flex: 1,
+  heroImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     width: '100%',
-    paddingHorizontal: 28,
-    paddingTop: Platform.OS === 'web' ? 72 : 64,
-    paddingBottom: Platform.OS === 'web' ? 40 : 32,
-    justifyContent: 'center',
   },
-  heroSection: {
-    marginBottom: 32,
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
-  badgeRow: {
-    flexDirection: 'row',
-    marginBottom: 18,
-  },
-  badge: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 100,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.primaryDark,
-    letterSpacing: 0.3,
-  },
-  headline: {
-    fontSize: 34,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-    lineHeight: 42,
-    marginBottom: 16,
-  },
-  headlineAccent: {
-    color: Colors.primaryDark,
-  },
-  subline: {
-    fontSize: 15,
-    fontFamily: 'Inter-Regular',
-    color: Colors.textSecondary,
-    lineHeight: 23,
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 36,
-  },
-  catCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  catIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: Colors.background,
+  logoWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catLabel: {
-    fontSize: 13,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
+  logo: {
+    height: 72,
   },
-  actionsSection: {
-    gap: 16,
-    marginBottom: 36,
+  bottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  mainBtn: {
+  actions: {
+    gap: 14,
+    marginBottom: 24,
+  },
+  mailBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.primary,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 100,
     shadowColor: Colors.primaryDark,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 4,
   },
-  mainBtnText: {
+  mailBtnText: {
     color: Colors.white,
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.2,
+  },
+  separator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 2,
+  },
+  separatorLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.border,
+  },
+  separatorText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: Colors.textMuted,
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: Colors.background,
+    height: 56,
+    borderRadius: 100,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  googleG: {
+    fontSize: 17,
+    fontFamily: 'Inter-Bold',
+    color: '#4285F4',
+  },
+  googleBtnText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.text,
+    letterSpacing: 0.15,
   },
   loginRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     flexWrap: 'wrap',
+    paddingBottom: 4,
   },
   loginText: {
     fontSize: 14,
@@ -280,37 +294,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: Colors.text,
     textDecorationLine: 'underline',
-  },
-  trustRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  trustItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  trustDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: Colors.borderLight,
-  },
-  trustNumber: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: Colors.text,
-  },
-  trustLabel: {
-    fontSize: 11,
-    fontFamily: 'Inter-Regular',
-    color: Colors.textMuted,
-    letterSpacing: 0.2,
   },
 });
