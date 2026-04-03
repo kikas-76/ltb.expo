@@ -94,15 +94,7 @@ function RootNavigator() {
         router.replace('/');
       } else if (session && !inOnboarding && !inLogin && !inRegister && segments[0] !== undefined) {
         if (!profile?.username) {
-          const provider = session.user?.app_metadata?.provider;
-          const isGoogle = provider === 'google';
-          const googleMeta = session.user?.user_metadata;
-          const googleName = googleMeta?.full_name ?? googleMeta?.name ?? '';
-          const googlePhoto = googleMeta?.avatar_url ?? googleMeta?.picture ?? '';
-          router.replace({
-            pathname: '/onboarding/profile',
-            params: { fromGoogle: isGoogle ? 'true' : 'false', googleName, googlePhoto },
-          } as any);
+          router.replace('/onboarding/profile' as any);
         } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess) {
           if (pendingListingId) {
             const id = pendingListingId;
@@ -149,7 +141,6 @@ function RootNavigator() {
         <Stack.Screen name="help-center" />
         <Stack.Screen name="help/[category]" />
         <Stack.Screen name="legal" />
-        <Stack.Screen name="link-google-account" />
         <Stack.Screen name="report" />
         <Stack.Screen name="payment/[booking_id]" />
         <Stack.Screen name="payment-success" />

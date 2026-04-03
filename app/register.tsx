@@ -13,13 +13,10 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/colors';
 import InfiniteIconStrip from '@/components/InfiniteIconStrip';
-import { useAuth } from '@/contexts/AuthContext';
 
 const BG = '#F5F0E8';
 const GREEN = '#B7BF9C';
-const GREEN_LIGHT = '#ECEEE6';
 
 function Stepper({ active }: { active: number }) {
   return (
@@ -31,33 +28,7 @@ function Stepper({ active }: { active: number }) {
   );
 }
 
-function GoogleIcon() {
-  return (
-    <View style={googleIconStyles.container}>
-      <Text style={googleIconStyles.g}>G</Text>
-    </View>
-  );
-}
-
-const googleIconStyles = StyleSheet.create({
-  container: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  g: {
-    fontSize: 14,
-    fontFamily: 'Inter-Bold',
-    color: '#4285F4',
-  },
-});
-
 export default function RegisterScreen() {
-  const { signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -65,21 +36,6 @@ export default function RegisterScreen() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-
-  const handleGoogleRegister = async () => {
-    setError(null);
-    setGoogleLoading(true);
-    const { error: googleError, emailConflict } = await signInWithGoogle();
-    setGoogleLoading(false);
-    if (emailConflict) {
-      router.replace({ pathname: '/link-google-account', params: { email: emailConflict } } as any);
-      return;
-    }
-    if (googleError) {
-      setError(googleError);
-    }
-  };
 
   const handleSubmit = () => {
     setError(null);
@@ -187,28 +143,6 @@ export default function RegisterScreen() {
               ? <ActivityIndicator color="#fff" />
               : <Text style={styles.btnText}>S'inscrire</Text>
             }
-          </TouchableOpacity>
-
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ou continuer avec</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.googleBtn, googleLoading && { opacity: 0.65 }]}
-            onPress={handleGoogleRegister}
-            disabled={googleLoading}
-            activeOpacity={0.85}
-          >
-            {googleLoading ? (
-              <ActivityIndicator size="small" color="#1C1C18" />
-            ) : (
-              <>
-                <GoogleIcon />
-                <Text style={styles.googleText}>S'inscrire avec Google</Text>
-              </>
-            )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push('/login')} style={styles.loginLink}>
@@ -327,38 +261,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.2,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginVertical: 2,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E0D8C8',
-  },
-  dividerText: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#A8A8A0',
-  },
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#E0D8C8',
-    height: 54,
-    paddingHorizontal: 22,
-  },
-  googleText: {
-    fontSize: 15,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1C1C18',
   },
   loginLink: {
     alignItems: 'center',

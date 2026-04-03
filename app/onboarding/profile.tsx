@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -53,27 +53,12 @@ function formatPhone(raw: string): string {
   return digits;
 }
 
-function buildSuggestedUsername(fullName: string): string {
-  return fullName
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '')
-    .slice(0, 20);
-}
 
 export default function OnboardingProfileScreen() {
   const params = useLocalSearchParams<{
     email: string;
     password: string;
-    fromGoogle: string;
-    googleName: string;
-    googlePhoto: string;
   }>();
-
-  const isGoogle = params.fromGoogle === 'true';
 
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
@@ -81,17 +66,6 @@ export default function OnboardingProfileScreen() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (isGoogle) {
-      if (params.googleName) {
-        setUsername(buildSuggestedUsername(params.googleName));
-      }
-      if (params.googlePhoto) {
-        setAvatarUri(params.googlePhoto);
-      }
-    }
-  }, []);
 
   const handlePhoneChange = (text: string) => {
     const digits = text.replace(/\D/g, '');
@@ -117,10 +91,6 @@ export default function OnboardingProfileScreen() {
 
   const uploadAvatar = async (userId: string): Promise<string | null> => {
     if (!avatarUri) return null;
-
-    if (isGoogle && avatarUri === params.googlePhoto) {
-      return avatarUri;
-    }
 
     setAvatarUploading(true);
     try {
@@ -173,40 +143,6 @@ export default function OnboardingProfileScreen() {
     }
 
     setSubmitting(true);
-
-    if (isGoogle) {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        setSubmitting(false);
-        setError('Session expirée. Veuillez recommencer.');
-        return;
-      }
-
-      const photoUrl = await uploadAvatar(user.id);
-
-      const updates: Record<string, string | null> = {
-        username: cleanUsername,
-        email: user.email ?? null,
-        phone_number: phone.trim() || null,
-        photo_url: photoUrl,
-      };
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
-
-      if (updateError) {
-        setSubmitting(false);
-        setError('Erreur lors de la mise à jour du profil: ' + updateError.message);
-        return;
-      }
-
-      setSubmitting(false);
-      router.replace({ pathname: '/onboarding/account-type', params: { userId: user.id } });
-      return;
-    }
 
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: params.email,
@@ -270,11 +206,9 @@ export default function OnboardingProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          {!isGoogle && (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-              <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+            <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
+          </TouchableOpacity>
           <Image
             source={require('@/assets/images/logoLTBwhitoutbaground.png')}
             style={styles.logo}
@@ -286,9 +220,7 @@ export default function OnboardingProfileScreen() {
         <View style={styles.body}>
           <Text style={styles.title}>Complète ton profil</Text>
           <Text style={styles.subtitle}>
-            {isGoogle
-              ? "On a pré-rempli tes infos Google. Tu peux les modifier avant de continuer."
-              : "Un dernier détail avant de louer ou prêter en toute confiance"}
+            Un dernier détail avant de louer ou prêter en toute confiance
           </Text>
 
           {error && (
