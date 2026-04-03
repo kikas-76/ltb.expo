@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Lock, ShieldCheck, Calendar } from 'lucide-react-native';
+import { ArrowLeft, Lock, ShieldCheck, Calendar, TriangleAlert, MessageCircle } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 
 const BG = '#F5F0E8';
@@ -234,6 +234,7 @@ export default function PaymentScreen() {
   const [rentalPaymentIntentId, setRentalPaymentIntentId] = useState<string | null>(null);
   const [depositPaymentIntentId, setDepositPaymentIntentId] = useState<string | null>(null);
   const [intentError, setIntentError] = useState<string | null>(null);
+  const [stripeAccountError, setStripeAccountError] = useState(false);
 
   useEffect(() => {
     if (!booking_id) return;
@@ -281,7 +282,13 @@ export default function PaymentScreen() {
           }
         );
         const data = await response.json();
-        if (data.error) throw new Error(data.error);
+        if (data.error) {
+          if (data.error.includes('destination') || data.error.includes('capabilities')) {
+            setStripeAccountError(true);
+            return;
+          }
+          throw new Error(data.error);
+        }
         if (!data.rental_client_secret) throw new Error('Client secret manquant');
         setRentalClientSecret(data.rental_client_secret);
         setDepositClientSecret(data.deposit_client_secret ?? null);
@@ -412,7 +419,27 @@ export default function PaymentScreen() {
           </View>
         )}
 
-        {intentError && (
+        {stripeAccountError && (
+          <View style={styles.stripeAccountErrorCard}>
+            <View style={styles.stripeAccountErrorHeader}>
+              <TriangleAlert size={18} color="#721C24" strokeWidth={2} />
+              <Text style={styles.stripeAccountErrorTitle}>Paiement impossible</Text>
+            </View>
+            <Text style={styles.stripeAccountErrorBody}>
+              Le loueur n'a pas encore activé son compte de paiement. Contacte-le via la messagerie pour qu'il configure son compte Stripe.
+            </Text>
+            <TouchableOpacity
+              style={styles.stripeAccountErrorBtn}
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+            >
+              <MessageCircle size={15} color="#721C24" strokeWidth={2} />
+              <Text style={styles.stripeAccountErrorBtnText}>Contacter le loueur</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {intentError && !stripeAccountError && (
           <View style={styles.intentErrorWrapper}>
             <Text style={styles.intentErrorText}>{intentError}</Text>
           </View>
@@ -689,5 +716,46 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#C0392B',
     textAlign: 'center',
+  },
+  stripeAccountErrorCard: {
+    backgroundColor: '#F8D7DA',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 0,
+    gap: 10,
+  },
+  stripeAccountErrorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stripeAccountErrorTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 15,
+    color: '#721C24',
+  },
+  stripeAccountErrorBody: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: '#721C24',
+    lineHeight: 20,
+  },
+  stripeAccountErrorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#721C24',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  stripeAccountErrorBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: '#721C24',
   },
 });
