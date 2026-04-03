@@ -80,6 +80,7 @@ interface ConversationItem {
   totalPrice: number | null;
   isRequester: boolean;
   listingCity: string | null;
+  listingUnavailable: boolean;
 }
 
 function formatTime(isoString: string): string {
@@ -230,14 +231,14 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
   }, []);
 
   const isUnread = item.unreadCount > 0 || item.hasUnreadDot;
-  const isDeletable = item.displayStatus === 'completed' || item.status === 'refused';
+  const isDeletable = item.displayStatus === 'completed' || item.status === 'refused' || item.listingUnavailable;
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
       <TouchableOpacity
-        style={[styles.card, item.isIncomingRequest && styles.cardIncoming]}
+        style={[styles.card, item.isIncomingRequest && styles.cardIncoming, item.listingUnavailable && styles.cardUnavailable]}
         activeOpacity={0.78}
-        onPress={() => onPress(item.id)}
+        onPress={() => !item.listingUnavailable && onPress(item.id)}
         onLongPress={isDeletable ? () => onDeleteRequest(item.id) : undefined}
         delayLongPress={500}
       >
@@ -299,20 +300,30 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
             )}
           </View>
 
-          <BookingBadge status={item.displayStatus} />
-          {(() => {
-            const subtext = getConvSubtext(item.displayStatus, item.isRequester);
-            if (!subtext) return null;
-            return <Text style={styles.statusSubtext}>{subtext}</Text>;
-          })()}
-
-          {item.isRequester && item.displayStatus === 'accepted' && item.bookingStatus !== 'active' && (
-            <PaymentDeadlineBanner
-              stripeReady={stripeReady}
-              bookingId={item.bookingId}
-              totalPrice={item.totalPrice}
-              convId={item.id}
-            />
+          {item.listingUnavailable ? (
+            <View style={styles.unavailableBanner}>
+              <Ionicons name="eye-off-outline" size={13} color="#92400E" />
+              <Text style={styles.unavailableBannerText}>
+                Annonce supprimée ou masquée — Plus disponible
+              </Text>
+            </View>
+          ) : (
+            <>
+              <BookingBadge status={item.displayStatus} />
+              {(() => {
+                const subtext = getConvSubtext(item.displayStatus, item.isRequester);
+                if (!subtext) return null;
+                return <Text style={styles.statusSubtext}>{subtext}</Text>;
+              })()}
+              {item.isRequester && item.displayStatus === 'accepted' && item.bookingStatus !== 'active' && (
+                <PaymentDeadlineBanner
+                  stripeReady={stripeReady}
+                  bookingId={item.bookingId}
+                  totalPrice={item.totalPrice}
+                  convId={item.id}
+                />
+              )}
+            </>
           )}
 
           <View style={styles.cardBottom}>
@@ -454,6 +465,7 @@ export default function MessagesScreen() {
       totalPrice: booking?.total_price ?? null,
       isRequester,
       listingCity,
+      listingUnavailable: rawStatus === 'pending' && (!listing || listing.is_active === false),
     };
   }, []);
 
@@ -481,7 +493,7 @@ export default function MessagesScreen() {
         end_date,
         created_at,
         status,
-        listing:listings!conversations_listing_id_fkey(name, photos_url, location_data),
+        listing:listings!conversations_listing_id_fkey(name, photos_url, location_data, is_active),
         requester:profiles!conversations_requester_id_fkey(username, photo_url, avatar_url),
         owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url),
         chat_messages(id, content, sender_id, is_system, is_read, created_at),
@@ -906,6 +918,29 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
       web: { boxShadow: '0 2px 10px rgba(200,145,58,0.14)' },
     }),
+  },
+  cardUnavailable: {
+    opacity: 0.6,
+    borderColor: '#D0CCC0',
+    backgroundColor: '#F2F0E8',
+  },
+  unavailableBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginTop: 2,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  unavailableBannerText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    color: '#92400E',
+    flex: 1,
   },
   imageWrap: {
     position: 'relative',

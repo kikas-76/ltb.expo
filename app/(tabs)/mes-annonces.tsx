@@ -232,8 +232,35 @@ export default function MesAnnoncesScreen() {
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('active');
+  const [blockingError, setBlockingError] = useState<string | null>(null);
   const tabIndicator = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+
+  const hasActiveBooking = async (listingId: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from('bookings')
+      .select('id, status')
+      .eq('listing_id', listingId)
+      .in('status', ['active', 'in_progress', 'pending_return', 'pending_owner_validation'])
+      .maybeSingle();
+    return !!data;
+  };
+
+  const notifyPendingConversations = async (listingId: string) => {
+    const { data: convs } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('listing_id', listingId)
+      .eq('status', 'pending');
+    if (!convs || convs.length === 0) return;
+    const msgs = convs.map((c: any) => ({
+      conversation_id: c.id,
+      sender_id: null,
+      content: "L'annonce a été supprimée ou masquée — Cette demande n'est plus disponible",
+      is_system: true,
+    }));
+    await supabase.from('chat_messages').insert(msgs);
+  };
 
   const fetchListings = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -267,6 +294,13 @@ export default function MesAnnoncesScreen() {
   };
 
   const handleToggle = async (id: string, current: boolean) => {
+    if (current) {
+      const blocked = await hasActiveBooking(id);
+      if (blocked) {
+        setBlockingError("Impossible de masquer cette annonce : une location est en cours ou validée.");
+        return;
+      }
+    }
     setTogglingId(id);
     const { error } = await supabase
       .from('listings')
@@ -277,13 +311,26 @@ export default function MesAnnoncesScreen() {
       setListings((prev) =>
         prev.map((l) => (l.id === id ? { ...l, is_active: !current } : l))
       );
+      if (current) {
+        await notifyPendingConversations(id);
+      }
     }
     setTogglingId(null);
+  };
+
+  const handleDeleteRequest = async (item: Listing) => {
+    const blocked = await hasActiveBooking(item.id);
+    if (blocked) {
+      setBlockingError("Impossible de supprimer cette annonce : une location est en cours ou validée.");
+      return;
+    }
+    setDeleteTarget(item);
   };
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
+    await notifyPendingConversations(deleteTarget.id);
     const { error } = await supabase
       .from('listings')
       .delete()
@@ -405,7 +452,7 @@ export default function MesAnnoncesScreen() {
                 index={i}
                 onEdit={handleEdit}
                 onToggle={handleToggle}
-                onDelete={setDeleteTarget}
+                onDelete={handleDeleteRequest}
                 togglingId={togglingId}
               />
             ))}
@@ -461,6 +508,25 @@ export default function MesAnnoncesScreen() {
         onCancel={() => setDeleteTarget(null)}
         deleting={deleting}
       />
+
+      <Modal visible={!!blockingError} transparent animationType="fade" onRequestClose={() => setBlockingError(null)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setBlockingError(null)}>
+          <Pressable>
+            <View style={styles.modalCard}>
+              <View style={styles.modalIconWrap}>
+                <Ionicons name="lock-closed-outline" size={28} color="#C0392B" />
+              </View>
+              <Text style={styles.modalTitle}>Action impossible</Text>
+              <Text style={styles.modalBody}>{blockingError}</Text>
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={[styles.modalDeleteBtn, { flex: 1 }]} onPress={() => setBlockingError(null)} activeOpacity={0.8}>
+                  <Text style={styles.modalDeleteText}>Compris</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
