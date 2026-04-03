@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Lock, ShieldCheck, Calendar, TriangleAlert, MessageCircle } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 
 const BG = '#F5F0E8';
@@ -316,7 +316,7 @@ export default function PaymentScreen() {
     return (
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <ArrowLeft size={20} color="#1A1F17" strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={20} color="#1A1F17" />
         </TouchableOpacity>
         <View style={styles.loadingContainer}>
           <Text style={styles.errorText}>Réservation introuvable.</Text>
@@ -339,10 +339,10 @@ export default function PaymentScreen() {
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ArrowLeft size={20} color="#1A1F17" strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={20} color="#1A1F17" />
         </TouchableOpacity>
         <View style={styles.headerTitleRow}>
-          <Lock size={16} color={GREEN} strokeWidth={2.5} />
+          <Ionicons name="lock-closed-outline" size={16} color={GREEN} />
           <Text style={styles.headerTitle}>Paiement sécurisé</Text>
         </View>
         <View style={styles.headerRight} />
@@ -374,7 +374,7 @@ export default function PaymentScreen() {
             </View>
 
             <View style={styles.datesRow}>
-              <Calendar size={14} color={GREEN_MID} strokeWidth={2} />
+              <Ionicons name="calendar-outline" size={14} color={GREEN_MID} />
               <Text style={styles.datesText}>
                 Du {formatDate(booking.start_date)} au {formatDate(booking.end_date)}
               </Text>
@@ -422,7 +422,7 @@ export default function PaymentScreen() {
         {stripeAccountError && (
           <View style={styles.stripeAccountErrorCard}>
             <View style={styles.stripeAccountErrorHeader}>
-              <TriangleAlert size={18} color="#721C24" strokeWidth={2} />
+              <Ionicons name="warning-outline" size={18} color="#721C24" />
               <Text style={styles.stripeAccountErrorTitle}>Paiement impossible</Text>
             </View>
             <Text style={styles.stripeAccountErrorBody}>
@@ -433,7 +433,7 @@ export default function PaymentScreen() {
               onPress={() => router.back()}
               activeOpacity={0.7}
             >
-              <MessageCircle size={15} color="#721C24" strokeWidth={2} />
+              <Ionicons name="chatbubble-outline" size={15} color="#721C24" />
               <Text style={styles.stripeAccountErrorBtnText}>Contacter le loueur</Text>
             </TouchableOpacity>
           </View>

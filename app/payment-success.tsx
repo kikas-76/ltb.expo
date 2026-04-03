@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CircleCheck as CheckCircle, ArrowRight, Calendar } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 
 const BG = '#F5F0E8';
@@ -62,7 +62,7 @@ export default function PaymentSuccessScreen() {
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.content}>
         <Animated.View style={[styles.iconWrap, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
-          <CheckCircle size={64} color={GREEN} strokeWidth={1.5} />
+          <Ionicons name="checkmark-circle-outline" size={64} color={GREEN} />
         </Animated.View>
 
         <Animated.View style={[styles.textBlock, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -85,9 +85,9 @@ export default function PaymentSuccessScreen() {
           onPress={() => router.replace('/(tabs)/reservations' as any)}
           activeOpacity={0.88}
         >
-          <Calendar size={18} color="#fff" strokeWidth={2} />
+          <Ionicons name="calendar-outline" size={18} color="#fff" />
           <Text style={styles.primaryBtnText}>Voir mes réservations</Text>
-          <ArrowRight size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+          <Ionicons name="chevron-forward-outline" size={16} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
 
         <TouchableOpacity

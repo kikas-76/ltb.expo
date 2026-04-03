@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { TrendingUp, ChevronRight } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
@@ -85,10 +85,10 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
         onPress={() => router.push('/popular' as any)}
       >
         <View style={styles.titleRow}>
-          <TrendingUp size={17} color={Colors.primaryDark} strokeWidth={2} />
+          <Ionicons name="trending-up-outline" size={17} color={Colors.primaryDark} />
           <Text style={styles.sectionTitle}>Les plus populaires</Text>
         </View>
-        <ChevronRight size={18} color={Colors.primary} strokeWidth={2} />
+        <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
       </TouchableOpacity>
 
       {loading ? (

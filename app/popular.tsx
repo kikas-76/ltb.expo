@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, TrendingUp, Eye, Heart } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -136,10 +136,10 @@ export default function PopularPage() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <ArrowLeft size={20} color={Colors.text} strokeWidth={2.5} />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <TrendingUp size={18} color={Colors.primaryDark} strokeWidth={2} />
+          <Ionicons name="trending-up-outline" size={18} color={Colors.primaryDark} />
           <Text style={styles.headerTitle}>Les plus populaires</Text>
         </View>
         <View style={styles.headerRight} />
@@ -166,12 +166,12 @@ export default function PopularPage() {
       {!loading && listings.length > 0 && (
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
-            <Eye size={13} color={Colors.textMuted} strokeWidth={2} />
+            <Ionicons name="eye-outline" size={13} color={Colors.textMuted} />
             <Text style={styles.statText}>{totalViews} vues</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Heart size={13} color={Colors.textMuted} strokeWidth={2} />
+            <Ionicons name="heart-outline" size={13} color={Colors.textMuted} />
             <Text style={styles.statText}>{totalFavs} favoris</Text>
           </View>
           <View style={styles.statDivider} />
@@ -215,11 +215,11 @@ export default function PopularPage() {
               </View>
               <View style={styles.listingMeta}>
                 <View style={styles.metaItem}>
-                  <Eye size={11} color={Colors.textMuted} strokeWidth={2} />
+                  <Ionicons name="eye-outline" size={11} color={Colors.textMuted} />
                   <Text style={styles.metaText}>{item.view_count}</Text>
                 </View>
                 <View style={styles.metaItem}>
-                  <Heart size={11} color={Colors.textMuted} strokeWidth={2} />
+                  <Ionicons name="heart-outline" size={11} color={Colors.textMuted} />
                   <Text style={styles.metaText}>{item.favorite_count}</Text>
                 </View>
               </View>
@@ -234,7 +234,7 @@ export default function PopularPage() {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <TrendingUp size={40} color={Colors.border} strokeWidth={1.5} />
+              <Ionicons name="trending-up-outline" size={40} color={Colors.border} />
               <Text style={styles.emptyTitle}>Aucune annonce populaire</Text>
               <Text style={styles.emptySubtitle}>Les annonces les plus consultées apparaîtront ici</Text>
             </View>

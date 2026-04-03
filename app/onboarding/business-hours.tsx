@@ -12,21 +12,21 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Clock, ChevronDown, Store, Briefcase, Wrench, UtensilsCrossed, Dumbbell, Book, Car, Shirt } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 
 const BG = '#F5F0E8';
 const GREEN = '#B7BF9C';
 
 const BUSINESS_TYPES = [
-  { label: 'Magasin de location', icon: Store },
-  { label: 'Auto-entrepreneur', icon: Briefcase },
-  { label: 'Artisan / Bricolage', icon: Wrench },
-  { label: 'Restauration', icon: UtensilsCrossed },
-  { label: 'Sport & Loisirs', icon: Dumbbell },
-  { label: 'Culture & Éducation', icon: Book },
-  { label: 'Automobile', icon: Car },
-  { label: 'Mode & Textile', icon: Shirt },
+  { label: 'Magasin de location', icon: 'storefront-outline' },
+  { label: 'Auto-entrepreneur', icon: 'briefcase-outline' },
+  { label: 'Artisan / Bricolage', icon: 'build-outline' },
+  { label: 'Restauration', icon: 'restaurant-outline' },
+  { label: 'Sport & Loisirs', icon: 'barbell-outline' },
+  { label: 'Culture & Éducation', icon: 'book-outline' },
+  { label: 'Automobile', icon: 'car-outline' },
+  { label: 'Mode & Textile', icon: 'shirt-outline' },
 ];
 
 const DAYS = [
@@ -152,7 +152,7 @@ export default function BusinessHoursScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <ArrowLeft size={22} color="#1C1C18" />
+            <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
           </TouchableOpacity>
           <Image
             source={require('@/assets/images/logoLTBwhitoutbaground.png')}
@@ -177,7 +177,7 @@ export default function BusinessHoursScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Nom du commerce (facultatif)</Text>
             <View style={styles.inputRow}>
-              <Store size={18} color="#A8A8A0" />
+              <Ionicons name="storefront-outline" size={18} color="#A8A8A0" />
               <TextInput
                 style={styles.inputFlex}
                 placeholder="Ex: Atelier Dupont, Location Pro..."
@@ -196,17 +196,16 @@ export default function BusinessHoursScreen() {
               onPress={() => setShowTypeSelector(!showTypeSelector)}
               activeOpacity={0.85}
             >
-              <Briefcase size={18} color={businessType ? GREEN : '#A8A8A0'} />
+              <Ionicons name="briefcase-outline" size={18} color={businessType ? GREEN : '#A8A8A0'} />
               <Text style={[styles.inputFlex, { color: businessType ? '#1C1C18' : '#A8A8A0', paddingVertical: 0, height: undefined }]}>
                 {businessType ?? 'Sélectionner un type...'}
               </Text>
-              <ChevronDown size={16} color="#A8A8A0" />
+              <Ionicons name="chevron-down-outline" size={16} color="#A8A8A0" />
             </TouchableOpacity>
 
             {showTypeSelector && (
               <View style={styles.typeDropdown}>
                 {BUSINESS_TYPES.map((t) => {
-                  const Icon = t.icon;
                   const selected = businessType === t.label;
                   return (
                     <TouchableOpacity
@@ -215,7 +214,7 @@ export default function BusinessHoursScreen() {
                       onPress={() => { setBusinessType(t.label); setShowTypeSelector(false); }}
                       activeOpacity={0.8}
                     >
-                      <Icon size={16} color={selected ? GREEN : '#7A7A70'} strokeWidth={1.8} />
+                      <Ionicons name={t.icon as any} size={16} color={selected ? GREEN : '#7A7A70'} />
                       <Text style={[styles.typeOptionText, selected && styles.typeOptionTextSelected]}>
                         {t.label}
                       </Text>
@@ -228,7 +227,7 @@ export default function BusinessHoursScreen() {
 
           <View style={styles.section}>
             <View style={styles.sectionLabelRow}>
-              <Clock size={16} color="#1C1C18" strokeWidth={2} />
+              <Ionicons name="time-outline" size={16} color="#1C1C18" />
               <Text style={styles.sectionLabel}>Horaires d'ouverture</Text>
             </View>
 

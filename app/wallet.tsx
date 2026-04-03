@@ -9,14 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import {
-  ArrowLeft,
-  TriangleAlert as AlertTriangle,
-  CircleCheck as CheckCircle,
-  Inbox,
-  Info,
-  Check,
-} from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -102,7 +95,7 @@ function PaymentStatusCard({
       <View style={styles.card}>
         <View style={styles.statusRow}>
           <View style={styles.successIconWrap}>
-            <CheckCircle size={20} color={SUCCESS_GREEN} strokeWidth={2} />
+            <Ionicons name="checkmark-circle-outline" size={20} color={SUCCESS_GREEN} />
           </View>
           <View style={styles.statusTextWrap}>
             <Text style={styles.statusTitle}>Compte bancaire connecté</Text>
@@ -132,7 +125,7 @@ function PaymentStatusCard({
     <View style={styles.card}>
       <View style={styles.statusRow}>
         <View style={styles.warningIconWrap}>
-          <AlertTriangle size={20} color="#D97706" strokeWidth={2} />
+          <Ionicons name="warning-outline" size={20} color="#D97706" />
         </View>
         <View style={styles.statusTextWrap}>
           <Text style={styles.statusTitle}>Active tes paiements</Text>
@@ -212,7 +205,7 @@ function HistorySection({ transactions }: { transactions: Transaction[] }) {
       <View style={styles.card}>
         {transactions.length === 0 ? (
           <View style={styles.emptyState}>
-            <Inbox size={36} color={Colors.textMuted} strokeWidth={1.5} />
+            <Ionicons name="mail-outline" size={36} color={Colors.textMuted} />
             <Text style={styles.emptyTitle}>Aucune transaction pour le moment</Text>
             <Text style={styles.emptySubtext}>
               Tes gains apparaîtront ici après ta première location
@@ -238,12 +231,12 @@ function InfoCard() {
   return (
     <View style={styles.infoCard}>
       <View style={styles.infoHeader}>
-        <Info size={17} color={DARK_GREEN} strokeWidth={2} />
+        <Ionicons name="information-circle-outline" size={17} color={DARK_GREEN} />
         <Text style={styles.infoTitle}>Comment ça marche ?</Text>
       </View>
       {items.map((item) => (
         <View key={item} style={styles.infoRow}>
-          <Check size={14} color={SUCCESS_GREEN} strokeWidth={2.5} />
+          <Ionicons name="checkmark-outline" size={14} color={SUCCESS_GREEN} />
           <Text style={styles.infoText}>{item}</Text>
         </View>
       ))}
@@ -490,7 +483,7 @@ export default function WalletScreen() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <ArrowLeft size={22} color={Colors.text} strokeWidth={2} />
+            <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Mon Portefeuille</Text>
           <View style={styles.headerSpacer} />
@@ -516,7 +509,7 @@ export default function WalletScreen() {
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <ArrowLeft size={22} color={Colors.text} strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mon Portefeuille</Text>
         <View style={styles.headerSpacer} />

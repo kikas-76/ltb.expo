@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useDeepLink } from '@/contexts/DeepLinkContext';
-import { MapPin, MessageSquare, Package } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const BG = '#F5F0E8';
 const GREEN = '#B7BF9C';
@@ -23,19 +23,19 @@ const { width } = Dimensions.get('window');
 
 const STEPS = [
   {
-    Icon: MapPin,
+    icon: 'location-outline',
     title: 'Cherche un objet',
     desc: "Trouve l'objet dont tu as besoin près de chez toi",
     num: '01',
   },
   {
-    Icon: MessageSquare,
+    icon: 'chatbubble-outline',
     title: 'Contacte & réserve',
     desc: 'Échange avec le propriétaire et paye en toute sécurité',
     num: '02',
   },
   {
-    Icon: Package,
+    icon: 'cube-outline',
     title: 'Récupère & profite',
     desc: 'Utilise ton objet en toute tranquillité, protégé par la plateforme',
     num: '03',
@@ -182,7 +182,6 @@ export default function OnboardingWelcomeScreen() {
 
         <View style={styles.stepsList}>
           {STEPS.map((step, i) => {
-            const { Icon } = step;
             return (
               <Animated.View
                 key={i}
@@ -200,7 +199,7 @@ export default function OnboardingWelcomeScreen() {
                     { transform: [{ scale: stepAnims[i].iconScale }] },
                   ]}
                 >
-                  <Icon size={22} color={GREEN} strokeWidth={2} />
+                  <Ionicons name={step.icon as any} size={22} color={GREEN} />
                   <View style={styles.stepNumBadge}>
                     <Text style={styles.stepNum}>{step.num}</Text>
                   </View>

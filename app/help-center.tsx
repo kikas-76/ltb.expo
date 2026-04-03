@@ -10,7 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Search, ChevronRight, Mail, X, Rocket, Package, Infinity, CreditCard, ShieldCheck, Circle as HelpCircle } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import helpData, { HelpCategory } from '@/data/help-data';
 
@@ -20,12 +20,12 @@ const GREEN_LIGHT = '#D4DAC4';
 const GREEN_BG = '#EEF1E8';
 const CARD = '#FFFFFF';
 
-const ICON_MAP: Record<string, React.ComponentType<any>> = {
-  Rocket,
-  Package,
-  Infinity,
-  CreditCard,
-  ShieldCheck,
+const ICON_MAP: Record<string, string> = {
+  Rocket: 'rocket-outline',
+  Package: 'cube-outline',
+  Infinity: 'infinite-outline',
+  CreditCard: 'card-outline',
+  ShieldCheck: 'shield-checkmark-outline',
 };
 
 const ICON_COLORS: Record<string, { bg: string; fg: string }> = {
@@ -37,11 +37,11 @@ const ICON_COLORS: Record<string, { bg: string; fg: string }> = {
 };
 
 function CategoryIcon({ iconName, size = 20 }: { iconName: string; size?: number }) {
-  const IconComponent = ICON_MAP[iconName] ?? HelpCircle;
+  const ionName = ICON_MAP[iconName] ?? 'help-circle-outline';
   const colors = ICON_COLORS[iconName] ?? { bg: GREEN_BG, fg: GREEN };
   return (
     <View style={[styles.iconWrap, { backgroundColor: colors.bg }]}>
-      <IconComponent size={size} color={colors.fg} strokeWidth={1.8} />
+      <Ionicons name={ionName as any} size={size} color={colors.fg} />
     </View>
   );
 }
@@ -74,7 +74,7 @@ export default function HelpCenterScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <ArrowLeft size={20} color="#1C1C18" strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={20} color="#1C1C18" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Centre d'aide</Text>
       </View>
@@ -86,13 +86,13 @@ export default function HelpCenterScreen() {
       >
         <View style={styles.heroSection}>
           <View style={styles.heroIcon}>
-            <HelpCircle size={28} color={GREEN} strokeWidth={1.6} />
+            <Ionicons name="help-circle-outline" size={28} color={GREEN} />
           </View>
           <Text style={styles.heroTitle}>Comment pouvons-nous{'\n'}vous aider ?</Text>
         </View>
 
         <View style={styles.searchBox}>
-          <Search size={16} color="#A8A8A0" strokeWidth={2} />
+          <Ionicons name="search-outline" size={16} color="#A8A8A0" />
           <TextInput
             style={styles.searchInput}
             placeholder="Rechercher une question..."
@@ -105,7 +105,7 @@ export default function HelpCenterScreen() {
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')} hitSlop={8}>
               <View style={styles.clearBtn}>
-                <X size={11} color="#7A7A70" strokeWidth={2.5} />
+                <Ionicons name="close-outline" size={11} color="#7A7A70" />
               </View>
             </TouchableOpacity>
           )}
@@ -120,7 +120,7 @@ export default function HelpCenterScreen() {
             </Text>
             {searchResults.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Search size={32} color={GREEN_LIGHT} strokeWidth={1.5} />
+                <Ionicons name="search-outline" size={32} color={GREEN_LIGHT} />
                 <Text style={styles.emptyTitle}>Aucun résultat trouvé</Text>
                 <Text style={styles.emptyText}>Essayez d'autres mots-clés ou contactez notre support.</Text>
               </View>
@@ -149,7 +149,7 @@ export default function HelpCenterScreen() {
 
         <View style={styles.contactCard}>
           <View style={styles.contactIconWrap}>
-            <Mail size={22} color={GREEN} strokeWidth={1.7} />
+            <Ionicons name="mail-outline" size={22} color={GREEN} />
           </View>
           <Text style={styles.contactTitle}>Vous n'avez pas trouvé votre réponse ?</Text>
           <Text style={styles.contactSubtitle}>Notre équipe répond généralement sous 24h ouvrées.</Text>
@@ -158,7 +158,7 @@ export default function HelpCenterScreen() {
             activeOpacity={0.82}
             onPress={() => Linking.openURL('mailto:admin@louetonbien.fr')}
           >
-            <Mail size={15} color="#FFF" strokeWidth={2} />
+            <Ionicons name="mail-outline" size={15} color="#FFF" />
             <Text style={styles.contactBtnText}>Contacter le support</Text>
           </TouchableOpacity>
         </View>
@@ -181,7 +181,7 @@ function CategoryCard({ category }: { category: HelpCategory }) {
       </View>
       <View style={styles.categoryMeta}>
         <Text style={styles.categoryCount}>{category.questions.length}</Text>
-        <ChevronRight size={14} color="#C0B8A8" strokeWidth={2} />
+        <Ionicons name="chevron-forward-outline" size={14} color="#C0B8A8" />
       </View>
     </TouchableOpacity>
   );
@@ -208,10 +208,10 @@ function SearchResultRow({
           <Text style={styles.searchResultQuestion}>{result.question}</Text>
           {open && <Text style={styles.searchResultAnswer}>{result.answer}</Text>}
         </View>
-        <ChevronRight
+        <Ionicons
+          name="chevron-forward-outline"
           size={15}
           color={open ? GREEN : '#C0B8A8'}
-          strokeWidth={2}
           style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}
         />
       </TouchableOpacity>

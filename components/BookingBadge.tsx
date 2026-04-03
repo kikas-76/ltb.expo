@@ -1,34 +1,34 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { Clock, CircleCheck, Handshake, CornerDownLeft, CheckCheck, CircleX, TriangleAlert, Ban } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface BadgeConfig {
   label: string;
   backgroundColor: string;
   textColor: string;
-  Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
+  iconName: string;
 }
 
 export function getBookingBadge(status: string): BadgeConfig {
   switch (status) {
     case 'pending':
-      return { label: 'En attente', backgroundColor: '#FEF3C7', textColor: '#92400E', Icon: Clock };
+      return { label: 'En attente', backgroundColor: '#FFF3CD', textColor: '#856404', iconName: 'time-outline' };
     case 'accepted':
-      return { label: 'Acceptée', backgroundColor: '#DCFCE7', textColor: '#166534', Icon: CircleCheck };
+      return { label: 'Acceptée', backgroundColor: '#D4EDDA', textColor: '#155724', iconName: 'checkmark-circle-outline' };
     case 'active':
-      return { label: 'Prêt pour la remise', backgroundColor: '#1B4332', textColor: '#FFFFFF', Icon: Handshake };
+      return { label: 'Prêt pour la remise', backgroundColor: '#1B4332', textColor: '#FFFFFF', iconName: 'hand-left-outline' };
     case 'pending_return':
-      return { label: 'Retour en cours', backgroundColor: '#DBEAFE', textColor: '#1E40AF', Icon: CornerDownLeft };
+      return { label: 'Retour en cours', backgroundColor: '#CCE5FF', textColor: '#004085', iconName: 'return-down-back-outline' };
     case 'completed':
-      return { label: 'Terminée', backgroundColor: '#F1F5F9', textColor: '#475569', Icon: CheckCheck };
+      return { label: 'Terminée', backgroundColor: '#E2E3E5', textColor: '#383D41', iconName: 'checkmark-done-outline' };
     case 'rejected':
     case 'refused':
-      return { label: 'Refusée', backgroundColor: '#FEE2E2', textColor: '#991B1B', Icon: CircleX };
+      return { label: 'Refusée', backgroundColor: '#F8D7DA', textColor: '#721C24', iconName: 'close-circle-outline' };
     case 'disputed':
-      return { label: 'Litige en cours', backgroundColor: '#FEF3C7', textColor: '#B45309', Icon: TriangleAlert };
+      return { label: 'Litige en cours', backgroundColor: '#FFE5D0', textColor: '#B45309', iconName: 'warning-outline' };
     case 'cancelled':
-      return { label: 'Annulée', backgroundColor: '#F1F5F9', textColor: '#475569', Icon: Ban };
+      return { label: 'Annulée', backgroundColor: '#E2E3E5', textColor: '#383D41', iconName: 'close-outline' };
     default:
-      return { label: status, backgroundColor: '#F1F5F9', textColor: '#475569', Icon: Clock };
+      return { label: status, backgroundColor: '#E2E3E5', textColor: '#383D41', iconName: 'time-outline' };
   }
 }
 
@@ -38,10 +38,9 @@ interface BookingBadgeProps {
 
 export default function BookingBadge({ status }: BookingBadgeProps) {
   const badge = getBookingBadge(status);
-  const { Icon } = badge;
   return (
     <View style={[styles.container, { backgroundColor: badge.backgroundColor }]}>
-      <Icon size={11} color={badge.textColor} strokeWidth={2.5} />
+      <Ionicons name={badge.iconName as any} size={12} color={badge.textColor} />
       <Text style={[styles.label, { color: badge.textColor }]}>{badge.label}</Text>
     </View>
   );

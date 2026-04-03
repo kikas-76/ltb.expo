@@ -13,7 +13,7 @@ import {
   Animated,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Camera, User, Mail, Phone, MapPin, Lock, AtSign, ChevronRight, Eye, EyeOff, Check, CircleAlert as AlertCircle, Trash2, FileText } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,7 @@ type Section = 'menu' | 'photo' | 'username' | 'bio' | 'email' | 'phone' | 'pass
 function SuccessBanner({ message }: { message: string }) {
   return (
     <View style={styles.successBox}>
-      <Check size={15} color="#5A8C5A" strokeWidth={2.5} />
+      <Ionicons name="checkmark-outline" size={15} color="#5A8C5A" />
       <Text style={styles.successText}>{message}</Text>
     </View>
   );
@@ -34,7 +34,7 @@ function SuccessBanner({ message }: { message: string }) {
 function ErrorBanner({ message }: { message: string }) {
   return (
     <View style={styles.errorBox}>
-      <AlertCircle size={15} color={Colors.error} strokeWidth={2} />
+      <Ionicons name="alert-circle-outline" size={15} color={Colors.error} />
       <Text style={styles.errorText}>{message}</Text>
     </View>
   );
@@ -44,7 +44,7 @@ function SectionHeader({ onBack, title }: { onBack: () => void; title: string })
   return (
     <View style={styles.sectionHeader}>
       <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-        <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+        <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
       </TouchableOpacity>
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
@@ -301,43 +301,43 @@ export default function AccountSettingsScreen() {
 
   const menuItems = [
     {
-      icon: <Camera size={18} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="camera-outline" size={18} color={Colors.primaryDark} />,
       label: 'Photo de profil',
       value: profile?.photo_url ? 'Modifier' : 'Ajouter',
       onPress: () => openSection('photo'),
     },
     {
-      icon: <AtSign size={18} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="at-outline" size={18} color={Colors.primaryDark} />,
       label: "Nom d'utilisateur",
       value: profile?.username ? `@${profile.username}` : '—',
       onPress: () => openSection('username'),
     },
     {
-      icon: <FileText size={18} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="document-text-outline" size={18} color={Colors.primaryDark} />,
       label: 'Bio',
       value: (profile as any)?.bio ? (profile as any).bio.slice(0, 40) + ((profile as any).bio.length > 40 ? '…' : '') : 'Non renseignée',
       onPress: () => openSection('bio'),
     },
     {
-      icon: <Mail size={18} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="mail-outline" size={18} color={Colors.primaryDark} />,
       label: 'Adresse email',
       value: profile?.email ?? user?.email ?? '—',
       onPress: () => openSection('email'),
     },
     {
-      icon: <Phone size={18} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="call-outline" size={18} color={Colors.primaryDark} />,
       label: 'Numéro de téléphone',
       value: profile?.phone_number ?? 'Non renseigné',
       onPress: () => openSection('phone'),
     },
     {
-      icon: <MapPin size={18} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="location-outline" size={18} color={Colors.primaryDark} />,
       label: 'Mon adresse',
       value: profile?.location_data?.address ?? 'Non renseignée',
       onPress: () => router.push('/edit-address'),
     },
     {
-      icon: <Lock size={18} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="lock-closed-outline" size={18} color={Colors.primaryDark} />,
       label: 'Mot de passe',
       value: '••••••••',
       onPress: () => openSection('password'),
@@ -355,7 +355,7 @@ export default function AccountSettingsScreen() {
                 <Image source={{ uri: profile.photo_url }} style={styles.avatarImgLarge} />
               ) : (
                 <View style={styles.avatarPlaceholderLarge}>
-                  <User size={48} color={Colors.primaryDark} strokeWidth={1.5} />
+                  <Ionicons name="person-outline" size={48} color={Colors.primaryDark} />
                 </View>
               )}
             </View>
@@ -374,7 +374,7 @@ export default function AccountSettingsScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Camera size={18} color="#fff" strokeWidth={2} />
+                <Ionicons name="camera-outline" size={18} color="#fff" />
                 <Text style={styles.btnPrimaryText}>
                   {profile?.photo_url ? 'Changer la photo' : 'Choisir une photo'}
                 </Text>
@@ -389,7 +389,7 @@ export default function AccountSettingsScreen() {
               disabled={photoLoading}
               activeOpacity={0.85}
             >
-              <Trash2 size={16} color={Colors.error} strokeWidth={2} />
+              <Ionicons name="trash-outline" size={16} color={Colors.error} />
               <Text style={styles.btnDangerText}>Supprimer la photo</Text>
             </TouchableOpacity>
           )}
@@ -413,7 +413,7 @@ export default function AccountSettingsScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nom d'utilisateur</Text>
             <View style={styles.inputRow}>
-              <AtSign size={17} color={Colors.textMuted} strokeWidth={2} />
+              <Ionicons name="at-outline" size={17} color={Colors.textMuted} />
               <TextInput
                 style={styles.input}
                 value={username}
@@ -496,7 +496,7 @@ export default function AccountSettingsScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nouvelle adresse email</Text>
             <View style={styles.inputRow}>
-              <Mail size={17} color={Colors.textMuted} strokeWidth={2} />
+              <Ionicons name="mail-outline" size={17} color={Colors.textMuted} />
               <TextInput
                 style={styles.input}
                 value={email}
@@ -537,7 +537,7 @@ export default function AccountSettingsScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Numéro de téléphone</Text>
             <View style={styles.inputRow}>
-              <Phone size={17} color={Colors.textMuted} strokeWidth={2} />
+              <Ionicons name="call-outline" size={17} color={Colors.textMuted} />
               <TextInput
                 style={styles.input}
                 value={phone}
@@ -577,7 +577,7 @@ export default function AccountSettingsScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Mot de passe actuel</Text>
             <View style={styles.inputRow}>
-              <Lock size={17} color={Colors.textMuted} strokeWidth={2} />
+              <Ionicons name="lock-closed-outline" size={17} color={Colors.textMuted} />
               <TextInput
                 style={styles.input}
                 value={currentPassword}
@@ -588,14 +588,14 @@ export default function AccountSettingsScreen() {
                 autoCapitalize="none"
               />
               <TouchableOpacity onPress={() => setShowCurrentPw(!showCurrentPw)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                {showCurrentPw ? <EyeOff size={17} color={Colors.textMuted} /> : <Eye size={17} color={Colors.textMuted} />}
+                {showCurrentPw ? <Ionicons name="eye-off-outline" size={17} color={Colors.textMuted} /> : <Ionicons name="eye-outline" size={17} color={Colors.textMuted} />}
               </TouchableOpacity>
             </View>
           </View>
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nouveau mot de passe</Text>
             <View style={styles.inputRow}>
-              <Lock size={17} color={Colors.textMuted} strokeWidth={2} />
+              <Ionicons name="lock-closed-outline" size={17} color={Colors.textMuted} />
               <TextInput
                 style={styles.input}
                 value={newPassword}
@@ -606,7 +606,7 @@ export default function AccountSettingsScreen() {
                 autoCapitalize="none"
               />
               <TouchableOpacity onPress={() => setShowNewPw(!showNewPw)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                {showNewPw ? <EyeOff size={17} color={Colors.textMuted} /> : <Eye size={17} color={Colors.textMuted} />}
+                {showNewPw ? <Ionicons name="eye-off-outline" size={17} color={Colors.textMuted} /> : <Ionicons name="eye-outline" size={17} color={Colors.textMuted} />}
               </TouchableOpacity>
             </View>
             {newPassword.length > 0 && (
@@ -638,7 +638,7 @@ export default function AccountSettingsScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Confirmer le nouveau mot de passe</Text>
             <View style={[styles.inputRow, confirmPassword.length > 0 && newPassword !== confirmPassword && styles.inputRowError]}>
-              <Lock size={17} color={Colors.textMuted} strokeWidth={2} />
+              <Ionicons name="lock-closed-outline" size={17} color={Colors.textMuted} />
               <TextInput
                 style={styles.input}
                 value={confirmPassword}
@@ -649,7 +649,7 @@ export default function AccountSettingsScreen() {
                 autoCapitalize="none"
               />
               <TouchableOpacity onPress={() => setShowConfirmPw(!showConfirmPw)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                {showConfirmPw ? <EyeOff size={17} color={Colors.textMuted} /> : <Eye size={17} color={Colors.textMuted} />}
+                {showConfirmPw ? <Ionicons name="eye-off-outline" size={17} color={Colors.textMuted} /> : <Ionicons name="eye-outline" size={17} color={Colors.textMuted} />}
               </TouchableOpacity>
             </View>
           </View>
@@ -674,7 +674,7 @@ export default function AccountSettingsScreen() {
         </View>
         <ScrollView contentContainerStyle={styles.sectionBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.deleteWarning}>
-            <AlertCircle size={28} color={Colors.error} strokeWidth={1.5} />
+            <Ionicons name="alert-circle-outline" size={28} color={Colors.error} />
             <Text style={styles.deleteWarningTitle}>Action irréversible</Text>
             <Text style={styles.deleteWarningText}>
               La suppression de votre compte effacera définitivement toutes vos données, annonces et messages. Cette action ne peut pas être annulée.
@@ -705,7 +705,7 @@ export default function AccountSettingsScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Trash2 size={16} color="#fff" strokeWidth={2} />
+                <Ionicons name="trash-outline" size={16} color="#fff" />
                 <Text style={styles.btnDeleteFinalText}>Supprimer définitivement</Text>
               </>
             )}
@@ -719,7 +719,7 @@ export default function AccountSettingsScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.topHeader}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topHeaderTitle}>Paramètres du compte</Text>
       </View>
@@ -731,7 +731,7 @@ export default function AccountSettingsScreen() {
               <Image source={{ uri: profile.photo_url }} style={styles.avatarImgSmall} />
             ) : (
               <View style={styles.avatarPlaceholderSmall}>
-                <User size={26} color={Colors.primaryDark} strokeWidth={1.5} />
+                <Ionicons name="person-outline" size={26} color={Colors.primaryDark} />
               </View>
             )}
           </View>
@@ -751,7 +751,7 @@ export default function AccountSettingsScreen() {
                   <Text style={styles.menuRowLabel}>{item.label}</Text>
                   <Text style={styles.menuRowValue} numberOfLines={1}>{item.value}</Text>
                 </View>
-                <ChevronRight size={15} color={Colors.textMuted} strokeWidth={2} />
+                <Ionicons name="chevron-forward-outline" size={15} color={Colors.textMuted} />
               </TouchableOpacity>
               {i < menuItems.length - 1 && <View style={styles.menuDivider} />}
             </View>
@@ -762,13 +762,13 @@ export default function AccountSettingsScreen() {
         <View style={styles.menuCard}>
           <TouchableOpacity style={styles.menuRow} onPress={() => openSection('delete')} activeOpacity={0.7}>
             <View style={[styles.menuIconWrap, styles.menuIconDanger]}>
-              <Trash2 size={18} color={Colors.error} strokeWidth={2} />
+              <Ionicons name="trash-outline" size={18} color={Colors.error} />
             </View>
             <View style={styles.menuRowContent}>
               <Text style={[styles.menuRowLabel, { color: Colors.error }]}>Supprimer mon compte</Text>
               <Text style={styles.menuRowValue}>Cette action est irréversible</Text>
             </View>
-            <ChevronRight size={15} color={Colors.error} strokeWidth={2} />
+            <Ionicons name="chevron-forward-outline" size={15} color={Colors.error} />
           </TouchableOpacity>
         </View>
       </ScrollView>

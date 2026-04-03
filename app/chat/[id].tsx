@@ -13,7 +13,7 @@ import {
   Modal,
   Animated,
 } from 'react-native';
-import { ArrowLeft, Send, MapPin, CalendarDays, Plus, Image as ImageIcon, Camera, FileText, X, CircleAlert as AlertCircle, Check, CircleX, Flag } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import BookingBadge from '@/components/BookingBadge';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -627,7 +627,7 @@ export default function ChatScreen() {
       return (
         <View style={styles.systemMsgWrap}>
           <View style={styles.systemMsg}>
-            <CalendarDays size={12} color={GREEN_DARK} strokeWidth={2} />
+            <Ionicons name="calendar-outline" size={12} color={GREEN_DARK} />
             <Text style={styles.systemMsgText}>{item.content}</Text>
           </View>
         </View>
@@ -677,7 +677,7 @@ export default function ChatScreen() {
                   {item.pending ? (
                     <ActivityIndicator size="small" color={item.isOwn ? GREEN_DARK : GREEN_DARK} />
                   ) : (
-                    <FileText size={20} color={item.isOwn ? '#fff' : GREEN_DARK} strokeWidth={2} />
+                    <Ionicons name="document-text-outline" size={20} color={item.isOwn ? '#fff' : GREEN_DARK} />
                   )}
                 </View>
                 <View style={styles.fileInfo}>
@@ -731,7 +731,7 @@ export default function ChatScreen() {
         {/* Row 1 : back · [avatar + username centré] · spacer */}
         <View style={styles.topBarRow1}>
           <TouchableOpacity onPress={() => router.push('/(tabs)/reservations' as any)} style={styles.backBtn} activeOpacity={0.8}>
-            <ArrowLeft size={20} color={Colors.text} strokeWidth={2.5} />
+            <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.topBarCenter}
@@ -766,7 +766,7 @@ export default function ChatScreen() {
               } as any)
             }
           >
-            <Flag size={18} color={Colors.textMuted} strokeWidth={2} />
+            <Ionicons name="flag-outline" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -786,7 +786,7 @@ export default function ChatScreen() {
               <Text style={styles.topBarListingTitle} numberOfLines={1}>{meta.listingTitle}</Text>
               <View style={styles.topBarListingRow}>
                 <View style={styles.topBarDateChip}>
-                  <CalendarDays size={10} color={GREEN_DARK} strokeWidth={2} />
+                  <Ionicons name="calendar-outline" size={10} color={GREEN_DARK} />
                   <Text style={styles.topBarDateText}>
                     {formatDateShort(meta.startDate)} → {formatDateShort(meta.endDate)}
                   </Text>
@@ -820,7 +820,7 @@ export default function ChatScreen() {
                 <ActivityIndicator size="small" color="#C0392B" />
               ) : (
                 <>
-                  <CircleX size={16} color="#C0392B" strokeWidth={2.5} />
+                  <Ionicons name="close-circle-outline" size={16} color="#C0392B" />
                   <Text style={styles.actionBtnRefuseText}>Refuser</Text>
                 </>
               )}
@@ -835,7 +835,7 @@ export default function ChatScreen() {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Check size={16} color="#fff" strokeWidth={2.5} />
+                  <Ionicons name="checkmark-outline" size={16} color="#fff" />
                   <Text style={styles.actionBtnAcceptText}>Accepter</Text>
                 </>
               )}
@@ -942,7 +942,7 @@ export default function ChatScreen() {
               </View>
               {meta.listingCity && (
                 <View style={styles.recapMeta}>
-                  <MapPin size={12} color={GREEN_DARK} strokeWidth={2} />
+                  <Ionicons name="location-outline" size={12} color={GREEN_DARK} />
                   <Text style={styles.recapMetaText}>{meta.listingCity}</Text>
                 </View>
               )}
@@ -962,12 +962,12 @@ export default function ChatScreen() {
               </View>
               <View style={styles.recapFooter}>
                 <View style={styles.recapDaysChip}>
-                  <CalendarDays size={12} color="#fff" strokeWidth={2} />
+                  <Ionicons name="calendar-outline" size={12} color="#fff" />
                   <Text style={styles.recapDaysText}>{days} jour{days > 1 ? 's' : ''}</Text>
                 </View>
                 {meta.listingCity && (
                   <View style={styles.recapCityChip}>
-                    <MapPin size={12} color={GREEN_DARK} strokeWidth={2} />
+                    <Ionicons name="location-outline" size={12} color={GREEN_DARK} />
                     <Text style={styles.recapCityText}>{meta.listingCity}</Text>
                   </View>
                 )}
@@ -986,10 +986,10 @@ export default function ChatScreen() {
       {/* Upload error banner */}
       {uploadError && (
         <View style={styles.errorBanner}>
-          <AlertCircle size={14} color="#E05252" strokeWidth={2} />
+          <Ionicons name="alert-circle-outline" size={14} color="#E05252" />
           <Text style={styles.errorBannerText}>{uploadError}</Text>
           <TouchableOpacity onPress={() => setUploadError(null)} activeOpacity={0.7}>
-            <X size={14} color="#E05252" strokeWidth={2.5} />
+            <Ionicons name="close-outline" size={14} color="#E05252" />
           </TouchableOpacity>
         </View>
       )}
@@ -1010,7 +1010,7 @@ export default function ChatScreen() {
         ]}
       >
         <TouchableOpacity style={styles.attachBtn} onPress={() => setShowAttachMenu(true)} activeOpacity={0.7}>
-          <Plus size={20} color={GREEN_DARK} strokeWidth={2.5} />
+          <Ionicons name="add-outline" size={20} color={GREEN_DARK} />
         </TouchableOpacity>
         <TextInput
           style={styles.input}
@@ -1032,7 +1032,7 @@ export default function ChatScreen() {
         >
           {sending
             ? <ActivityIndicator size="small" color={Colors.white} />
-            : <Send size={18} color={Colors.white} strokeWidth={2.5} />
+            : <Ionicons name="send-outline" size={18} color={Colors.white} />
           }
         </TouchableOpacity>
       </Animated.View>
@@ -1054,7 +1054,7 @@ export default function ChatScreen() {
             <Text style={styles.attachTitle}>Joindre un fichier</Text>
             <TouchableOpacity style={styles.attachOption} onPress={sendFromCamera} activeOpacity={0.75}>
               <View style={[styles.attachOptionIcon, { backgroundColor: '#E8F0E0' }]}>
-                <Camera size={22} color={GREEN_DARK} strokeWidth={2} />
+                <Ionicons name="camera-outline" size={22} color={GREEN_DARK} />
               </View>
               <View style={styles.attachOptionBody}>
                 <Text style={styles.attachOptionLabel}>Appareil photo</Text>
@@ -1063,7 +1063,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.attachOption} onPress={sendFromGallery} activeOpacity={0.75}>
               <View style={[styles.attachOptionIcon, { backgroundColor: '#E8F0E0' }]}>
-                <ImageIcon size={22} color={GREEN_DARK} strokeWidth={2} />
+                <Ionicons name="image-outline" size={22} color={GREEN_DARK} />
               </View>
               <View style={styles.attachOptionBody}>
                 <Text style={styles.attachOptionLabel}>Galerie photo</Text>
@@ -1072,7 +1072,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.attachOption} onPress={sendFromFiles} activeOpacity={0.75}>
               <View style={[styles.attachOptionIcon, { backgroundColor: '#F0EBE0' }]}>
-                <FileText size={22} color="#8B6A3A" strokeWidth={2} />
+                <Ionicons name="document-text-outline" size={22} color="#8B6A3A" />
               </View>
               <View style={styles.attachOptionBody}>
                 <Text style={styles.attachOptionLabel}>Fichiers</Text>
@@ -1080,7 +1080,7 @@ export default function ChatScreen() {
               </View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.attachCancel} onPress={() => setShowAttachMenu(false)} activeOpacity={0.75}>
-              <X size={16} color={Colors.textMuted} strokeWidth={2} />
+              <Ionicons name="close-outline" size={16} color={Colors.textMuted} />
               <Text style={styles.attachCancelText}>Annuler</Text>
             </TouchableOpacity>
           </View>

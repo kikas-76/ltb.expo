@@ -1,6 +1,6 @@
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Monitor, Wrench, Dumbbell, Hop as Home, PartyPopper, Shirt, Baby, Package } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 const H_PADDING = 16;
@@ -20,19 +20,19 @@ interface CategoryStripProps {
 
 const CATEGORY_STYLES: Record<
   string,
-  { bg: string; iconColor: string; Icon: React.ComponentType<any> }
+  { bg: string; iconColor: string; iconName: string }
 > = {
-  electronique: { bg: '#D6E8FF', iconColor: '#4A7EC7', Icon: Monitor },
-  bricolage: { bg: '#D6EDD6', iconColor: '#4A8C4A', Icon: Wrench },
-  sport: { bg: '#FFE8D6', iconColor: '#C07840', Icon: Dumbbell },
-  maison: { bg: '#F5E8C8', iconColor: '#A07830', Icon: Home },
-  evenementiel: { bg: '#FFE8F5', iconColor: '#C050A0', Icon: PartyPopper },
-  vetements: { bg: '#FFD6D6', iconColor: '#B85050', Icon: Shirt },
-  enfants: { bg: '#EDD6FF', iconColor: '#8050B8', Icon: Baby },
-  autre: { bg: '#E8E5D8', iconColor: '#7A7A6A', Icon: Package },
+  electronique: { bg: '#D6E8FF', iconColor: '#4A7EC7', iconName: 'desktop-outline' },
+  bricolage: { bg: '#D6EDD6', iconColor: '#4A8C4A', iconName: 'construct-outline' },
+  sport: { bg: '#FFE8D6', iconColor: '#C07840', iconName: 'barbell-outline' },
+  maison: { bg: '#F5E8C8', iconColor: '#A07830', iconName: 'home-outline' },
+  evenementiel: { bg: '#FFE8F5', iconColor: '#C050A0', iconName: 'sparkles-outline' },
+  vetements: { bg: '#FFD6D6', iconColor: '#B85050', iconName: 'shirt-outline' },
+  enfants: { bg: '#EDD6FF', iconColor: '#8050B8', iconName: 'happy-outline' },
+  autre: { bg: '#E8E5D8', iconColor: '#7A7A6A', iconName: 'cube-outline' },
 };
 
-const DEFAULT_STYLE = { bg: '#E8E5D8', iconColor: '#7A7A6A', Icon: Package };
+const DEFAULT_STYLE = { bg: '#E8E5D8', iconColor: '#7A7A6A', iconName: 'cube-outline' };
 
 export default function CategoryStrip({ categories }: CategoryStripProps) {
   const router = useRouter();
@@ -50,7 +50,7 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
         {categories.map((cat) => {
           const key = cat.value || '';
           const style = CATEGORY_STYLES[key] || DEFAULT_STYLE;
-          const { Icon, bg, iconColor } = style;
+          const { bg, iconColor, iconName } = style;
 
           return (
             <TouchableOpacity
@@ -64,7 +64,7 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
               }
               activeOpacity={0.75}
             >
-              <Icon size={18} color={iconColor} strokeWidth={1.8} />
+              <Ionicons name={iconName as any} size={18} color={iconColor} />
               <Text style={styles.label} numberOfLines={1}>
                 {cat.name}
               </Text>

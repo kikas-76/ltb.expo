@@ -10,8 +10,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
-import { X, MapPin, Navigation, Building2, User, Euro, ChevronRight, Check, Monitor, Wrench, Dumbbell, PartyPopper, Shirt, Baby, Package } from 'lucide-react-native';
-import { Hop as HomeIcon } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 export type SortKey = 'recent' | 'price_asc' | 'price_desc' | 'nearest';
@@ -75,18 +74,18 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'price_desc', label: 'Prix décroissant' },
 ];
 
-const CATEGORY_ICONS: Record<string, { Icon: React.ComponentType<any>; bg: string; iconColor: string }> = {
-  electronique: { Icon: Monitor, bg: '#D6E8FF', iconColor: '#4A7EC7' },
-  bricolage: { Icon: Wrench, bg: '#D6EDD6', iconColor: '#4A8C4A' },
-  sport: { Icon: Dumbbell, bg: '#FFE8D6', iconColor: '#C07840' },
-  maison: { Icon: HomeIcon, bg: '#F5E8C8', iconColor: '#A07830' },
-  evenementiel: { Icon: PartyPopper, bg: '#FFE8F5', iconColor: '#C050A0' },
-  vetements: { Icon: Shirt, bg: '#FFD6D6', iconColor: '#B85050' },
-  enfants: { Icon: Baby, bg: '#EDD6FF', iconColor: '#8050B8' },
-  autre: { Icon: Package, bg: '#E8E5D8', iconColor: '#7A7A6A' },
+const CATEGORY_ICONS: Record<string, { iconName: string; bg: string; iconColor: string }> = {
+  electronique: { iconName: 'desktop-outline', bg: '#D6E8FF', iconColor: '#4A7EC7' },
+  bricolage: { iconName: 'construct-outline', bg: '#D6EDD6', iconColor: '#4A8C4A' },
+  sport: { iconName: 'barbell-outline', bg: '#FFE8D6', iconColor: '#C07840' },
+  maison: { iconName: 'home-outline', bg: '#F5E8C8', iconColor: '#A07830' },
+  evenementiel: { iconName: 'sparkles-outline', bg: '#FFE8F5', iconColor: '#C050A0' },
+  vetements: { iconName: 'shirt-outline', bg: '#FFD6D6', iconColor: '#B85050' },
+  enfants: { iconName: 'happy-outline', bg: '#EDD6FF', iconColor: '#8050B8' },
+  autre: { iconName: 'cube-outline', bg: '#E8E5D8', iconColor: '#7A7A6A' },
 };
 
-const DEFAULT_CATEGORY_ICON = { Icon: Package, bg: '#E8E5D8', iconColor: '#7A7A6A' };
+const DEFAULT_CATEGORY_ICON = { iconName: 'cube-outline', bg: '#E8E5D8', iconColor: '#7A7A6A' };
 
 export default function FilterPanel({
   visible,
@@ -164,7 +163,7 @@ export default function FilterPanel({
             )}
           </View>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-            <X size={16} color={Colors.textSecondary} strokeWidth={2.5} />
+            <Ionicons name="close-outline" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -186,11 +185,7 @@ export default function FilterPanel({
                 activeOpacity={0.8}
               >
                 <View style={[styles.locationIconWrap, filters.locationMode === 'around_me' && styles.locationIconWrapActive]}>
-                  <Navigation
-                    size={15}
-                    color={filters.locationMode === 'around_me' ? Colors.white : Colors.primary}
-                    strokeWidth={2}
-                  />
+                  <Ionicons name="navigate-outline" size={15} color={filters.locationMode === 'around_me' ? Colors.white : Colors.primary} />
                 </View>
                 <View style={styles.locationTabContent}>
                   <Text style={[styles.locationTabTitle, filters.locationMode === 'around_me' && styles.locationTabTitleActive]}>
@@ -201,7 +196,7 @@ export default function FilterPanel({
                   </Text>
                 </View>
                 {filters.locationMode === 'around_me' && (
-                  <Check size={15} color={Colors.primary} strokeWidth={2.5} />
+                  <Ionicons name="checkmark-outline" size={15} color={Colors.primary} />
                 )}
               </TouchableOpacity>
 
@@ -214,11 +209,7 @@ export default function FilterPanel({
                 activeOpacity={0.8}
               >
                 <View style={[styles.locationIconWrap, filters.locationMode === 'city' && styles.locationIconWrapActive]}>
-                  <MapPin
-                    size={15}
-                    color={filters.locationMode === 'city' ? Colors.white : Colors.primary}
-                    strokeWidth={2}
-                  />
+                  <Ionicons name="location-outline" size={15} color={filters.locationMode === 'city' ? Colors.white : Colors.primary} />
                 </View>
                 <View style={styles.locationTabContent}>
                   <Text style={[styles.locationTabTitle, filters.locationMode === 'city' && styles.locationTabTitleActive]}>
@@ -229,7 +220,7 @@ export default function FilterPanel({
                   </Text>
                 </View>
                 {filters.locationMode === 'city' && (
-                  <Check size={15} color={Colors.primary} strokeWidth={2.5} />
+                  <Ionicons name="checkmark-outline" size={15} color={Colors.primary} />
                 )}
               </TouchableOpacity>
             </View>
@@ -278,7 +269,7 @@ export default function FilterPanel({
                 >
                   {filters.sortKey === opt.key && (
                     <View style={styles.sortCardCheck}>
-                      <Check size={10} color={Colors.white} strokeWidth={3} />
+                      <Ionicons name="checkmark-outline" size={10} color={Colors.white} />
                     </View>
                   )}
                   <Text style={[styles.sortCardText, filters.sortKey === opt.key && styles.sortCardTextActive]}>
@@ -299,10 +290,10 @@ export default function FilterPanel({
             </View>
             <View style={styles.ownerRow}>
               {[
-                { key: 'all' as OwnerType, label: 'Tous', sub: 'Voir tout', icon: null },
-                { key: 'particulier' as OwnerType, label: 'Particulier', sub: 'Non professionnel', icon: User },
-                { key: 'professionnel' as OwnerType, label: 'Pro', sub: 'Certifié', icon: Building2 },
-              ].map(({ key, label, sub, icon: Icon }) => (
+                { key: 'all' as OwnerType, label: 'Tous', sub: 'Voir tout', iconName: null },
+                { key: 'particulier' as OwnerType, label: 'Particulier', sub: 'Non professionnel', iconName: 'person-outline' },
+                { key: 'professionnel' as OwnerType, label: 'Pro', sub: 'Certifié', iconName: 'business-outline' },
+              ].map(({ key, label, sub, iconName }) => (
                 <TouchableOpacity
                   key={key}
                   style={[styles.ownerCard, filters.ownerType === key && styles.ownerCardActive]}
@@ -310,12 +301,8 @@ export default function FilterPanel({
                   activeOpacity={0.8}
                 >
                   <View style={[styles.ownerIconWrap, filters.ownerType === key && styles.ownerIconWrapActive]}>
-                    {Icon ? (
-                      <Icon
-                        size={16}
-                        color={filters.ownerType === key ? Colors.white : Colors.primary}
-                        strokeWidth={2}
-                      />
+                    {iconName ? (
+                      <Ionicons name={iconName as any} size={16} color={filters.ownerType === key ? Colors.white : Colors.primary} />
                     ) : (
                       <View style={[styles.ownerAllDot, filters.ownerType === key && styles.ownerAllDotActive]} />
                     )}
@@ -343,7 +330,7 @@ export default function FilterPanel({
               <View style={[styles.priceInputWrap, filters.priceMin !== '' && styles.priceInputWrapActive]}>
                 <Text style={styles.priceLabel}>Min</Text>
                 <View style={styles.priceInputInner}>
-                  <Euro size={12} color={Colors.textMuted} strokeWidth={2} />
+                  <Ionicons name="cash-outline" size={12} color={Colors.textMuted} />
                   <TextInput
                     style={styles.priceInput}
                     placeholder="0"
@@ -360,7 +347,7 @@ export default function FilterPanel({
               <View style={[styles.priceInputWrap, filters.priceMax !== '' && styles.priceInputWrapActive]}>
                 <Text style={styles.priceLabel}>Max</Text>
                 <View style={styles.priceInputInner}>
-                  <Euro size={12} color={Colors.textMuted} strokeWidth={2} />
+                  <Ionicons name="cash-outline" size={12} color={Colors.textMuted} />
                   <TextInput
                     style={styles.priceInput}
                     placeholder="∞"
@@ -396,7 +383,6 @@ export default function FilterPanel({
                   {categories.map((cat) => {
                     const isSelected = selectedCategoryIds.includes(cat.id);
                     const catStyle = CATEGORY_ICONS[cat.value] ?? DEFAULT_CATEGORY_ICON;
-                    const CatIcon = catStyle.Icon;
                     return (
                       <TouchableOpacity
                         key={cat.id}
@@ -408,17 +394,17 @@ export default function FilterPanel({
                           styles.categoryChipIconWrap,
                           { backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : catStyle.bg },
                         ]}>
-                          <CatIcon
+                          <Ionicons
+                            name={catStyle.iconName as any}
                             size={13}
                             color={isSelected ? Colors.white : catStyle.iconColor}
-                            strokeWidth={2}
                           />
                         </View>
                         <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextActive]}>
                           {cat.name}
                         </Text>
                         {isSelected && (
-                          <Check size={13} color={Colors.white} strokeWidth={2.5} />
+                          <Ionicons name="checkmark-outline" size={13} color={Colors.white} />
                         )}
                       </TouchableOpacity>
                     );
@@ -441,7 +427,7 @@ export default function FilterPanel({
           </TouchableOpacity>
           <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.85}>
             <Text style={styles.applyBtnText}>Voir les résultats</Text>
-            <ChevronRight size={15} color={Colors.background} strokeWidth={2.5} />
+            <Ionicons name="chevron-forward-outline" size={15} color={Colors.background} />
           </TouchableOpacity>
         </View>
       </Animated.View>

@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Tag, SlidersHorizontal } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -100,10 +100,10 @@ export default function DealsPage() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <ArrowLeft size={20} color={Colors.text} strokeWidth={2.5} />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Tag size={18} color={Colors.primaryDark} strokeWidth={2} />
+          <Ionicons name="pricetag-outline" size={18} color={Colors.primaryDark} />
           <Text style={styles.headerTitle}>Bonnes affaires</Text>
         </View>
         <View style={styles.headerRight} />
@@ -111,7 +111,7 @@ export default function DealsPage() {
 
       <View style={styles.sortBar}>
         <View style={styles.sortLeft}>
-          <SlidersHorizontal size={14} color={Colors.textMuted} strokeWidth={2} />
+          <Ionicons name="filter-outline" size={14} color={Colors.textMuted} />
           <Text style={styles.sortLabel}>Trier par :</Text>
         </View>
         <View style={styles.sortOptions}>
@@ -181,7 +181,7 @@ export default function DealsPage() {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Tag size={40} color={Colors.border} strokeWidth={1.5} />
+              <Ionicons name="pricetag-outline" size={40} color={Colors.border} />
               <Text style={styles.emptyTitle}>Aucune annonce</Text>
               <Text style={styles.emptySubtitle}>Revenez bientôt pour de nouvelles offres</Text>
             </View>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { Tag, ChevronRight } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
@@ -68,10 +68,10 @@ export default function DealsSection({ userLat, userLng, userId }: Props) {
         onPress={() => router.push('/deals' as any)}
       >
         <View style={styles.titleRow}>
-          <Tag size={16} color={Colors.primaryDark} strokeWidth={2} />
+          <Ionicons name="pricetag-outline" size={16} color={Colors.primaryDark} />
           <Text style={styles.sectionTitle}>Bonnes affaires</Text>
         </View>
-        <ChevronRight size={18} color={Colors.primary} strokeWidth={2} />
+        <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
       </TouchableOpacity>
 
       {loading ? (

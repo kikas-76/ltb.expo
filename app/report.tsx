@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Flag, TriangleAlert as AlertTriangle, ShieldAlert, Ban, MessageSquareX, Repeat2, HeartCrack, ChevronRight, CircleCheck } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 
@@ -32,42 +32,42 @@ const LISTING_CATEGORIES: ReportCategory[] = [
     key: 'fraud',
     label: 'Arnaque / Fraude',
     description: 'Annonce mensongère, demande de paiement suspect',
-    icon: <AlertTriangle size={20} color="#C25450" strokeWidth={2} />,
+    icon: <Ionicons name="warning-outline" size={20} color="#C25450" />,
     color: '#C25450',
   },
   {
     key: 'inappropriate_content',
     label: 'Contenu inapproprié',
     description: 'Photos ou texte choquant, offensant ou illégal',
-    icon: <Ban size={20} color="#D97706" strokeWidth={2} />,
+    icon: <Ionicons name="close-circle-outline" size={20} color="#D97706" />,
     color: '#D97706',
   },
   {
     key: 'spam',
     label: 'Spam / Pub',
     description: 'Annonce dupliquée ou contenu publicitaire abusif',
-    icon: <Repeat2 size={20} color="#7C3AED" strokeWidth={2} />,
+    icon: <Ionicons name="refresh-outline" size={20} color="#7C3AED" />,
     color: '#7C3AED',
   },
   {
     key: 'counterfeit',
     label: 'Contrefaçon',
     description: "Objet contrefait ou droit d'auteur violé",
-    icon: <ShieldAlert size={20} color="#B45309" strokeWidth={2} />,
+    icon: <Ionicons name="shield-outline" size={20} color="#B45309" />,
     color: '#B45309',
   },
   {
     key: 'dangerous',
     label: 'Objet dangereux',
     description: 'Objet illégal, dangereux ou réglementé',
-    icon: <Flag size={20} color="#DC2626" strokeWidth={2} />,
+    icon: <Ionicons name="flag-outline" size={20} color="#DC2626" />,
     color: '#DC2626',
   },
   {
     key: 'other',
     label: 'Autre raison',
     description: 'Tout autre problème non listé ci-dessus',
-    icon: <MessageSquareX size={20} color="#6B7280" strokeWidth={2} />,
+    icon: <Ionicons name="chatbubble-outline" size={20} color="#6B7280" />,
     color: '#6B7280',
   },
 ];
@@ -77,42 +77,42 @@ const CONVERSATION_CATEGORIES: ReportCategory[] = [
     key: 'harassment',
     label: 'Harcèlement',
     description: 'Messages insistants, intimidants ou menaçants',
-    icon: <AlertTriangle size={20} color="#C25450" strokeWidth={2} />,
+    icon: <Ionicons name="warning-outline" size={20} color="#C25450" />,
     color: '#C25450',
   },
   {
     key: 'fraud',
     label: 'Arnaque / Fraude',
     description: "Tentative d'escroquerie ou de paiement hors plateforme",
-    icon: <ShieldAlert size={20} color="#D97706" strokeWidth={2} />,
+    icon: <Ionicons name="shield-outline" size={20} color="#D97706" />,
     color: '#D97706',
   },
   {
     key: 'inappropriate_content',
     label: 'Contenu inapproprié',
     description: 'Messages à caractère offensant ou illégal',
-    icon: <Ban size={20} color="#7C3AED" strokeWidth={2} />,
+    icon: <Ionicons name="close-circle-outline" size={20} color="#7C3AED" />,
     color: '#7C3AED',
   },
   {
     key: 'spam',
     label: 'Spam',
     description: 'Messages répétitifs ou hors sujet',
-    icon: <Repeat2 size={20} color="#B45309" strokeWidth={2} />,
+    icon: <Ionicons name="refresh-outline" size={20} color="#B45309" />,
     color: '#B45309',
   },
   {
     key: 'no_show',
     label: 'Absence / No-show',
     description: "L'utilisateur n'est pas venu ou ne répond plus",
-    icon: <HeartCrack size={20} color="#6B7280" strokeWidth={2} />,
+    icon: <Ionicons name="alert-circle-outline" size={20} color="#6B7280" />,
     color: '#6B7280',
   },
   {
     key: 'other',
     label: 'Autre raison',
     description: 'Tout autre problème non listé ci-dessus',
-    icon: <MessageSquareX size={20} color="#6B7280" strokeWidth={2} />,
+    icon: <Ionicons name="chatbubble-outline" size={20} color="#6B7280" />,
     color: '#6B7280',
   },
 ];
@@ -178,11 +178,11 @@ export default function ReportScreen() {
             style={styles.backBtn}
             activeOpacity={0.7}
           >
-            <ArrowLeft size={22} color={Colors.text} />
+            <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
           </TouchableOpacity>
         ) : null}
         <View style={styles.headerTitleWrap}>
-          <Flag size={16} color={Colors.error} strokeWidth={2.5} />
+          <Ionicons name="flag-outline" size={16} color={Colors.error} />
           <Text style={styles.headerTitle}>Signaler</Text>
         </View>
       </View>
@@ -216,7 +216,7 @@ export default function ReportScreen() {
                   <Text style={styles.categoryLabel}>{cat.label}</Text>
                   <Text style={styles.categoryDescription}>{cat.description}</Text>
                 </View>
-                <ChevronRight size={16} color={Colors.textMuted} strokeWidth={2} />
+                <Ionicons name="chevron-forward-outline" size={16} color={Colors.textMuted} />
               </TouchableOpacity>
             ))}
           </View>
@@ -268,7 +268,7 @@ export default function ReportScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Flag size={16} color="#fff" strokeWidth={2.5} />
+                <Ionicons name="flag-outline" size={16} color="#fff" />
                 <Text style={styles.submitBtnText}>Envoyer le signalement</Text>
               </>
             )}
@@ -283,7 +283,7 @@ export default function ReportScreen() {
       {step === 'done' && (
         <View style={styles.doneContainer}>
           <View style={styles.doneIconWrap}>
-            <CircleCheck size={56} color={GREEN} strokeWidth={1.8} />
+            <Ionicons name="checkmark-circle-outline" size={56} color={GREEN} />
           </View>
           <Text style={styles.doneTitle}>Signalement envoyé</Text>
           <Text style={styles.doneSubtitle}>

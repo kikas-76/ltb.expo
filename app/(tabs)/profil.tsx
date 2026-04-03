@@ -11,7 +11,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import { User, Settings, Tag, Heart, Circle as HelpCircle, Shield, ChevronRight, LogOut, Pencil, Check, X, Wallet, MapPin } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
@@ -34,7 +34,7 @@ function MenuSection({ rows }: { rows: MenuRow[] }) {
           <TouchableOpacity style={menuStyles.row} onPress={row.onPress} activeOpacity={0.7}>
             <View style={menuStyles.iconWrap}>{row.icon}</View>
             <Text style={menuStyles.label}>{row.label}</Text>
-            <ChevronRight size={15} color={Colors.textMuted} strokeWidth={2} />
+            <Ionicons name="chevron-forward-outline" size={15} color={Colors.textMuted} />
           </TouchableOpacity>
           {i < rows.length - 1 && <View style={menuStyles.divider} />}
         </View>
@@ -133,22 +133,22 @@ export default function ProfilScreen() {
 
   const accountRows: MenuRow[] = [
     {
-      icon: <Settings size={17} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="settings-outline" size={17} color={Colors.primaryDark} />,
       label: 'Paramètres du compte',
       onPress: () => router.push('/account-settings' as any),
     },
     {
-      icon: <Tag size={17} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="pricetag-outline" size={17} color={Colors.primaryDark} />,
       label: 'Mes annonces',
       onPress: () => router.push('/(tabs)/mes-annonces'),
     },
     {
-      icon: <Heart size={17} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="heart-outline" size={17} color={Colors.primaryDark} />,
       label: 'Mes favoris',
       onPress: () => router.push('/favorites' as any),
     },
     {
-      icon: <Wallet size={17} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="wallet-outline" size={17} color={Colors.primaryDark} />,
       label: 'Mon portefeuille',
       onPress: () => router.push('/wallet' as any),
     },
@@ -156,12 +156,12 @@ export default function ProfilScreen() {
 
   const supportRows: MenuRow[] = [
     {
-      icon: <HelpCircle size={17} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="help-circle-outline" size={17} color={Colors.primaryDark} />,
       label: "Centre d'aide",
       onPress: () => router.push('/help-center' as any),
     },
     {
-      icon: <Shield size={17} color={Colors.primaryDark} strokeWidth={2} />,
+      icon: <Ionicons name="shield-outline" size={17} color={Colors.primaryDark} />,
       label: 'Informations légales',
       onPress: () => router.push('/legal' as any),
     },
@@ -179,7 +179,7 @@ export default function ProfilScreen() {
           <Image source={{ uri: profile.photo_url }} style={styles.avatarImg} />
         ) : (
           <View style={styles.avatarPlaceholder}>
-            <User size={isDesktop ? 48 : 36} color={Colors.primaryDark} strokeWidth={1.5} />
+            <Ionicons name="person-outline" size={isDesktop ? 48 : 36} color={Colors.primaryDark} />
           </View>
         )}
       </View>
@@ -203,10 +203,10 @@ export default function ProfilScreen() {
           ) : (
             <>
               <TouchableOpacity onPress={saveUsername} style={styles.iconBtn} activeOpacity={0.7}>
-                <Check size={18} color={Colors.primaryDark} strokeWidth={2.5} />
+                <Ionicons name="checkmark-outline" size={18} color={Colors.primaryDark} />
               </TouchableOpacity>
               <TouchableOpacity onPress={cancelEditingUsername} style={styles.iconBtn} activeOpacity={0.7}>
-                <X size={18} color={Colors.textMuted} strokeWidth={2.5} />
+                <Ionicons name="close-outline" size={18} color={Colors.textMuted} />
               </TouchableOpacity>
             </>
           )}
@@ -220,7 +220,7 @@ export default function ProfilScreen() {
           <Text style={[styles.displayName, isDesktop && { fontSize: 26 }]}>
             @{profile?.username ?? 'utilisateur'}
           </Text>
-          <Pencil size={14} color={Colors.textMuted} strokeWidth={2} style={{ marginLeft: 6 }} />
+          <Ionicons name="pencil-outline" size={14} color={Colors.textMuted} style={{ marginLeft: 6 }} />
         </TouchableOpacity>
       )}
 
@@ -239,7 +239,7 @@ export default function ProfilScreen() {
 
       {profileCity && (
         <View style={styles.cityRow}>
-          <MapPin size={12} color={Colors.primaryDark} strokeWidth={2.5} />
+          <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
           <Text style={styles.cityText}>{profileCity}</Text>
         </View>
       )}
@@ -261,7 +261,7 @@ export default function ProfilScreen() {
                 onPress={handleSignOut}
                 activeOpacity={0.75}
               >
-                <LogOut size={16} color={Colors.white} strokeWidth={2.5} />
+                <Ionicons name="log-out-outline" size={16} color={Colors.white} />
                 <Text style={styles.signOutText}>Déconnexion</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -303,7 +303,7 @@ export default function ProfilScreen() {
             onPress={handleSignOut}
             activeOpacity={0.75}
           >
-            <LogOut size={16} color={Colors.white} strokeWidth={2.5} />
+            <Ionicons name="log-out-outline" size={16} color={Colors.white} />
             <Text style={styles.signOutText}>Déconnexion</Text>
           </TouchableOpacity>
         </Animated.View>

@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Mail } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -128,7 +128,7 @@ export default function LandingScreen() {
               onPress={() => router.push('/register')}
               activeOpacity={0.82}
             >
-              <Mail size={20} color={Colors.white} strokeWidth={1.8} />
+              <Ionicons name="mail-outline" size={20} color={Colors.white} />
               <Text style={styles.mailBtnText}>S'inscrire par Mail</Text>
             </TouchableOpacity>
           </Animated.View>

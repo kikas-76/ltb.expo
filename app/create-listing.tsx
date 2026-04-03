@@ -14,25 +14,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import {
-  ArrowLeft,
-  X,
-  Image as ImageIcon,
-  Check,
-  Info,
-  TriangleAlert as AlertTriangle,
-  Tag,
-  TrendingUp,
-  Monitor,
-  Wrench,
-  Dumbbell,
-  PartyPopper,
-  Shirt,
-  Baby,
-  Package,
-  Hop as HomeIcon,
-  Plus,
-} from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import SuccessOverlay from '@/components/listing/SuccessOverlay';
@@ -72,17 +54,17 @@ const STEP_SUBTITLES: Record<Step, string> = {
   PRICING: 'Déterminez le prix et vérifiez votre annonce',
 };
 
-const CATEGORY_ICONS: Record<string, { Icon: React.ComponentType<any>; bg: string; iconColor: string }> = {
-  electronique: { Icon: Monitor, bg: '#D6E8FF', iconColor: '#4A7EC7' },
-  bricolage: { Icon: Wrench, bg: '#D6EDD6', iconColor: '#4A8C4A' },
-  sport: { Icon: Dumbbell, bg: '#FFE8D6', iconColor: '#C07840' },
-  maison: { Icon: HomeIcon, bg: '#F5E8C8', iconColor: '#A07830' },
-  evenementiel: { Icon: PartyPopper, bg: '#FFE8F5', iconColor: '#C050A0' },
-  vetements: { Icon: Shirt, bg: '#FFD6D6', iconColor: '#B85050' },
-  enfants: { Icon: Baby, bg: '#EDD6FF', iconColor: '#8050B8' },
-  autre: { Icon: Package, bg: '#E8E5D8', iconColor: '#7A7A6A' },
+const CATEGORY_ICONS: Record<string, { iconName: string; bg: string; iconColor: string }> = {
+  electronique: { iconName: 'tv-outline', bg: '#D6E8FF', iconColor: '#4A7EC7' },
+  bricolage: { iconName: 'construct-outline', bg: '#D6EDD6', iconColor: '#4A8C4A' },
+  sport: { iconName: 'barbell-outline', bg: '#FFE8D6', iconColor: '#C07840' },
+  maison: { iconName: 'home-outline', bg: '#F5E8C8', iconColor: '#A07830' },
+  evenementiel: { iconName: 'sparkles-outline', bg: '#FFE8F5', iconColor: '#C050A0' },
+  vetements: { iconName: 'shirt-outline', bg: '#FFD6D6', iconColor: '#B85050' },
+  enfants: { iconName: 'happy-outline', bg: '#EDD6FF', iconColor: '#8050B8' },
+  autre: { iconName: 'cube-outline', bg: '#E8E5D8', iconColor: '#7A7A6A' },
 };
-const DEFAULT_CAT_ICON = { Icon: Package, bg: '#E8E5D8', iconColor: '#7A7A6A' };
+const DEFAULT_CAT_ICON = { iconName: 'cube-outline', bg: '#E8E5D8', iconColor: '#7A7A6A' };
 
 interface Category {
   id: string;
@@ -363,7 +345,7 @@ export default function CreateListingScreen() {
         {/* Header */}
         <View style={[styles.header, isPricingStep && styles.headerPricing]}>
           <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
-            <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+            <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
           </TouchableOpacity>
           <Text style={[styles.stepLabel, isPricingStep && styles.stepLabelPricing]}>
             {STEP_LABELS[step]}
@@ -426,7 +408,7 @@ export default function CreateListingScreen() {
                 <Text style={styles.charCount}>{description.length}/500</Text>
               </View>
               <View style={styles.tipsBox}>
-                <Info size={14} color={Colors.primaryDark} strokeWidth={2} />
+                <Ionicons name="information-circle-outline" size={14} color={Colors.primaryDark} />
                 <Text style={styles.tipsText}>
                   Un titre précis et une bonne description multiplient vos chances de location.
                 </Text>
@@ -446,7 +428,6 @@ export default function CreateListingScreen() {
                   {categories.map((cat) => {
                     const isSelected = selectedCategory?.id === cat.id;
                     const cs = CATEGORY_ICONS[cat.value] ?? DEFAULT_CAT_ICON;
-                    const CatIcon = cs.Icon;
                     return (
                       <TouchableOpacity
                         key={cat.id}
@@ -455,14 +436,14 @@ export default function CreateListingScreen() {
                         activeOpacity={0.75}
                       >
                         <View style={[styles.categoryIconWrap, { backgroundColor: isSelected ? Colors.primary + '22' : cs.bg }]}>
-                          <CatIcon size={30} color={isSelected ? Colors.primaryDark : cs.iconColor} strokeWidth={1.8} />
+                          <Ionicons name={cs.iconName as any} size={30} color={isSelected ? Colors.primaryDark : cs.iconColor} />
                         </View>
                         <Text style={[styles.categoryName, isSelected && styles.categoryNameSelected]}>
                           {cat.name}
                         </Text>
                         {isSelected && (
                           <View style={styles.categoryCheckBadge}>
-                            <Check size={10} color={Colors.white} strokeWidth={3} />
+                            <Ionicons name="checkmark-outline" size={10} color={Colors.white} />
                           </View>
                         )}
                       </TouchableOpacity>
@@ -478,7 +459,7 @@ export default function CreateListingScreen() {
             <View style={styles.formSection}>
               <TouchableOpacity style={styles.photoDropZone} onPress={handlePickPhoto} activeOpacity={0.8}>
                 <View style={styles.photoDropIcon}>
-                  <ImageIcon size={28} color={Colors.textMuted} strokeWidth={1.5} />
+                  <Ionicons name="image-outline" size={28} color={Colors.textMuted} />
                 </View>
                 <Text style={styles.photoDropText}>Glissez-déposez vos photos</Text>
                 <Text style={styles.photoDropOr}>ou</Text>
@@ -488,7 +469,7 @@ export default function CreateListingScreen() {
               </TouchableOpacity>
 
               <View style={styles.photoInfoBox}>
-                <Info size={15} color={Colors.primaryDark} strokeWidth={2} />
+                <Ionicons name="information-circle-outline" size={15} color={Colors.primaryDark} />
                 <Text style={styles.photoInfoText}>
                   Ajoutez au moins 1 photo.{'\n'}Les annonces avec photos reçoivent plus de demandes
                 </Text>
@@ -516,13 +497,13 @@ export default function CreateListingScreen() {
                           onPress={() => removePhoto(index)}
                           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                         >
-                          <X size={12} color={Colors.text} strokeWidth={2.5} />
+                          <Ionicons name="close-outline" size={12} color={Colors.text} />
                         </TouchableOpacity>
                       </View>
                     ))}
                     {photos.length < 10 && (
                       <TouchableOpacity style={styles.photoAddCell} onPress={handlePickPhoto} activeOpacity={0.7}>
-                        <Plus size={22} color={Colors.primary} strokeWidth={2} />
+                        <Ionicons name="add-outline" size={22} color={Colors.primary} />
                         <Text style={styles.photoAddText}>Ajouter</Text>
                       </TouchableOpacity>
                     )}
@@ -571,7 +552,7 @@ export default function CreateListingScreen() {
                 </View>
 
                 <View style={styles.cautionInfoBox}>
-                  <Info size={13} color={Colors.primaryDark} strokeWidth={2} />
+                  <Ionicons name="information-circle-outline" size={13} color={Colors.primaryDark} />
                   <Text style={styles.cautionInfoText}>
                     Caution recommandée : 30% à 50% de la valeur de l'objet
                   </Text>
@@ -579,7 +560,7 @@ export default function CreateListingScreen() {
 
                 {(!deposit || parseFloat(deposit) === 0) && (
                   <View style={styles.cautionWarnBox}>
-                    <AlertTriangle size={13} color='#A07830' strokeWidth={2} />
+                    <Ionicons name="warning-outline" size={13} color='#A07830' />
                     <Text style={styles.cautionWarnText}>
                       Une caution nulle augmente le nombre de locations
                     </Text>
@@ -591,7 +572,7 @@ export default function CreateListingScreen() {
               {priceNum > 0 && (
                 <View style={styles.revenueSection}>
                   <View style={styles.revenueTitleRow}>
-                    <TrendingUp size={16} color={Colors.primaryDark} strokeWidth={2} />
+                    <Ionicons name="trending-up-outline" size={16} color={Colors.primaryDark} />
                     <Text style={styles.revenueTitle}>Projection de revenus</Text>
                   </View>
                   <Text style={styles.revenueSubtitle}>
@@ -606,7 +587,7 @@ export default function CreateListingScreen() {
                     </View>
                     <View style={styles.revenueCard}>
                       <View style={styles.revenueCardBadge}>
-                        <Tag size={9} color={Colors.primaryDark} strokeWidth={2} />
+                        <Ionicons name="pricetag-outline" size={9} color={Colors.primaryDark} />
                         <Text style={styles.revenueCardBadgeText}>-10%</Text>
                       </View>
                       <Text style={styles.revenueCardLabel}>3 jours</Text>
@@ -615,7 +596,7 @@ export default function CreateListingScreen() {
                     </View>
                     <View style={[styles.revenueCard, styles.revenueCardHighlight]}>
                       <View style={[styles.revenueCardBadge, styles.revenueCardBadgeDark]}>
-                        <Tag size={9} color={Colors.white} strokeWidth={2} />
+                        <Ionicons name="pricetag-outline" size={9} color={Colors.white} />
                         <Text style={[styles.revenueCardBadgeText, { color: Colors.white }]}>-20%</Text>
                       </View>
                       <Text style={[styles.revenueCardLabel, { color: Colors.white }]}>7 jours</Text>
@@ -625,7 +606,7 @@ export default function CreateListingScreen() {
                   </View>
 
                   <View style={styles.commissionNote}>
-                    <Info size={13} color={Colors.primaryDark} strokeWidth={2} />
+                    <Ionicons name="information-circle-outline" size={13} color={Colors.primaryDark} />
                     <Text style={styles.commissionNoteText}>
                       Sans commission de notre part, vous toucheriez{' '}
                       <Text style={styles.commissionNoteHighlight}>{priceNum.toFixed(2)} € / jour</Text>
@@ -651,7 +632,7 @@ export default function CreateListingScreen() {
                       {selectedCategory && catStyle && (
                         <View style={styles.previewCatRow}>
                           <View style={[styles.previewCatIconWrap, { backgroundColor: catStyle.bg }]}>
-                            <catStyle.Icon size={13} color={catStyle.iconColor} strokeWidth={2} />
+                            <Ionicons name={(catStyle as any).iconName} size={13} color={catStyle.iconColor} />
                           </View>
                           <Text style={styles.previewCatLabel}>{selectedCategory.name}</Text>
                         </View>
@@ -668,7 +649,7 @@ export default function CreateListingScreen() {
                             <Text style={styles.previewDiscountDays}>3 jours</Text>
                             <Text style={styles.previewDiscountAmount}>{price3} €</Text>
                             <View style={styles.previewDiscountBadge}>
-                              <Tag size={9} color='#A07830' strokeWidth={2} />
+                              <Ionicons name="pricetag-outline" size={9} color='#A07830' />
                               <Text style={styles.previewDiscountPct}>-10%</Text>
                             </View>
                           </View>
@@ -677,7 +658,7 @@ export default function CreateListingScreen() {
                             <Text style={styles.previewDiscountDays}>7 jours</Text>
                             <Text style={styles.previewDiscountAmount}>{price7} €</Text>
                             <View style={styles.previewDiscountBadge}>
-                              <Tag size={9} color='#A07830' strokeWidth={2} />
+                              <Ionicons name="pricetag-outline" size={9} color='#A07830' />
                               <Text style={styles.previewDiscountPct}>-20%</Text>
                             </View>
                           </View>

@@ -9,7 +9,7 @@ import {
   LayoutAnimation,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, ChevronDown, ChevronUp, Shield, FileText, Lock, Scale } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,7 +24,7 @@ interface LegalSection {
 const LEGAL_SECTIONS: LegalSection[] = [
   {
     id: 'cgu',
-    icon: <FileText size={18} color={Colors.primaryDark} strokeWidth={2} />,
+    icon: <Ionicons name="document-text-outline" size={18} color={Colors.primaryDark} />,
     title: "Conditions Générales d'Utilisation",
     lastUpdated: 'Mise à jour le 1er janvier 2025',
     content: [
@@ -38,7 +38,7 @@ const LEGAL_SECTIONS: LegalSection[] = [
   },
   {
     id: 'privacy',
-    icon: <Lock size={18} color={Colors.primaryDark} strokeWidth={2} />,
+    icon: <Ionicons name="lock-closed-outline" size={18} color={Colors.primaryDark} />,
     title: 'Politique de confidentialité',
     lastUpdated: 'Mise à jour le 1er janvier 2025',
     content: [
@@ -52,7 +52,7 @@ const LEGAL_SECTIONS: LegalSection[] = [
   },
   {
     id: 'mentions',
-    icon: <Scale size={18} color={Colors.primaryDark} strokeWidth={2} />,
+    icon: <Ionicons name="scale-outline" size={18} color={Colors.primaryDark} />,
     title: 'Mentions légales',
     lastUpdated: 'Mise à jour le 1er janvier 2025',
     content: [
@@ -66,7 +66,7 @@ const LEGAL_SECTIONS: LegalSection[] = [
   },
   {
     id: 'cookies',
-    icon: <Shield size={18} color={Colors.primaryDark} strokeWidth={2} />,
+    icon: <Ionicons name="shield-outline" size={18} color={Colors.primaryDark} />,
     title: 'Gestion des cookies',
     lastUpdated: 'Mise à jour le 1er janvier 2025',
     content: [
@@ -98,9 +98,9 @@ function LegalCard({ section }: { section: LegalSection }) {
           <Text style={cardStyles.updated}>{section.lastUpdated}</Text>
         </View>
         {open ? (
-          <ChevronUp size={18} color={Colors.primaryDark} strokeWidth={2} />
+          <Ionicons name="chevron-up-outline" size={18} color={Colors.primaryDark} />
         ) : (
-          <ChevronDown size={18} color={Colors.textMuted} strokeWidth={2} />
+          <Ionicons name="chevron-down-outline" size={18} color={Colors.textMuted} />
         )}
       </TouchableOpacity>
       {open && (
@@ -124,7 +124,7 @@ export default function LegalScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Informations légales</Text>
       </View>
@@ -135,7 +135,7 @@ export default function LegalScreen() {
       >
         <View style={styles.hero}>
           <View style={styles.heroIconWrap}>
-            <Shield size={32} color={Colors.primaryDark} strokeWidth={1.5} />
+            <Ionicons name="shield-outline" size={32} color={Colors.primaryDark} />
           </View>
           <Text style={styles.heroTitle}>Transparence & conformité</Text>
           <Text style={styles.heroSubtitle}>

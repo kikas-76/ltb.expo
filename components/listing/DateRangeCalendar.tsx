@@ -9,7 +9,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -224,7 +224,7 @@ export default function DateRangeCalendar({
             <Text style={styles.sheetSubtitle}>{MAX_DAYS} jours max.</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.8}>
-            <X size={18} color={Colors.text} strokeWidth={2.5} />
+            <Ionicons name="close-outline" size={18} color={Colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -240,17 +240,13 @@ export default function DateRangeCalendar({
               style={[styles.monthNavBtn, isPrevDisabled && styles.monthNavBtnDisabled]}
               activeOpacity={0.7}
             >
-              <ChevronLeft
-                size={18}
-                color={isPrevDisabled ? Colors.borderLight : Colors.text}
-                strokeWidth={2.5}
-              />
+              <Ionicons name="chevron-back-outline" size={18} color={isPrevDisabled ? Colors.borderLight : Colors.text} />
             </TouchableOpacity>
             <Text style={styles.monthLabel}>
               {MONTH_NAMES[viewMonth]} {viewYear}
             </Text>
             <TouchableOpacity onPress={goToNextMonth} style={styles.monthNavBtn} activeOpacity={0.7}>
-              <ChevronRight size={18} color={Colors.text} strokeWidth={2.5} />
+              <Ionicons name="chevron-forward-outline" size={18} color={Colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -367,7 +363,7 @@ export default function DateRangeCalendar({
             disabled={selectedDays === 0}
             activeOpacity={0.85}
           >
-            <Calendar size={16} color="#fff" strokeWidth={2.5} />
+            <Ionicons name="calendar-outline" size={16} color="#fff" />
             <Text style={styles.confirmBtnText}>
               {selectedDays === 0
                 ? 'Sélectionnez des dates'

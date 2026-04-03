@@ -11,7 +11,7 @@ import {
   Easing,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Mail, CircleCheck } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const BG = '#F5F0E8';
 const GREEN = '#B7BF9C';
@@ -101,7 +101,7 @@ export default function ForgotPasswordScreen() {
       <View style={styles.container}>
         <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <ArrowLeft size={20} color="#1C1C18" strokeWidth={2} />
+            <Ionicons name="arrow-back-outline" size={20} color="#1C1C18" />
           </TouchableOpacity>
         </Animated.View>
 
@@ -114,7 +114,7 @@ export default function ForgotPasswordScreen() {
           <View style={styles.titleRow}>
             <Animated.View style={[styles.iconWrap, { transform: [{ scale: iconPulse }] }]}>
               <View style={styles.iconCircle}>
-                <Mail size={22} color={GREEN} strokeWidth={1.8} />
+                <Ionicons name="mail-outline" size={22} color={GREEN} />
               </View>
             </Animated.View>
             <Text style={styles.title}>Mot de passe oublié ?</Text>
@@ -152,7 +152,7 @@ export default function ForgotPasswordScreen() {
                 { opacity: successFade, transform: [{ scale: successScale }] },
               ]}
             >
-              <CircleCheck size={32} color={GREEN} strokeWidth={1.8} />
+              <Ionicons name="checkmark-circle-outline" size={32} color={GREEN} />
               <Text style={styles.successTitle}>Email envoyé !</Text>
               <Text style={styles.successText}>
                 Si un compte existe avec{' '}

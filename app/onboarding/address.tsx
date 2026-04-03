@@ -13,7 +13,7 @@ import {
   Animated,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MapPin, Navigation, X } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { supabase } from '@/lib/supabase';
 import {
@@ -53,7 +53,7 @@ function DynamicMap({ lat, lng }: { lat: number | null; lng: number | null }) {
       <View style={styles.mapContainer}>
         <View style={styles.mapEmptyOverlay}>
           <View style={styles.mapEmptyPin}>
-            <MapPin size={26} color="#fff" />
+            <Ionicons name="location-outline" size={26} color="#fff" />
           </View>
           <View style={styles.mapPinShadow} />
           <Text style={styles.mapEmptyText}>Entrez une adresse pour la localiser</Text>
@@ -84,7 +84,7 @@ function DynamicMap({ lat, lng }: { lat: number | null; lng: number | null }) {
         <WebView source={{ html: mapHtml }} style={styles.webview} scrollEnabled={false} pointerEvents="none" />
       )}
       <View style={styles.mapConfirmBadge}>
-        <MapPin size={13} color={GREEN} />
+        <Ionicons name="location-outline" size={13} color={GREEN} />
         <Text style={styles.mapConfirmText}>Position localisée</Text>
       </View>
     </View>
@@ -235,7 +235,7 @@ export default function OnboardingAddressScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <ArrowLeft size={22} color="#1C1C18" />
+            <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
           </TouchableOpacity>
           <Image
             source={require('@/assets/images/logoLTBwhitoutbaground.png')}
@@ -266,10 +266,10 @@ export default function OnboardingAddressScreen() {
           <View style={styles.inputWrapper}>
             {usingGPS ? (
               <View style={[styles.inputRow, styles.inputRowGPS]}>
-                <Navigation size={18} color={GREEN} style={styles.inputIcon} />
+                <Ionicons name="navigate-outline" size={18} color={GREEN} style={styles.inputIcon} />
                 <Text style={styles.gpsLabel}>Ma position actuelle</Text>
                 <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color="#A8A8A0" />
+                  <Ionicons name="close-outline" size={16} color="#A8A8A0" />
                 </TouchableOpacity>
               </View>
             ) : (
@@ -277,7 +277,7 @@ export default function OnboardingAddressScreen() {
                 {geocoding ? (
                   <ActivityIndicator size="small" color={GREEN} style={styles.inputIcon} />
                 ) : (
-                  <MapPin size={18} color={address ? GREEN : '#A8A8A0'} style={styles.inputIcon} />
+                  <Ionicons name="location-outline" size={18} color={address ? GREEN : '#A8A8A0'} style={styles.inputIcon} />
                 )}
                 <TextInput
                   style={styles.inputFlex}
@@ -292,7 +292,7 @@ export default function OnboardingAddressScreen() {
                 />
                 {address.length > 0 && (
                   <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <X size={16} color="#A8A8A0" />
+                    <Ionicons name="close-outline" size={16} color="#A8A8A0" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -307,7 +307,7 @@ export default function OnboardingAddressScreen() {
                     onPress={() => handleSelectSuggestion(s)}
                     activeOpacity={0.7}
                   >
-                    <MapPin size={14} color={GREEN} style={styles.suggestionIcon} />
+                    <Ionicons name="location-outline" size={14} color={GREEN} style={styles.suggestionIcon} />
                     <View style={styles.suggestionTextWrap}>
                       <Text style={styles.suggestionMainText} numberOfLines={1}>
                         {s.structured_formatting.main_text}
@@ -335,7 +335,7 @@ export default function OnboardingAddressScreen() {
                 <ActivityIndicator color={GREEN} size="small" />
               ) : (
                 <>
-                  <Navigation size={17} color={GREEN} strokeWidth={2} />
+                  <Ionicons name="navigate-outline" size={17} color={GREEN} />
                   <Text style={styles.btnOutlineText}>Utiliser ma position actuelle</Text>
                 </>
               )}

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft, MapPin, Clock, Package, Grid2x2, Store, Briefcase } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import ProBadge from '@/components/ProBadge';
@@ -84,7 +84,7 @@ function ListingMiniCard({ listing }: { listing: Listing }) {
           <Image source={{ uri: photo }} style={styles.listingImage} resizeMode="cover" />
         ) : (
           <View style={styles.listingImageFallback}>
-            <Package size={26} color={Colors.primary} strokeWidth={1.5} />
+            <Ionicons name="cube-outline" size={26} color={Colors.primary} />
           </View>
         )}
         <View style={styles.priceTag}>
@@ -162,7 +162,7 @@ export default function OwnerProfilePage() {
                 style={styles.backBtn}
                 activeOpacity={0.7}
               >
-                <ArrowLeft size={18} color={Colors.text} strokeWidth={2.2} />
+                <Ionicons name="arrow-back-outline" size={18} color={Colors.text} />
               </TouchableOpacity>
 
               <View style={styles.avatarContainer}>
@@ -186,7 +186,7 @@ export default function OwnerProfilePage() {
               <View style={styles.metaChipsRow}>
                 {owner?.created_at && (
                   <View style={styles.metaChip}>
-                    <Clock size={12} color={Colors.primaryDark} strokeWidth={2} />
+                    <Ionicons name="time-outline" size={12} color={Colors.primaryDark} />
                     <Text style={styles.metaChipText}>
                       Membre depuis {formatMemberSince(owner.created_at)}
                     </Text>
@@ -194,7 +194,7 @@ export default function OwnerProfilePage() {
                 )}
                 {city && (
                   <View style={styles.metaChip}>
-                    <MapPin size={12} color={Colors.primaryDark} strokeWidth={2} />
+                    <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
                     <Text style={styles.metaChipText}>{city}</Text>
                   </View>
                 )}
@@ -216,26 +216,26 @@ export default function OwnerProfilePage() {
                 <View style={styles.proInfoCard}>
                   {owner.business_name ? (
                     <View style={styles.proInfoRow}>
-                      <Store size={14} color={Colors.primaryDark} strokeWidth={2} />
+                      <Ionicons name="storefront-outline" size={14} color={Colors.primaryDark} />
                       <Text style={styles.proInfoLabel}>{owner.business_name}</Text>
                     </View>
                   ) : null}
                   {owner.business_type ? (
                     <View style={styles.proInfoRow}>
-                      <Briefcase size={14} color={Colors.primaryDark} strokeWidth={2} />
+                      <Ionicons name="briefcase-outline" size={14} color={Colors.primaryDark} />
                       <Text style={styles.proInfoText}>{owner.business_type}</Text>
                     </View>
                   ) : null}
                   {owner.business_address ? (
                     <View style={styles.proInfoRow}>
-                      <MapPin size={14} color={Colors.primaryDark} strokeWidth={2} />
+                      <Ionicons name="location-outline" size={14} color={Colors.primaryDark} />
                       <Text style={styles.proInfoText} numberOfLines={2}>{owner.business_address}</Text>
                     </View>
                   ) : null}
                   {owner.business_hours && (
                     <View style={styles.proHoursSection}>
                       <View style={styles.proInfoRow}>
-                        <Clock size={14} color={Colors.primaryDark} strokeWidth={2} />
+                        <Ionicons name="time-outline" size={14} color={Colors.primaryDark} />
                         <Text style={styles.proInfoLabel}>Horaires</Text>
                       </View>
                       <View style={styles.hoursGrid}>
@@ -269,14 +269,14 @@ export default function OwnerProfilePage() {
 
             <View style={styles.listingsSection}>
               <View style={styles.listingsHeader}>
-                <Grid2x2 size={18} color={Colors.text} strokeWidth={2} />
+                <Ionicons name="grid-outline" size={18} color={Colors.text} />
                 <Text style={styles.listingsSectionTitle}>Ses Annonces</Text>
               </View>
 
               {listings.length === 0 ? (
                 <View style={styles.noListingsWrap}>
                   <View style={styles.noListingsIcon}>
-                    <Package size={32} color={Colors.primary} strokeWidth={1.5} />
+                    <Ionicons name="cube-outline" size={32} color={Colors.primary} />
                   </View>
                   <Text style={styles.noListingsTitle}>Aucune annonce</Text>
                   <Text style={styles.noListingsText}>

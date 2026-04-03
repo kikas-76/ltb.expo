@@ -10,7 +10,7 @@ import {
   LayoutAnimation,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, ChevronDown, Mail, Rocket, Package, Infinity, CreditCard, ShieldCheck, Circle as HelpCircle } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import helpData, { HelpQuestion } from '@/data/help-data';
 
@@ -20,12 +20,12 @@ const GREEN_LIGHT = '#D4DAC4';
 const GREEN_BG = '#EEF1E8';
 const CARD = '#FFFFFF';
 
-const ICON_MAP: Record<string, React.ComponentType<any>> = {
-  Rocket,
-  Package,
-  Infinity,
-  CreditCard,
-  ShieldCheck,
+const ICON_MAP: Record<string, string> = {
+  Rocket: 'rocket-outline',
+  Package: 'cube-outline',
+  Infinity: 'infinite-outline',
+  CreditCard: 'card-outline',
+  ShieldCheck: 'shield-checkmark-outline',
 };
 
 const ICON_COLORS: Record<string, { bg: string; fg: string }> = {
@@ -63,10 +63,10 @@ function AccordionItem({ item, isLast }: { item: HelpQuestion; isLast: boolean }
           )}
         </View>
         <View style={[styles.chevronWrap, open && styles.chevronWrapActive]}>
-          <ChevronDown
+          <Ionicons
+            name="chevron-down-outline"
             size={15}
             color={open ? GREEN : '#C0B8A8'}
-            strokeWidth={2.2}
             style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}
           />
         </View>
@@ -81,7 +81,7 @@ export default function HelpCategoryScreen() {
   const insets = useSafeAreaInsets();
 
   const cat = helpData.find((c) => c.id === category);
-  const IconComponent = cat ? (ICON_MAP[cat.icon] ?? HelpCircle) : HelpCircle;
+  const ionIconName = cat ? (ICON_MAP[cat.icon] ?? 'help-circle-outline') : 'help-circle-outline';
   const colors = cat ? (ICON_COLORS[cat.icon] ?? { bg: GREEN_BG, fg: GREEN }) : { bg: GREEN_BG, fg: GREEN };
 
   if (!cat) {
@@ -89,12 +89,12 @@ export default function HelpCategoryScreen() {
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <ArrowLeft size={20} color="#1C1C18" strokeWidth={2} />
+            <Ionicons name="arrow-back-outline" size={20} color="#1C1C18" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Centre d'aide</Text>
         </View>
         <View style={styles.notFound}>
-          <HelpCircle size={40} color={GREEN_LIGHT} strokeWidth={1.5} />
+          <Ionicons name="help-circle-outline" size={40} color={GREEN_LIGHT} />
           <Text style={styles.notFoundText}>Catégorie introuvable.</Text>
         </View>
       </View>
@@ -105,7 +105,7 @@ export default function HelpCategoryScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <ArrowLeft size={20} color="#1C1C18" strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={20} color="#1C1C18" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {cat.title}
@@ -118,7 +118,7 @@ export default function HelpCategoryScreen() {
       >
         <View style={styles.heroSection}>
           <View style={[styles.heroIcon, { backgroundColor: colors.bg }]}>
-            <IconComponent size={32} color={colors.fg} strokeWidth={1.6} />
+            <Ionicons name={ionIconName as any} size={32} color={colors.fg} />
           </View>
           <Text style={styles.heroTitle}>{cat.title}</Text>
           <Text style={styles.heroDesc}>{cat.description}</Text>
@@ -142,7 +142,7 @@ export default function HelpCategoryScreen() {
 
         <View style={styles.contactCard}>
           <View style={styles.contactIconWrap}>
-            <Mail size={22} color={GREEN} strokeWidth={1.7} />
+            <Ionicons name="mail-outline" size={22} color={GREEN} />
           </View>
           <Text style={styles.contactTitle}>Vous n'avez pas trouvé votre réponse ?</Text>
           <Text style={styles.contactSubtitle}>Notre équipe répond généralement sous 24h ouvrées.</Text>
@@ -151,7 +151,7 @@ export default function HelpCategoryScreen() {
             activeOpacity={0.82}
             onPress={() => Linking.openURL('mailto:admin@louetonbien.fr')}
           >
-            <Mail size={15} color="#FFF" strokeWidth={2} />
+            <Ionicons name="mail-outline" size={15} color="#FFF" />
             <Text style={styles.contactBtnText}>Contacter le support</Text>
           </TouchableOpacity>
         </View>

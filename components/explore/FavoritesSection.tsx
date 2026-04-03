@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { Heart } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import ListingCard from './ListingCard';
@@ -79,7 +79,7 @@ export default function FavoritesSection({ userId, userLat, userLng }: Props) {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Mes coups de cœur</Text>
-        <Heart size={17} color="#E05252" fill="#E05252" strokeWidth={2} />
+        <Ionicons name="heart" size={17} color="#E05252" />
       </View>
 
       {loading ? (

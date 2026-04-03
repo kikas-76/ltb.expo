@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -182,7 +182,7 @@ export default function ExploreScreen() {
           <View style={styles.section}>
             <TouchableOpacity style={styles.sectionHeader} activeOpacity={0.7}>
               <Text style={styles.sectionTitle}>Objets près de chez vous</Text>
-              <ChevronRight size={18} color={Colors.primary} strokeWidth={2} />
+              <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
             </TouchableOpacity>
 
             {loadingData ? (
@@ -238,7 +238,7 @@ export default function ExploreScreen() {
           <View style={[styles.section, styles.sectionLast]}>
             <TouchableOpacity style={styles.sectionHeader} activeOpacity={0.7}>
               <Text style={styles.sectionTitle}>Annonces récentes</Text>
-              <ChevronRight size={18} color={Colors.primary} strokeWidth={2} />
+              <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
             </TouchableOpacity>
 
             {loadingData ? (

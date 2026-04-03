@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
-import { Bell, Sparkles } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 interface HomeHeaderProps {
@@ -17,7 +17,7 @@ export default function HomeHeader({ username, notificationCount = 0 }: HomeHead
     <View style={styles.container}>
       <View style={styles.left}>
         <View style={styles.greetingRow}>
-          <Sparkles size={isSmall ? 15 : 18} color={Colors.primaryDark} strokeWidth={2} />
+          <Ionicons name="sparkles-outline" size={isSmall ? 15 : 18} color={Colors.primaryDark} />
           <Text style={[styles.greeting, isSmall && styles.greetingSmall]} numberOfLines={1}>
             Bonjour, {firstName}
           </Text>
@@ -28,7 +28,7 @@ export default function HomeHeader({ username, notificationCount = 0 }: HomeHead
       </View>
 
       <TouchableOpacity style={styles.bellWrapper} activeOpacity={0.7}>
-        <Bell size={20} color={Colors.text} strokeWidth={2} />
+        <Ionicons name="notifications-outline" size={20} color={Colors.text} />
         {notificationCount > 0 && (
           <View style={styles.badge} />
         )}

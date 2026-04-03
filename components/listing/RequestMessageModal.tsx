@@ -13,7 +13,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { X, Send, Calendar, Clock, Euro } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 const SURFACE = '#FFFFFF';
@@ -107,7 +107,7 @@ export default function RequestMessageModal({
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Confirmer la demande</Text>
             <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-              <X size={17} color={TEXT_SUB} strokeWidth={2.5} />
+              <Ionicons name="close-outline" size={17} color={TEXT_SUB} />
             </TouchableOpacity>
           </View>
 
@@ -129,14 +129,14 @@ export default function RequestMessageModal({
                 <Text style={styles.recapTitle} numberOfLines={2}>{listingTitle}</Text>
                 <View style={styles.recapMeta}>
                   <View style={styles.recapMetaItem}>
-                    <Calendar size={12} color={GREEN_DARK} strokeWidth={2} />
+                    <Ionicons name="calendar-outline" size={12} color={GREEN_DARK} />
                     <Text style={styles.recapMetaText}>
                       {formatShort(startDate)} — {formatShort(endDate)}
                     </Text>
                   </View>
                   <View style={styles.recapDot} />
                   <View style={styles.recapMetaItem}>
-                    <Clock size={12} color={GREEN_DARK} strokeWidth={2} />
+                    <Ionicons name="time-outline" size={12} color={GREEN_DARK} />
                     <Text style={styles.recapMetaText}>{days} jour{days > 1 ? 's' : ''}</Text>
                   </View>
                 </View>
@@ -208,7 +208,7 @@ export default function RequestMessageModal({
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Send size={15} color="#fff" strokeWidth={2.5} />
+                  <Ionicons name="send-outline" size={15} color="#fff" />
                   <Text style={styles.sendBtnText}>Envoyer la demande</Text>
                 </>
               )}

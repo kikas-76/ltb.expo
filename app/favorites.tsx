@@ -9,7 +9,7 @@ import {
   Platform,
   Image,
 } from 'react-native';
-import { ArrowLeft, Heart, Sparkles } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -127,7 +127,7 @@ export default function FavoritesScreen() {
           onPress={() => router.back()}
           activeOpacity={0.8}
         >
-          <ArrowLeft size={20} color={Colors.text} strokeWidth={2.5} />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mes favoris</Text>
         <View style={styles.backBtn} />
@@ -146,7 +146,7 @@ export default function FavoritesScreen() {
               style={styles.emptyGradientCircle}
             >
               <View style={styles.emptyInnerCircle}>
-                <Heart size={36} color={Colors.primaryDark} strokeWidth={1.5} />
+                <Ionicons name="heart-outline" size={36} color={Colors.primaryDark} />
               </View>
             </LinearGradient>
             <View style={styles.emptyDotTL} />
@@ -161,7 +161,7 @@ export default function FavoritesScreen() {
             onPress={() => router.push('/(tabs)/' as any)}
             activeOpacity={0.85}
           >
-            <Sparkles size={15} color={Colors.white} strokeWidth={2} />
+            <Ionicons name="sparkles-outline" size={15} color={Colors.white} />
             <Text style={styles.exploreBtnText}>Explorer les annonces</Text>
           </TouchableOpacity>
         </View>
@@ -178,7 +178,7 @@ export default function FavoritesScreen() {
             <View style={styles.listHeader}>
               <View style={styles.listHeaderRow}>
                 <View style={styles.countBadge}>
-                  <Heart size={12} color={Colors.primaryDark} fill={Colors.primaryDark} strokeWidth={2} />
+                  <Ionicons name="heart" size={12} color={Colors.primaryDark} />
                   <Text style={styles.countBadgeText}>
                     {listings.length} favori{listings.length > 1 ? 's' : ''}
                   </Text>

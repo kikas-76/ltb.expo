@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 
 const DARK_GREEN = '#1B4332';
@@ -62,7 +62,7 @@ export default function WalletSuccessScreen() {
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.content}>
         <Animated.View style={[styles.iconCircle, { transform: [{ scale: scaleAnim }] }]}>
-          <Check size={40} color="#FFFFFF" strokeWidth={3} />
+          <Ionicons name="checkmark-outline" size={40} color="#FFFFFF" />
         </Animated.View>
 
         <Text style={styles.title}>Compte activé !</Text>
@@ -74,7 +74,7 @@ export default function WalletSuccessScreen() {
           {benefits.map((benefit) => (
             <View key={benefit} style={styles.benefitRow}>
               <View style={styles.checkDot}>
-                <Check size={12} color={DARK_GREEN} strokeWidth={3} />
+                <Ionicons name="checkmark-outline" size={12} color={DARK_GREEN} />
               </View>
               <Text style={styles.benefitText}>{benefit}</Text>
             </View>

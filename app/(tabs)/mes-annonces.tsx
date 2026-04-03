@@ -14,7 +14,7 @@ import {
   Pressable,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Plus, Megaphone, MapPin, Tag, Pencil, Trash2, Eye, EyeOff, TrendingUp, ChevronRight, TriangleAlert as AlertTriangle } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,7 +75,7 @@ function DeleteModal({ visible, listingName, onConfirm, onCancel, deleting }: De
         <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
         <Animated.View style={[styles.modalCard, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
           <View style={styles.modalIconWrap}>
-            <AlertTriangle size={28} color={Colors.error} strokeWidth={2} />
+            <Ionicons name="warning-outline" size={28} color={Colors.error} />
           </View>
 
           <Text style={styles.modalTitle}>Supprimer l'annonce ?</Text>
@@ -97,7 +97,7 @@ function DeleteModal({ visible, listingName, onConfirm, onCancel, deleting }: De
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Trash2 size={14} color="#fff" strokeWidth={2} />
+                  <Ionicons name="trash-outline" size={14} color="#fff" />
                   <Text style={styles.modalDeleteText}>Supprimer</Text>
                 </>
               )}
@@ -145,7 +145,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
               <Image source={{ uri: photo }} style={styles.cardImage} resizeMode="cover" />
             ) : (
               <View style={styles.cardImagePlaceholder}>
-                <Megaphone size={24} color={GREEN} strokeWidth={1.5} />
+                <Ionicons name="megaphone-outline" size={24} color={GREEN} />
               </View>
             )}
             <View style={[styles.statusPill, item.is_active ? styles.statusPillActive : styles.statusPillInactive]}>
@@ -164,13 +164,13 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
             <View style={styles.cardMeta}>
               {item.category_name && (
                 <View style={styles.metaTag}>
-                  <Tag size={10} color={GREEN_DARK} strokeWidth={2} />
+                  <Ionicons name="pricetag-outline" size={10} color={GREEN_DARK} />
                   <Text style={styles.metaTagText}>{item.category_name}</Text>
                 </View>
               )}
               {address && (
                 <View style={styles.metaRow}>
-                  <MapPin size={10} color={Colors.textMuted} strokeWidth={2} />
+                  <Ionicons name="location-outline" size={10} color={Colors.textMuted} />
                   <Text style={styles.metaText} numberOfLines={1}>{address}</Text>
                 </View>
               )}
@@ -188,7 +188,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
                   activeOpacity={0.75}
                   onPress={() => onEdit(item.id)}
                 >
-                  <Pencil size={14} color={GREEN_DARK} strokeWidth={2} />
+                  <Ionicons name="pencil-outline" size={14} color={GREEN_DARK} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -200,9 +200,9 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
                   {isToggling ? (
                     <ActivityIndicator size="small" color={Colors.textMuted} />
                   ) : item.is_active ? (
-                    <EyeOff size={14} color={Colors.textMuted} strokeWidth={2} />
+                    <Ionicons name="eye-off-outline" size={14} color={Colors.textMuted} />
                   ) : (
-                    <Eye size={14} color={GREEN_DARK} strokeWidth={2} />
+                    <Ionicons name="eye-outline" size={14} color={GREEN_DARK} />
                   )}
                 </TouchableOpacity>
 
@@ -211,7 +211,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
                   activeOpacity={0.75}
                   onPress={() => onDelete(item)}
                 >
-                  <Trash2 size={14} color={Colors.error} strokeWidth={2} />
+                  <Ionicons name="trash-outline" size={14} color={Colors.error} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -337,7 +337,7 @@ export default function MesAnnoncesScreen() {
             onPress={() => router.push('/create-listing')}
             activeOpacity={0.85}
           >
-            <Plus size={16} color="#fff" strokeWidth={2.5} />
+            <Ionicons name="add-outline" size={16} color="#fff" />
             <Text style={styles.newBtnText}>Nouvelle</Text>
           </TouchableOpacity>
         </View>
@@ -359,10 +359,10 @@ export default function MesAnnoncesScreen() {
               onPress={() => switchTab('active')}
               activeOpacity={0.8}
             >
-              <TrendingUp
+              <Ionicons
+                name="trending-up-outline"
                 size={14}
                 color={activeTab === 'active' ? GREEN_DARK : Colors.textMuted}
-                strokeWidth={2}
               />
               <Text style={[styles.tabBtnText, activeTab === 'active' && styles.tabBtnTextActive]}>
                 Actives
@@ -379,10 +379,10 @@ export default function MesAnnoncesScreen() {
               onPress={() => switchTab('inactive')}
               activeOpacity={0.8}
             >
-              <EyeOff
+              <Ionicons
+                name="eye-off-outline"
                 size={14}
                 color={activeTab === 'inactive' ? Colors.textSecondary : Colors.textMuted}
-                strokeWidth={2}
               />
               <Text style={[styles.tabBtnText, activeTab === 'inactive' && styles.tabBtnTextInactive]}>
                 Inactives
@@ -414,7 +414,7 @@ export default function MesAnnoncesScreen() {
           <View style={styles.tabEmptyState}>
             {activeTab === 'active' ? (
               <>
-                <TrendingUp size={32} color={GREEN} strokeWidth={1.5} />
+                <Ionicons name="trending-up-outline" size={32} color={GREEN} />
                 <Text style={styles.tabEmptyTitle}>Aucune annonce active</Text>
                 <Text style={styles.tabEmptySubtitle}>
                   Activez une annonce existante ou créez-en une nouvelle.
@@ -422,7 +422,7 @@ export default function MesAnnoncesScreen() {
               </>
             ) : (
               <>
-                <EyeOff size={32} color={Colors.textMuted} strokeWidth={1.5} />
+                <Ionicons name="eye-off-outline" size={32} color={Colors.textMuted} />
                 <Text style={styles.tabEmptyTitle}>Aucune annonce inactive</Text>
                 <Text style={styles.tabEmptySubtitle}>
                   Toutes vos annonces sont actuellement actives.
@@ -435,7 +435,7 @@ export default function MesAnnoncesScreen() {
         {listings.length === 0 && (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap}>
-              <Megaphone size={36} color={GREEN} strokeWidth={1.5} />
+              <Ionicons name="megaphone-outline" size={36} color={GREEN} />
             </View>
             <Text style={styles.emptyTitle}>Aucune annonce</Text>
             <Text style={styles.emptySubtitle}>
@@ -446,9 +446,9 @@ export default function MesAnnoncesScreen() {
               onPress={() => router.push('/create-listing')}
               activeOpacity={0.85}
             >
-              <Plus size={16} color="#fff" strokeWidth={2.5} />
+              <Ionicons name="add-outline" size={16} color="#fff" />
               <Text style={styles.emptyBtnText}>Créer une annonce</Text>
-              <ChevronRight size={14} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+              <Ionicons name="chevron-forward-outline" size={14} color="rgba(255,255,255,0.7)" />
             </TouchableOpacity>
           </View>
         )}

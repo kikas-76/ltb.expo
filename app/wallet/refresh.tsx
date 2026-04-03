@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TriangleAlert as AlertTriangle } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 
 const DARK_GREEN = '#1B4332';
@@ -95,7 +95,7 @@ export default function WalletRefreshScreen() {
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.content}>
         <View style={styles.iconWrap}>
-          <AlertTriangle size={64} color={ORANGE} strokeWidth={1.5} />
+          <Ionicons name="warning-outline" size={64} color={ORANGE} />
         </View>
 
         <Text style={styles.title}>Inscription incomplète</Text>

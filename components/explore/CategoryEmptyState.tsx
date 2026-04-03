@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { SearchX, Plus } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
@@ -13,7 +13,7 @@ export default function CategoryEmptyState({ categoryName }: CategoryEmptyStateP
   return (
     <View style={styles.container}>
       <View style={styles.iconWrap}>
-        <SearchX size={40} color={Colors.primaryDark} strokeWidth={1.5} />
+        <Ionicons name="search-outline" size={40} color={Colors.primaryDark} />
       </View>
       <Text style={styles.title}>Aucune annonce dans{'\n'}« {categoryName} »</Text>
       <Text style={styles.subtitle}>
@@ -24,7 +24,7 @@ export default function CategoryEmptyState({ categoryName }: CategoryEmptyStateP
         onPress={() => router.push('/create-listing')}
         activeOpacity={0.8}
       >
-        <Plus size={15} color="#fff" strokeWidth={2.2} />
+        <Ionicons name="add-outline" size={15} color="#fff" />
         <Text style={styles.btnText}>Déposer une annonce</Text>
       </TouchableOpacity>
     </View>

@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import InfiniteIconStrip from '@/components/InfiniteIconStrip';
 import { useAuth } from '@/contexts/AuthContext';
@@ -151,8 +151,8 @@ export default function RegisterScreen() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               {showPassword
-                ? <EyeOff size={18} color="#A8A8A0" />
-                : <Eye size={18} color="#A8A8A0" />
+                ? <Ionicons name="eye-off-outline" size={18} color="#A8A8A0" />
+                : <Ionicons name="eye-outline" size={18} color="#A8A8A0" />
               }
             </TouchableOpacity>
           </View>
@@ -171,8 +171,8 @@ export default function RegisterScreen() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               {showConfirm
-                ? <EyeOff size={18} color="#A8A8A0" />
-                : <Eye size={18} color="#A8A8A0" />
+                ? <Ionicons name="eye-off-outline" size={18} color="#A8A8A0" />
+                : <Ionicons name="eye-outline" size={18} color="#A8A8A0" />
               }
             </TouchableOpacity>
           </View>

@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Infinity, Plus } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
@@ -8,7 +8,7 @@ export default function EmptyState() {
 
   return (
     <View style={styles.container}>
-      <Infinity size={48} color={Colors.primaryDark} strokeWidth={1.5} />
+      <Ionicons name="infinite-outline" size={48} color={Colors.primaryDark} />
       <Text style={styles.title}>Pas encore d'objets près de chez vous</Text>
       <Text style={styles.subtitle}>Soyez le premier à publier !</Text>
       <TouchableOpacity
@@ -16,7 +16,7 @@ export default function EmptyState() {
         onPress={() => router.push('/create-listing')}
         activeOpacity={0.8}
       >
-        <Plus size={16} color={Colors.primaryDark} strokeWidth={2} />
+        <Ionicons name="add-outline" size={16} color={Colors.primaryDark} />
         <Text style={styles.buttonText}>Publier un objet</Text>
       </TouchableOpacity>
     </View>

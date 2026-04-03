@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, Platform } from 'react-native';
-import { Check, MessageSquare } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -121,14 +121,14 @@ export default function RequestSentOverlay({ visible }: Props) {
         ))}
 
         <Animated.View style={[styles.checkCircle, { transform: [{ scale: checkScale }, { translateY: iconBounce }] }]}>
-          <Check size={32} color={Colors.white} strokeWidth={3} />
+          <Ionicons name="checkmark-outline" size={32} color={Colors.white} />
         </Animated.View>
 
         <Text style={styles.title}>Demande envoyée !</Text>
         <Text style={styles.subtitle}>Le propriétaire a été notifié.</Text>
 
         <View style={styles.messageBadge}>
-          <MessageSquare size={13} color={Colors.primaryDark} strokeWidth={2} />
+          <Ionicons name="chatbubble-outline" size={13} color={Colors.primaryDark} />
           <Text style={styles.messageBadgeText}>Rendez-vous dans vos messages</Text>
         </View>
       </Animated.View>

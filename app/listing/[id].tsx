@@ -16,7 +16,7 @@ import {
 import { useResponsive } from '@/hooks/useResponsive';
 
 import { useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft, Share2, MapPin, Shield, ShieldAlert, ChevronRight, Calendar, Tag, Clock, Euro, Percent, Heart, Eye, Pencil, Trash2, TrendingUp, Info, Building2, Phone, Globe, Flag } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -407,22 +407,21 @@ export default function ListingDetailScreen() {
       <View style={desktopStyles.root}>
         <View style={desktopStyles.topBar}>
           <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} activeOpacity={0.85}>
-            <ArrowLeft size={20} color={Colors.text} strokeWidth={2.5} />
+            <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
           </TouchableOpacity>
           <Text style={desktopStyles.topBarTitle} numberOfLines={1}>{listing.name}</Text>
           <View style={styles.navBtnGroup}>
             {userId && listing?.owner?.id && userId !== listing.owner.id && (
               <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85}>
-                <Heart
+                <Ionicons
+                  name={isFavorite ? 'heart' : 'heart-outline'}
                   size={18}
                   color={isFavorite ? '#E05252' : Colors.text}
-                  fill={isFavorite ? '#E05252' : 'transparent'}
-                  strokeWidth={2.5}
                 />
               </TouchableOpacity>
             )}
             <TouchableOpacity onPress={handleShare} style={styles.navBtn} activeOpacity={0.85}>
-              <Share2 size={18} color={Colors.text} strokeWidth={2.5} />
+              <Ionicons name="share-outline" size={18} color={Colors.text} />
             </TouchableOpacity>
           </View>
         </View>
@@ -449,19 +448,19 @@ export default function ListingDetailScreen() {
                       params: { id: listing.category_id, name: listing.category_name ?? '', value: listing.category?.value ?? '' },
                     } as any)}
                   >
-                    <Tag size={11} color={catColors.text} strokeWidth={2.5} />
+                    <Ionicons name="pricetag-outline" size={11} color={catColors.text} />
                     <Text style={[styles.categoryPillText, { color: catColors.text }]}>{listing.category_name}</Text>
                   </TouchableOpacity>
                 )}
                 {distanceText && (
                   <View style={styles.distancePill}>
-                    <MapPin size={11} color={Colors.primary} strokeWidth={2.5} />
+                    <Ionicons name="location-outline" size={11} color={Colors.primary} />
                     <Text style={styles.distancePillText}>{distanceText}</Text>
                   </View>
                 )}
                 {!isOwner && cityName && (
                   <View style={styles.cityPill}>
-                    <MapPin size={11} color="#6B7280" strokeWidth={2.5} />
+                    <Ionicons name="location-outline" size={11} color="#6B7280" />
                     <Text style={styles.cityPillText}>{cityName}</Text>
                   </View>
                 )}
@@ -485,14 +484,14 @@ export default function ListingDetailScreen() {
                   <>
                     <View style={styles.section}>
                       <View style={styles.proSectionHeader}>
-                        <Building2 size={15} color="#3A6BBF" strokeWidth={2} />
+                        <Ionicons name="business-outline" size={15} color="#3A6BBF" />
                         <Text style={styles.proSectionTitle}>Boutique professionnelle</Text>
                         <ProBadge size="sm" />
                       </View>
                       <View style={styles.proInfoCard}>
                         {listing.owner?.business_name && (
                           <View style={styles.proInfoRow}>
-                            <View style={styles.proInfoIconWrap}><Building2 size={14} color="#3A6BBF" strokeWidth={2} /></View>
+                            <View style={styles.proInfoIconWrap}><Ionicons name="business-outline" size={14} color="#3A6BBF" /></View>
                             <View style={styles.proInfoContent}>
                               <Text style={styles.proInfoLabel}>Nom commercial</Text>
                               <Text style={styles.proInfoValue}>{listing.owner.business_name}</Text>
@@ -501,7 +500,7 @@ export default function ListingDetailScreen() {
                         )}
                         {listing.owner?.business_type && (
                           <View style={styles.proInfoRow}>
-                            <View style={styles.proInfoIconWrap}><Tag size={14} color="#3A6BBF" strokeWidth={2} /></View>
+                            <View style={styles.proInfoIconWrap}><Ionicons name="pricetag-outline" size={14} color="#3A6BBF" /></View>
                             <View style={styles.proInfoContent}>
                               <Text style={styles.proInfoLabel}>Type d'activité</Text>
                               <Text style={styles.proInfoValue}>{listing.owner.business_type}</Text>
@@ -510,7 +509,7 @@ export default function ListingDetailScreen() {
                         )}
                         {listing.owner?.siren_number && (
                           <View style={styles.proInfoRow}>
-                            <View style={styles.proInfoIconWrap}><Globe size={14} color="#3A6BBF" strokeWidth={2} /></View>
+                            <View style={styles.proInfoIconWrap}><Ionicons name="globe-outline" size={14} color="#3A6BBF" /></View>
                             <View style={styles.proInfoContent}>
                               <Text style={styles.proInfoLabel}>SIREN</Text>
                               <Text style={styles.proInfoValue}>{listing.owner.siren_number}</Text>
@@ -563,14 +562,14 @@ export default function ListingDetailScreen() {
                       </View>
                       {listing.owner?.created_at && (
                         <View style={styles.ownerMemberRow}>
-                          <Clock size={10} color={Colors.textMuted} strokeWidth={2} />
+                          <Ionicons name="time-outline" size={10} color={Colors.textMuted} />
                           <Text style={styles.ownerMember}>Membre depuis {formatMemberSince(listing.owner.created_at)}</Text>
                         </View>
                       )}
                     </View>
                     <View style={styles.ownerAction}>
                       <Text style={styles.ownerActionText}>Voir profil</Text>
-                      <ChevronRight size={14} color={Colors.primary} strokeWidth={2.5} />
+                      <Ionicons name="chevron-forward-outline" size={14} color={Colors.primary} />
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -582,7 +581,7 @@ export default function ListingDetailScreen() {
                   activeOpacity={0.75}
                   onPress={() => router.push({ pathname: '/report', params: { type: 'listing', targetId: listing.id, targetLabel: listing.name } } as any)}
                 >
-                  <Flag size={14} color={Colors.textMuted} strokeWidth={2} />
+                  <Ionicons name="flag-outline" size={14} color={Colors.textMuted} />
                   <Text style={styles.reportBtnText}>Signaler cette annonce</Text>
                 </TouchableOpacity>
               )}
@@ -602,7 +601,7 @@ export default function ListingDetailScreen() {
                     </View>
                   </View>
                   <View style={styles.priceIconWrap}>
-                    <Euro size={18} color={Colors.primary} strokeWidth={2.5} />
+                    <Ionicons name="cash-outline" size={18} color={Colors.primary} />
                   </View>
                 </View>
                 <View style={styles.pricingInnerDivider} />
@@ -616,7 +615,7 @@ export default function ListingDetailScreen() {
                         <Text style={styles.totalLabel}>Total</Text>
                         {disc > 0 && (
                           <View style={styles.totalPromoLabel}>
-                            <Percent size={9} color={Colors.primary} strokeWidth={2.5} />
+                            <Ionicons name="pricetag-outline" size={9} color={Colors.primary} />
                             <Text style={styles.totalPromoLabelText}>-{Math.round(disc * 100)}% appliqué</Text>
                           </View>
                         )}
@@ -635,13 +634,13 @@ export default function ListingDetailScreen() {
                 )}
                 {hasDeposit ? (
                   <View style={styles.cautionRow}>
-                    <View style={styles.cautionIconWrap}><ShieldAlert size={14} color="#C06828" strokeWidth={2.5} /></View>
+                    <View style={styles.cautionIconWrap}><Ionicons name="alert-circle-outline" size={14} color="#C06828" /></View>
                     <Text style={styles.cautionLabel}>Caution demandée</Text>
                     <Text style={styles.cautionAmount}>{listing.deposit_amount}€</Text>
                   </View>
                 ) : (
                   <View style={styles.cautionRow}>
-                    <View style={styles.noCautionIconWrap}><Shield size={14} color="#2A8A4A" strokeWidth={2.5} /></View>
+                    <View style={styles.noCautionIconWrap}><Ionicons name="shield-outline" size={14} color="#2A8A4A" /></View>
                     <Text style={styles.noCautionTitle}>Sans caution</Text>
                   </View>
                 )}
@@ -654,7 +653,7 @@ export default function ListingDetailScreen() {
                     activeOpacity={0.8}
                     onPress={() => setCalendarVisible(true)}
                   >
-                    <View style={styles.datePickerIcon}><Calendar size={17} color={Colors.primary} strokeWidth={2.5} /></View>
+                    <View style={styles.datePickerIcon}><Ionicons name="calendar-outline" size={17} color={Colors.primary} /></View>
                     <View style={styles.datePickerContent}>
                       {selectedDays > 0 && selectedStart ? (
                         <>
@@ -668,15 +667,15 @@ export default function ListingDetailScreen() {
                         <Text style={styles.datePickerText}>Choisir des dates de location</Text>
                       )}
                     </View>
-                    <ChevronRight size={16} color={Colors.primary} strokeWidth={2.5} />
+                    <Ionicons name="chevron-forward-outline" size={16} color={Colors.primary} />
                   </TouchableOpacity>
                   <View style={styles.promoBadgeRow}>
                     <View style={styles.promoBadge}>
-                      <View style={styles.promoBadgeIconWrap}><Percent size={10} color={Colors.primary} strokeWidth={2.5} /></View>
+                      <View style={styles.promoBadgeIconWrap}><Ionicons name="pricetag-outline" size={10} color={Colors.primary} /></View>
                       <Text style={styles.promoBadgeText}><Text style={styles.promoBadgeDiscount}>-10% </Text>dès 3 jours</Text>
                     </View>
                     <View style={styles.promoBadge}>
-                      <View style={styles.promoBadgeIconWrap}><Percent size={10} color={Colors.primary} strokeWidth={2.5} /></View>
+                      <View style={styles.promoBadgeIconWrap}><Ionicons name="pricetag-outline" size={10} color={Colors.primary} /></View>
                       <Text style={styles.promoBadgeText}><Text style={styles.promoBadgeDiscount}>-20% </Text>dès 7 jours</Text>
                     </View>
                   </View>
@@ -708,20 +707,20 @@ export default function ListingDetailScreen() {
                 <View style={{ gap: 10 }}>
                   <View style={styles.ownerStatsRow}>
                     <View style={styles.ownerStatItem}>
-                      <Eye size={14} color={Colors.textMuted} strokeWidth={2} />
+                      <Ionicons name="eye-outline" size={14} color={Colors.textMuted} />
                       <Text style={styles.ownerStatValue}>{viewCount}</Text>
                       <Text style={styles.ownerStatLabel}>vues</Text>
                     </View>
                     <View style={styles.ownerStatDivider} />
                     <View style={styles.ownerStatItem}>
-                      <Heart size={14} color="#E05252" strokeWidth={2} />
+                      <Ionicons name="heart" size={14} color="#E05252" />
                       <Text style={styles.ownerStatValue}>{likeCount}</Text>
                       <Text style={styles.ownerStatLabel}>favoris</Text>
                     </View>
                   </View>
                   <View style={styles.ownerActionRow}>
                     <TouchableOpacity style={styles.ownerDeleteBtn} activeOpacity={0.85} onPress={() => setDeleteConfirm(true)}>
-                      <Trash2 size={16} color="#C25450" strokeWidth={2} />
+                      <Ionicons name="trash-outline" size={16} color="#C25450" />
                       <Text style={styles.ownerDeleteBtnText}>Supprimer</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -729,7 +728,7 @@ export default function ListingDetailScreen() {
                       activeOpacity={0.85}
                       onPress={() => router.push({ pathname: '/create-listing', params: { editId: id } } as any)}
                     >
-                      <Pencil size={16} color={Colors.white} strokeWidth={2} />
+                      <Ionicons name="pencil-outline" size={16} color={Colors.white} />
                       <Text style={styles.ownerModifyBtnText}>Modifier l'annonce</Text>
                     </TouchableOpacity>
                   </View>
@@ -780,21 +779,20 @@ export default function ListingDetailScreen() {
       {/* Nav buttons */}
       <View style={styles.navBar} pointerEvents="box-none">
         <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} activeOpacity={0.85}>
-          <ArrowLeft size={20} color={Colors.text} strokeWidth={2.5} />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <View style={styles.navBtnGroup}>
           {userId && listing?.owner?.id && userId !== listing.owner.id && (
             <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85}>
-              <Heart
+              <Ionicons
+                name={isFavorite ? 'heart' : 'heart-outline'}
                 size={18}
                 color={isFavorite ? '#E05252' : Colors.text}
-                fill={isFavorite ? '#E05252' : 'transparent'}
-                strokeWidth={2.5}
               />
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={handleShare} style={styles.navBtn} activeOpacity={0.85}>
-            <Share2 size={18} color={Colors.text} strokeWidth={2.5} />
+            <Ionicons name="share-outline" size={18} color={Colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -833,7 +831,7 @@ export default function ListingDetailScreen() {
                   params: { id: listing.category_id, name: listing.category_name ?? '', value: listing.category?.value ?? '' },
                 } as any)}
               >
-                <Tag size={11} color={catColors.text} strokeWidth={2.5} />
+                <Ionicons name="pricetag-outline" size={11} color={catColors.text} />
                 <Text style={[styles.categoryPillText, { color: catColors.text }]}>
                   {listing.category_name}
                 </Text>
@@ -841,13 +839,13 @@ export default function ListingDetailScreen() {
             )}
             {distanceText && (
               <View style={styles.distancePill}>
-                <MapPin size={11} color={Colors.primary} strokeWidth={2.5} />
+                <Ionicons name="location-outline" size={11} color={Colors.primary} />
                 <Text style={styles.distancePillText}>{distanceText}</Text>
               </View>
             )}
             {!isOwner && cityName && (
               <View style={styles.cityPill}>
-                <MapPin size={11} color="#6B7280" strokeWidth={2.5} />
+                <Ionicons name="location-outline" size={11} color="#6B7280" />
                 <Text style={styles.cityPillText}>{cityName}</Text>
               </View>
             )}
@@ -881,7 +879,7 @@ export default function ListingDetailScreen() {
                 </View>
               </View>
               <View style={styles.priceIconWrap}>
-                <Euro size={18} color={Colors.primary} strokeWidth={2.5} />
+                <Ionicons name="cash-outline" size={18} color={Colors.primary} />
               </View>
             </View>
 
@@ -899,7 +897,7 @@ export default function ListingDetailScreen() {
                     <Text style={styles.totalLabel}>Total</Text>
                     {disc > 0 && (
                       <View style={styles.totalPromoLabel}>
-                        <Percent size={9} color={Colors.primary} strokeWidth={2.5} />
+                        <Ionicons name="pricetag-outline" size={9} color={Colors.primary} />
                         <Text style={styles.totalPromoLabelText}>
                           -{Math.round(disc * 100)}% appliqué
                         </Text>
@@ -927,7 +925,7 @@ export default function ListingDetailScreen() {
             {hasDeposit ? (
               <View style={styles.cautionRow}>
                 <View style={styles.cautionIconWrap}>
-                  <ShieldAlert size={14} color="#C06828" strokeWidth={2.5} />
+                  <Ionicons name="alert-circle-outline" size={14} color="#C06828" />
                 </View>
                 <Text style={styles.cautionLabel}>Caution demandée</Text>
                 <Text style={styles.cautionAmount}>{listing.deposit_amount}€</Text>
@@ -935,7 +933,7 @@ export default function ListingDetailScreen() {
             ) : (
               <View style={styles.cautionRow}>
                 <View style={styles.noCautionIconWrap}>
-                  <Shield size={14} color="#2A8A4A" strokeWidth={2.5} />
+                  <Ionicons name="shield-outline" size={14} color="#2A8A4A" />
                 </View>
                 <Text style={styles.noCautionTitle}>Sans caution</Text>
               </View>
@@ -956,7 +954,7 @@ export default function ListingDetailScreen() {
                 <View style={styles.divider} />
                 <View style={styles.revenueSection}>
                   <View style={styles.revenueTitleRow}>
-                    <TrendingUp size={16} color={Colors.primaryDark ?? Colors.primary} strokeWidth={2} />
+                    <Ionicons name="trending-up-outline" size={16} color={Colors.primaryDark ?? Colors.primary} />
                     <Text style={styles.revenueTitle}>Projection de revenus</Text>
                   </View>
                   <Text style={styles.revenueSubtitle}>
@@ -970,7 +968,7 @@ export default function ListingDetailScreen() {
                     </View>
                     <View style={styles.revenueCard}>
                       <View style={styles.revenueCardBadge}>
-                        <Tag size={9} color={Colors.primaryDark ?? Colors.primary} strokeWidth={2} />
+                        <Ionicons name="pricetag-outline" size={9} color={Colors.primaryDark ?? Colors.primary} />
                         <Text style={styles.revenueCardBadgeText}>-10%</Text>
                       </View>
                       <Text style={styles.revenueCardLabel}>3 jours</Text>
@@ -979,7 +977,7 @@ export default function ListingDetailScreen() {
                     </View>
                     <View style={[styles.revenueCard, styles.revenueCardHighlight]}>
                       <View style={[styles.revenueCardBadge, styles.revenueCardBadgeDark]}>
-                        <Tag size={9} color={Colors.white} strokeWidth={2} />
+                        <Ionicons name="pricetag-outline" size={9} color={Colors.white} />
                         <Text style={[styles.revenueCardBadgeText, { color: Colors.white }]}>-20%</Text>
                       </View>
                       <Text style={[styles.revenueCardLabel, { color: Colors.white }]}>7 jours</Text>
@@ -988,7 +986,7 @@ export default function ListingDetailScreen() {
                     </View>
                   </View>
                   <View style={styles.commissionNote}>
-                    <Info size={13} color={Colors.primaryDark ?? Colors.primary} strokeWidth={2} />
+                    <Ionicons name="information-circle-outline" size={13} color={Colors.primaryDark ?? Colors.primary} />
                     <Text style={styles.commissionNoteText}>
                       Sans commission, vous toucheriez{' '}
                       <Text style={styles.commissionNoteHighlight}>{price.toFixed(2)} € / jour</Text>
@@ -1011,7 +1009,7 @@ export default function ListingDetailScreen() {
                 onPress={() => setCalendarVisible(true)}
               >
                 <View style={styles.datePickerIcon}>
-                  <Calendar size={17} color={Colors.primary} strokeWidth={2.5} />
+                  <Ionicons name="calendar-outline" size={17} color={Colors.primary} />
                 </View>
                 <View style={styles.datePickerContent}>
                   {selectedDays > 0 && selectedStart ? (
@@ -1030,14 +1028,14 @@ export default function ListingDetailScreen() {
                     <Text style={styles.datePickerText}>Choisir des dates de location</Text>
                   )}
                 </View>
-                <ChevronRight size={16} color={Colors.primary} strokeWidth={2.5} />
+                <Ionicons name="chevron-forward-outline" size={16} color={Colors.primary} />
               </TouchableOpacity>
 
               {/* Badges promo */}
               <View style={styles.promoBadgeRow}>
                 <View style={styles.promoBadge}>
                   <View style={styles.promoBadgeIconWrap}>
-                    <Percent size={10} color={Colors.primary} strokeWidth={2.5} />
+                    <Ionicons name="pricetag-outline" size={10} color={Colors.primary} />
                   </View>
                   <Text style={styles.promoBadgeText}>
                     <Text style={styles.promoBadgeDiscount}>-10% </Text>
@@ -1046,7 +1044,7 @@ export default function ListingDetailScreen() {
                 </View>
                 <View style={styles.promoBadge}>
                   <View style={styles.promoBadgeIconWrap}>
-                    <Percent size={10} color={Colors.primary} strokeWidth={2.5} />
+                    <Ionicons name="pricetag-outline" size={10} color={Colors.primary} />
                   </View>
                   <Text style={styles.promoBadgeText}>
                     <Text style={styles.promoBadgeDiscount}>-20% </Text>
@@ -1066,7 +1064,7 @@ export default function ListingDetailScreen() {
                 <View style={styles.divider} />
                 <View style={styles.section}>
                   <View style={styles.proSectionHeader}>
-                    <Building2 size={15} color="#3A6BBF" strokeWidth={2} />
+                    <Ionicons name="business-outline" size={15} color="#3A6BBF" />
                     <Text style={styles.proSectionTitle}>Boutique professionnelle</Text>
                     <ProBadge size="sm" />
                   </View>
@@ -1075,7 +1073,7 @@ export default function ListingDetailScreen() {
                     {listing.owner?.business_name && (
                       <View style={styles.proInfoRow}>
                         <View style={styles.proInfoIconWrap}>
-                          <Building2 size={14} color="#3A6BBF" strokeWidth={2} />
+                          <Ionicons name="business-outline" size={14} color="#3A6BBF" />
                         </View>
                         <View style={styles.proInfoContent}>
                           <Text style={styles.proInfoLabel}>Nom commercial</Text>
@@ -1087,7 +1085,7 @@ export default function ListingDetailScreen() {
                     {listing.owner?.business_type && (
                       <View style={styles.proInfoRow}>
                         <View style={styles.proInfoIconWrap}>
-                          <Tag size={14} color="#3A6BBF" strokeWidth={2} />
+                          <Ionicons name="pricetag-outline" size={14} color="#3A6BBF" />
                         </View>
                         <View style={styles.proInfoContent}>
                           <Text style={styles.proInfoLabel}>Type d'activité</Text>
@@ -1099,7 +1097,7 @@ export default function ListingDetailScreen() {
                     {listing.owner?.business_address && (
                       <View style={styles.proInfoRow}>
                         <View style={styles.proInfoIconWrap}>
-                          <MapPin size={14} color="#3A6BBF" strokeWidth={2} />
+                          <Ionicons name="location-outline" size={14} color="#3A6BBF" />
                         </View>
                         <View style={styles.proInfoContent}>
                           <Text style={styles.proInfoLabel}>Adresse</Text>
@@ -1111,7 +1109,7 @@ export default function ListingDetailScreen() {
                     {listing.owner?.siren_number && (
                       <View style={styles.proInfoRow}>
                         <View style={styles.proInfoIconWrap}>
-                          <Globe size={14} color="#3A6BBF" strokeWidth={2} />
+                          <Ionicons name="globe-outline" size={14} color="#3A6BBF" />
                         </View>
                         <View style={styles.proInfoContent}>
                           <Text style={styles.proInfoLabel}>SIREN</Text>
@@ -1123,7 +1121,7 @@ export default function ListingDetailScreen() {
                     {bh && (
                       <View style={styles.proHoursBlock}>
                         <View style={styles.proInfoIconWrap}>
-                          <Clock size={14} color="#3A6BBF" strokeWidth={2} />
+                          <Ionicons name="time-outline" size={14} color="#3A6BBF" />
                         </View>
                         <View style={styles.proHoursContent}>
                           <Text style={styles.proInfoLabel}>Horaires d'ouverture</Text>
@@ -1193,7 +1191,7 @@ export default function ListingDetailScreen() {
                   </View>
                   {listing.owner?.created_at && (
                     <View style={styles.ownerMemberRow}>
-                      <Clock size={10} color={Colors.textMuted} strokeWidth={2} />
+                      <Ionicons name="time-outline" size={10} color={Colors.textMuted} />
                       <Text style={styles.ownerMember}>
                         Membre depuis {formatMemberSince(listing.owner.created_at)}
                       </Text>
@@ -1202,7 +1200,7 @@ export default function ListingDetailScreen() {
                 </View>
                 <View style={styles.ownerAction}>
                   <Text style={styles.ownerActionText}>Voir profil</Text>
-                  <ChevronRight size={14} color={Colors.primary} strokeWidth={2.5} />
+                  <Ionicons name="chevron-forward-outline" size={14} color={Colors.primary} />
                 </View>
               </TouchableOpacity>
             </View>
@@ -1220,7 +1218,7 @@ export default function ListingDetailScreen() {
                 } as any)
               }
             >
-              <Flag size={14} color={Colors.textMuted} strokeWidth={2} />
+              <Ionicons name="flag-outline" size={14} color={Colors.textMuted} />
               <Text style={styles.reportBtnText}>Signaler cette annonce</Text>
             </TouchableOpacity>
           )}
@@ -1258,13 +1256,13 @@ export default function ListingDetailScreen() {
             <View style={styles.ownerBottomBar}>
               <View style={styles.ownerStatsRow}>
                 <View style={styles.ownerStatItem}>
-                  <Eye size={14} color={Colors.textMuted} strokeWidth={2} />
+                  <Ionicons name="eye-outline" size={14} color={Colors.textMuted} />
                   <Text style={styles.ownerStatValue}>{viewCount}</Text>
                   <Text style={styles.ownerStatLabel}>vues</Text>
                 </View>
                 <View style={styles.ownerStatDivider} />
                 <View style={styles.ownerStatItem}>
-                  <Heart size={14} color="#E05252" strokeWidth={2} />
+                  <Ionicons name="heart" size={14} color="#E05252" />
                   <Text style={styles.ownerStatValue}>{likeCount}</Text>
                   <Text style={styles.ownerStatLabel}>favoris</Text>
                 </View>
@@ -1275,7 +1273,7 @@ export default function ListingDetailScreen() {
                   activeOpacity={0.85}
                   onPress={() => setDeleteConfirm(true)}
                 >
-                  <Trash2 size={16} color="#C25450" strokeWidth={2} />
+                  <Ionicons name="trash-outline" size={16} color="#C25450" />
                   <Text style={styles.ownerDeleteBtnText}>Supprimer</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1283,7 +1281,7 @@ export default function ListingDetailScreen() {
                   activeOpacity={0.85}
                   onPress={() => router.push({ pathname: '/create-listing', params: { editId: id } } as any)}
                 >
-                  <Pencil size={16} color={Colors.white} strokeWidth={2} />
+                  <Ionicons name="pencil-outline" size={16} color={Colors.white} />
                   <Text style={styles.ownerModifyBtnText}>Modifier l'annonce</Text>
                 </TouchableOpacity>
               </View>

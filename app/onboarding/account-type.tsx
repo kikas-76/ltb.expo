@@ -12,7 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Building2, User, CircleCheck as CheckCircle2 } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 
 const BG = '#F5F0E8';
@@ -130,7 +130,7 @@ export default function AccountTypeScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <ArrowLeft size={22} color="#1C1C18" />
+            <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
           </TouchableOpacity>
           <Image
             source={require('@/assets/images/logoLTBwhitoutbaground.png')}
@@ -159,7 +159,7 @@ export default function AccountTypeScreen() {
               activeOpacity={0.85}
             >
               <View style={[styles.typeIconCircle, accountType === 'particulier' && styles.typeIconCircleSelected]}>
-                <User size={28} color={accountType === 'particulier' ? '#fff' : GREEN} strokeWidth={1.8} />
+                <Ionicons name="person-outline" size={28} color={accountType === 'particulier' ? '#fff' : GREEN} />
               </View>
               <Text style={[styles.typeCardTitle, accountType === 'particulier' && styles.typeCardTitleSelected]}>
                 Particulier
@@ -168,7 +168,7 @@ export default function AccountTypeScreen() {
                 Je loue pour un usage personnel
               </Text>
               {accountType === 'particulier' && (
-                <CheckCircle2 size={18} color={GREEN} style={styles.checkIcon} strokeWidth={2.5} />
+                <Ionicons name="checkmark-circle-outline" size={18} color={GREEN} style={styles.checkIcon} />
               )}
             </TouchableOpacity>
 
@@ -178,7 +178,7 @@ export default function AccountTypeScreen() {
               activeOpacity={0.85}
             >
               <View style={[styles.typeIconCircle, accountType === 'pro' && styles.typeIconCircleSelected]}>
-                <Building2 size={28} color={accountType === 'pro' ? '#fff' : GREEN} strokeWidth={1.8} />
+                <Ionicons name="business-outline" size={28} color={accountType === 'pro' ? '#fff' : GREEN} />
               </View>
               <Text style={[styles.typeCardTitle, accountType === 'pro' && styles.typeCardTitleSelected]}>
                 Professionnel
@@ -187,7 +187,7 @@ export default function AccountTypeScreen() {
                 Je loue dans un cadre professionnel
               </Text>
               {accountType === 'pro' && (
-                <CheckCircle2 size={18} color={GREEN} style={styles.checkIcon} strokeWidth={2.5} />
+                <Ionicons name="checkmark-circle-outline" size={18} color={GREEN} style={styles.checkIcon} />
               )}
             </TouchableOpacity>
           </View>
@@ -196,7 +196,7 @@ export default function AccountTypeScreen() {
             <View style={styles.sirenSection}>
               <Text style={styles.sirenLabel}>Numéro SIREN</Text>
               <View style={styles.sirenInputRow}>
-                <Building2 size={18} color="#A8A8A0" style={styles.sirenIcon} />
+                <Ionicons name="business-outline" size={18} color="#A8A8A0" style={styles.sirenIcon} />
                 <TextInput
                   style={styles.sirenInput}
                   placeholder="000 000 000"

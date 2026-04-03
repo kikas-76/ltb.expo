@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Camera, Phone, AtSign } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
 
@@ -272,7 +272,7 @@ export default function OnboardingProfileScreen() {
         <View style={styles.header}>
           {!isGoogle && (
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-              <ArrowLeft size={22} color="#1C1C18" />
+              <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
             </TouchableOpacity>
           )}
           <Image
@@ -302,7 +302,7 @@ export default function OnboardingProfileScreen() {
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
               ) : (
-                <Camera size={30} color={GREEN} strokeWidth={2} />
+                <Ionicons name="camera-outline" size={30} color={GREEN} />
               )}
             </TouchableOpacity>
             <Text style={styles.avatarLabel}>
@@ -324,7 +324,7 @@ export default function OnboardingProfileScreen() {
 
           <View>
             <View style={[styles.inputRow, styles.inputRowUsername]}>
-              <AtSign size={18} color="#A8A8A0" style={styles.inputIcon} />
+              <Ionicons name="at-outline" size={18} color="#A8A8A0" style={styles.inputIcon} />
               <TextInput
                 style={styles.inputFlex}
                 placeholder="nom_utilisateur"
@@ -346,7 +346,7 @@ export default function OnboardingProfileScreen() {
           </View>
 
           <View style={styles.inputRow}>
-            <Phone size={18} color="#A8A8A0" style={styles.inputIcon} />
+            <Ionicons name="call-outline" size={18} color="#A8A8A0" style={styles.inputIcon} />
             <TextInput
               style={styles.inputFlex}
               placeholder="+33 6 XX XX XX XX"

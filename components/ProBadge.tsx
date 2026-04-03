@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { BadgeCheck } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface ProBadgeProps {
   size?: 'sm' | 'md';
@@ -9,7 +9,7 @@ export default function ProBadge({ size = 'md' }: ProBadgeProps) {
   const isSmall = size === 'sm';
   return (
     <View style={[styles.badge, isSmall && styles.badgeSm]}>
-      <BadgeCheck size={isSmall ? 10 : 12} color="#fff" strokeWidth={2.5} />
+      <Ionicons name="checkmark-circle" size={isSmall ? 10 : 12} color="#fff" />
       <Text style={[styles.text, isSmall && styles.textSm]}>Pro</Text>
     </View>
   );

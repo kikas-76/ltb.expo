@@ -1,5 +1,5 @@
 import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
-import { Search } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 interface SearchBarProps {
@@ -12,7 +12,7 @@ export default function SearchBar({ value, onChangeText, onPress }: SearchBarPro
   return (
     <View style={styles.wrapper}>
       <View style={styles.container}>
-        <Search size={18} color={Colors.textMuted} strokeWidth={2} style={styles.icon} />
+        <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={styles.icon} />
         <TextInput
           style={styles.input}
           placeholder="Rechercher un objet..."

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Lock, ShieldCheck, Calendar } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 
 const BG = '#F5F0E8';
@@ -174,7 +174,7 @@ export default function PaymentScreen() {
     return (
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <ArrowLeft size={20} color="#1A1F17" strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={20} color="#1A1F17" />
         </TouchableOpacity>
         <View style={styles.loadingContainer}>
           <Text style={styles.errorText}>Réservation introuvable.</Text>
@@ -197,10 +197,10 @@ export default function PaymentScreen() {
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ArrowLeft size={20} color="#1A1F17" strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={20} color="#1A1F17" />
         </TouchableOpacity>
         <View style={styles.headerTitleRow}>
-          <Lock size={16} color={GREEN} strokeWidth={2.5} />
+          <Ionicons name="lock-closed-outline" size={16} color={GREEN} />
           <Text style={styles.headerTitle}>Paiement sécurisé</Text>
         </View>
         <View style={styles.headerRight} />
@@ -233,7 +233,7 @@ export default function PaymentScreen() {
             </View>
 
             <View style={styles.datesRow}>
-              <Calendar size={14} color={GREEN_MID} strokeWidth={2} />
+              <Ionicons name="calendar-outline" size={14} color={GREEN_MID} />
               <Text style={styles.datesText}>
                 Du {formatDate(booking.start_date)} au {formatDate(booking.end_date)}
               </Text>
@@ -290,7 +290,7 @@ export default function PaymentScreen() {
                 />
               ) : null}
               <View style={styles.securityRow}>
-                <ShieldCheck size={13} color={GREEN_MID} strokeWidth={2} />
+                <Ionicons name="shield-checkmark-outline" size={13} color={GREEN_MID} />
                 <Text style={styles.securityText}>
                   Paiement sécurisé par Stripe. Données jamais stockées sur nos serveurs.
                 </Text>
@@ -303,7 +303,7 @@ export default function PaymentScreen() {
           <View style={styles.section}>
             <View style={styles.card}>
               <View style={styles.securityRow}>
-                <ShieldCheck size={14} color={GREEN} strokeWidth={2} />
+                <Ionicons name="shield-checkmark-outline" size={14} color={GREEN} />
                 <Text style={[styles.securityText, { color: '#1A1F17', fontSize: 14 }]}>
                   Vous allez être redirigé vers la page de paiement sécurisée Stripe.
                 </Text>
@@ -324,7 +324,7 @@ export default function PaymentScreen() {
             <ActivityIndicator color="#fff" size="small" />
           ) : (
             <>
-              <Lock size={16} color="#fff" strokeWidth={2.5} />
+              <Ionicons name="lock-closed-outline" size={16} color="#fff" />
               <Text style={styles.payBtnText}>
                 {Platform.OS === 'web' ? 'Payer maintenant' : 'Confirmer le paiement'}
               </Text>

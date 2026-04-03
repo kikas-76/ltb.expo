@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Tabs, router, usePathname } from 'expo-router';
-import { Search, MessageSquare, User, CirclePlus as PlusCircle, ChevronLeft, ChevronRight, Hop as Home } from 'lucide-react-native';
-import { TouchableOpacity, Text, View, StyleSheet, Platform, Image, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { TouchableOpacity, Text, View, StyleSheet, Platform, Image } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUnread } from '@/contexts/UnreadContext';
@@ -93,21 +93,21 @@ function DesktopSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       route: 'index',
       label: 'Explorer',
       description: 'Parcourir les annonces',
-      icon: (focused: boolean) => <Home size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} strokeWidth={focused ? 2.5 : 2} />,
+      icon: (focused: boolean) => <Ionicons name="home-outline" size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
       onPress: () => router.push('/(tabs)'),
     },
     {
       route: 'create-listing',
       label: 'Louer un objet',
       description: 'Publier une annonce',
-      icon: (focused: boolean) => <PlusCircle size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} strokeWidth={focused ? 2.5 : 2} />,
+      icon: (focused: boolean) => <Ionicons name="add-circle-outline" size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
       onPress: () => router.push('/create-listing'),
     },
     {
       route: 'reservations',
       label: 'Messages',
       description: 'Vos échanges',
-      icon: (focused: boolean) => <MessageSquare size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} strokeWidth={focused ? 2.5 : 2} />,
+      icon: (focused: boolean) => <Ionicons name="chatbubble-outline" size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
       onPress: () => router.push('/(tabs)/reservations'),
       showDot: hasIncomingRequests,
     },
@@ -115,7 +115,7 @@ function DesktopSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       route: 'profil',
       label: 'Mon Compte',
       description: 'Profil & paramètres',
-      icon: (focused: boolean) => <User size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} strokeWidth={focused ? 2.5 : 2} />,
+      icon: (focused: boolean) => <Ionicons name="person-outline" size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
       onPress: () => router.push('/(tabs)/profil'),
     },
   ];
@@ -163,8 +163,8 @@ function DesktopSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           activeOpacity={0.75}
         >
           {collapsed
-            ? <ChevronRight size={16} color={Colors.textSecondary} strokeWidth={2} />
-            : <ChevronLeft size={16} color={Colors.textSecondary} strokeWidth={2} />
+            ? <Ionicons name="chevron-forward-outline" size={16} color={Colors.textSecondary} />
+            : <Ionicons name="chevron-back-outline" size={16} color={Colors.textSecondary} />
           }
           {!collapsed && <Text style={sidebarStyles.collapseBtnText}>Réduire</Text>}
         </TouchableOpacity>
@@ -257,7 +257,7 @@ export default function TabLayout() {
         options={{
           tabBarButton: makeTabButton(
             () => router.push('/(tabs)'),
-            (c) => <Search size={22} color={c} strokeWidth={2} />,
+            (c) => <Ionicons name="search-outline" size={22} color={c} />,
             'Rechercher',
           ),
         }}
@@ -267,7 +267,7 @@ export default function TabLayout() {
         options={{
           tabBarButton: makeTabButton(
             () => router.push('/create-listing'),
-            (c) => <PlusCircle size={22} color={c} strokeWidth={2} />,
+            (c) => <Ionicons name="add-circle-outline" size={22} color={c} />,
             'Louer',
           ),
         }}
@@ -277,7 +277,7 @@ export default function TabLayout() {
         options={{
           tabBarButton: makeTabButton(
             () => router.push('/(tabs)/reservations'),
-            (c) => <MessageSquare size={22} color={c} strokeWidth={2} />,
+            (c) => <Ionicons name="chatbubble-outline" size={22} color={c} />,
             'Messages',
             hasIncomingRequests,
           ),
@@ -288,7 +288,7 @@ export default function TabLayout() {
         options={{
           tabBarButton: makeTabButton(
             () => router.push('/(tabs)/profil'),
-            (c) => <User size={22} color={c} strokeWidth={2} />,
+            (c) => <Ionicons name="person-outline" size={22} color={c} />,
             'Mon Compte',
           ),
         }}

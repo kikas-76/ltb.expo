@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Text, StyleSheet, Platform } from 'react-native';
-import { Heart, Link } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface SnackbarProps {
   visible: boolean;
@@ -36,9 +36,9 @@ export default function Snackbar({ visible, message, type = 'favorite', onHide }
   return (
     <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>
       {isShare ? (
-        <Link size={15} color="#B7BF9C" strokeWidth={2.5} />
+        <Ionicons name="link-outline" size={15} color="#B7BF9C" />
       ) : (
-        <Heart size={15} color="#E05252" fill={type === 'favorite' ? '#E05252' : 'transparent'} strokeWidth={2.5} />
+        <Ionicons name={type === 'favorite' ? 'heart' : 'heart-outline'} size={15} color="#E05252" />
       )}
       <Text style={styles.text}>{message}</Text>
     </Animated.View>

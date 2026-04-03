@@ -1,20 +1,20 @@
 import { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
-import { Wrench, Camera, Bike, Tent, Speaker, Waves, Shirt, Drill, Guitar, Umbrella, Dumbbell, Package } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const ICONS = [
-  { Icon: Wrench, color: '#B7BF9C', bg: '#ECEEE6' },
-  { Icon: Camera, color: '#C4A882', bg: '#F5EFE6' },
-  { Icon: Bike, color: '#B7BF9C', bg: '#ECEEE6' },
-  { Icon: Tent, color: '#C4A882', bg: '#F5EFE6' },
-  { Icon: Speaker, color: '#B7BF9C', bg: '#ECEEE6' },
-  { Icon: Waves, color: '#C4A882', bg: '#F5EFE6' },
-  { Icon: Shirt, color: '#B7BF9C', bg: '#ECEEE6' },
-  { Icon: Drill, color: '#C4A882', bg: '#F5EFE6' },
-  { Icon: Guitar, color: '#B7BF9C', bg: '#ECEEE6' },
-  { Icon: Umbrella, color: '#C4A882', bg: '#F5EFE6' },
-  { Icon: Dumbbell, color: '#B7BF9C', bg: '#ECEEE6' },
-  { Icon: Package, color: '#C4A882', bg: '#F5EFE6' },
+  { iconName: 'construct-outline', color: '#B7BF9C', bg: '#ECEEE6' },
+  { iconName: 'camera-outline', color: '#C4A882', bg: '#F5EFE6' },
+  { iconName: 'bicycle-outline', color: '#B7BF9C', bg: '#ECEEE6' },
+  { iconName: 'home-outline', color: '#C4A882', bg: '#F5EFE6' },
+  { iconName: 'volume-medium-outline', color: '#B7BF9C', bg: '#ECEEE6' },
+  { iconName: 'water-outline', color: '#C4A882', bg: '#F5EFE6' },
+  { iconName: 'shirt-outline', color: '#B7BF9C', bg: '#ECEEE6' },
+  { iconName: 'construct-outline', color: '#C4A882', bg: '#F5EFE6' },
+  { iconName: 'musical-notes-outline', color: '#B7BF9C', bg: '#ECEEE6' },
+  { iconName: 'umbrella-outline', color: '#C4A882', bg: '#F5EFE6' },
+  { iconName: 'barbell-outline', color: '#B7BF9C', bg: '#ECEEE6' },
+  { iconName: 'cube-outline', color: '#C4A882', bg: '#F5EFE6' },
 ];
 
 const BG = '#F5F0E8';
@@ -46,9 +46,9 @@ export default function InfiniteIconStrip() {
   return (
     <View style={styles.wrapper}>
       <Animated.View style={[styles.strip, { transform: [{ translateX }] }]}>
-        {items.map(({ Icon, color, bg }, i) => (
+        {items.map(({ iconName, color, bg }, i) => (
           <View key={i} style={[styles.item, { backgroundColor: bg }]}>
-            <Icon size={22} color={color} strokeWidth={1.8} />
+            <Ionicons name={iconName as any} size={22} color={color} />
           </View>
         ))}
       </Animated.View>

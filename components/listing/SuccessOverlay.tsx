@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -136,7 +136,7 @@ export default function SuccessOverlay({ visible, isEditMode, listingName }: Suc
           <Animated.View style={[styles.ring, { transform: [{ scale: ringScale }], opacity: ringOpacity }]} />
           <View style={styles.circle}>
             <Animated.View style={{ transform: [{ scale: checkScale }], opacity: checkOpacity }}>
-              <Check size={38} color={Colors.white} strokeWidth={3} />
+              <Ionicons name="checkmark-outline" size={38} color={Colors.white} />
             </Animated.View>
           </View>
 

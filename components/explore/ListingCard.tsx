@@ -1,6 +1,6 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MapPin, Heart } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useFavorite } from '@/hooks/useFavorite';
 import ProBadge from '@/components/ProBadge';
@@ -75,11 +75,10 @@ function FavoriteButton({ listingId, userId, listingName }: { listingId: string;
       activeOpacity={0.8}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <Heart
+      <Ionicons
+        name={isFavorite ? 'heart' : 'heart-outline'}
         size={14}
         color={isFavorite ? '#E05252' : 'rgba(255,255,255,0.95)'}
-        fill={isFavorite ? '#E05252' : 'transparent'}
-        strokeWidth={2.5}
       />
     </TouchableOpacity>
   );
@@ -126,7 +125,7 @@ export default function ListingCard({ listing, variant = 'grid', userLat, userLn
         )}
         {distanceText && (
           <View style={styles.distanceBadge}>
-            <MapPin size={9} color={Colors.primaryDark} strokeWidth={2.5} />
+            <Ionicons name="location-outline" size={9} color={Colors.primaryDark} />
             <Text style={styles.distanceText}>{distanceText}</Text>
           </View>
         )}
@@ -143,7 +142,7 @@ export default function ListingCard({ listing, variant = 'grid', userLat, userLn
 
         {cityText && (
           <View style={styles.cityBadge}>
-            <MapPin size={9} color={Colors.primaryDark} strokeWidth={2.5} />
+            <Ionicons name="location-outline" size={9} color={Colors.primaryDark} />
             <Text style={styles.cityBadgeText} numberOfLines={1}>{cityText}</Text>
           </View>
         )}

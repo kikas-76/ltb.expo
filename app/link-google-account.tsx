@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Eye, EyeOff, Link } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 
 const BG = '#F5F0E8';
@@ -83,7 +83,7 @@ export default function LinkGoogleAccountScreen() {
 
         <View style={styles.body}>
           <View style={styles.iconWrap}>
-            <Link size={32} color={GREEN} strokeWidth={2} />
+            <Ionicons name="link-outline" size={32} color={GREEN} />
           </View>
 
           <Text style={styles.title}>Lier votre compte Google</Text>
@@ -127,8 +127,8 @@ export default function LinkGoogleAccountScreen() {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   {showPassword
-                    ? <EyeOff size={18} color="#A8A8A0" />
-                    : <Eye size={18} color="#A8A8A0" />
+                    ? <Ionicons name="eye-off-outline" size={18} color="#A8A8A0" />
+                    : <Ionicons name="eye-outline" size={18} color="#A8A8A0" />
                   }
                 </TouchableOpacity>
               </View>

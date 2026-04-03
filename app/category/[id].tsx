@@ -13,15 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  ArrowLeft,
-  Search,
-  SlidersHorizontal,
-  X,
-  ChevronDown,
-  MapPin,
-  Navigation,
-} from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import ListingCard from '@/components/explore/ListingCard';
@@ -236,7 +228,7 @@ export default function CategoryScreen() {
       </Text>
       {locationLabel ? (
         <View style={styles.locationChip}>
-          <MapPin size={11} color={Colors.primary} strokeWidth={2} />
+          <Ionicons name="location-outline" size={11} color={Colors.primary} />
           <Text style={styles.locationChipText}>{locationLabel}</Text>
         </View>
       ) : null}
@@ -249,7 +241,7 @@ export default function CategoryScreen() {
         style={[styles.topBar, { opacity: headerFade, transform: [{ translateY: headerSlide }] }]}
       >
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
-          <ArrowLeft size={20} color={Colors.text} strokeWidth={2} />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>{name}</Text>
         <View style={styles.backBtn} />
@@ -259,7 +251,7 @@ export default function CategoryScreen() {
         style={[styles.filterBar, { opacity: headerFade, transform: [{ translateY: headerSlide }] }]}
       >
         <View style={styles.searchBox}>
-          <Search size={15} color={Colors.textMuted} strokeWidth={2} />
+          <Ionicons name="search-outline" size={15} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder={`Rechercher dans ${name}…`}
@@ -273,7 +265,7 @@ export default function CategoryScreen() {
               onPress={() => setSearchQuery('')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <X size={14} color={Colors.textMuted} strokeWidth={2} />
+              <Ionicons name="close-outline" size={14} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -289,11 +281,7 @@ export default function CategoryScreen() {
             onPress={() => { setFilters(appliedFilters); setShowPanel(true); }}
             activeOpacity={0.75}
           >
-            <SlidersHorizontal
-              size={13}
-              color={activeFiltersCount > 0 ? Colors.white : Colors.primary}
-              strokeWidth={2}
-            />
+            <Ionicons name="filter-outline" size={13} color={activeFiltersCount > 0 ? Colors.white : Colors.primary} />
             <Text style={[styles.filterChipText, activeFiltersCount > 0 && styles.filterChipTextActive]}>
               Filtres
             </Text>
@@ -315,7 +303,7 @@ export default function CategoryScreen() {
             <Text style={[styles.chipText, appliedFilters.sortKey !== 'recent' && styles.chipTextActive]}>
               {SORT_LABEL[appliedFilters.sortKey]}
             </Text>
-            <ChevronDown size={12} color={appliedFilters.sortKey !== 'recent' ? Colors.white : Colors.primary} strokeWidth={2} />
+            <Ionicons name="chevron-down-outline" size={12} color={appliedFilters.sortKey !== 'recent' ? Colors.white : Colors.primary} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -323,7 +311,7 @@ export default function CategoryScreen() {
             onPress={() => { setFilters(appliedFilters); setShowPanel(true); }}
             activeOpacity={0.75}
           >
-            <Navigation size={12} color={Colors.primary} strokeWidth={2} />
+            <Ionicons name="navigate-outline" size={12} color={Colors.primary} />
             <Text style={styles.chipText}>{locationLabel || 'Zone'}</Text>
           </TouchableOpacity>
 
@@ -359,7 +347,7 @@ export default function CategoryScreen() {
                 ? 'Particulier'
                 : 'Professionnel'}
             </Text>
-            <ChevronDown size={12} color={appliedFilters.ownerType !== 'all' ? Colors.white : Colors.primary} strokeWidth={2} />
+            <Ionicons name="chevron-down-outline" size={12} color={appliedFilters.ownerType !== 'all' ? Colors.white : Colors.primary} />
           </TouchableOpacity>
 
           {activeFiltersCount > 0 && (
@@ -368,7 +356,7 @@ export default function CategoryScreen() {
               onPress={() => { setFilters(DEFAULT_FILTERS); setAppliedFilters(DEFAULT_FILTERS); }}
               activeOpacity={0.7}
             >
-              <X size={12} color={Colors.error} strokeWidth={2.5} />
+              <Ionicons name="close-outline" size={12} color={Colors.error} />
               <Text style={styles.resetChipText}>Effacer</Text>
             </TouchableOpacity>
           )}

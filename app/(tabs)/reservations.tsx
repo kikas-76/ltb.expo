@@ -12,7 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { useResponsive } from '@/hooks/useResponsive';
-import { MessageCircle, CheckCheck, CalendarDays, Package, Bell, Trash2, CircleAlert as AlertCircle, Euro, Wallet, MapPin } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import BookingBadge from '@/components/BookingBadge';
 import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
@@ -144,7 +144,7 @@ function PaymentDeadlineBanner({
         activeOpacity={0.85}
       >
         <View style={styles.payBannerIconWrap}>
-          <Wallet size={13} color="#92400E" strokeWidth={2.5} />
+          <Ionicons name="wallet-outline" size={13} color="#92400E" />
         </View>
         <Text style={styles.payBannerTextOrange} numberOfLines={2}>
           Active ton compte pour procéder au paiement
@@ -161,7 +161,7 @@ function PaymentDeadlineBanner({
       activeOpacity={0.85}
     >
       <View style={styles.payBannerIconWrapGreen}>
-        <Check size={13} color="#FFFFFF" strokeWidth={3} />
+        <Ionicons name="checkmark-outline" size={13} color="#FFFFFF" />
       </View>
       <View style={styles.payBannerGreenBody}>
         <Text style={styles.payBannerTextGreenBold} numberOfLines={1}>
@@ -234,7 +234,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
             <Image source={{ uri: item.listingThumb }} style={styles.listingImage} />
           ) : (
             <View style={styles.listingImageFallback}>
-              <MessageCircle size={22} color={GREEN} strokeWidth={1.5} />
+              <Ionicons name="chatbubble-outline" size={22} color={GREEN} />
             </View>
           )}
           {item.isIncomingRequest && (
@@ -247,7 +247,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
             <View style={styles.cardTopLeft}>
               {item.isIncomingRequest && (
                 <View style={styles.newRequestBadge}>
-                  <Bell size={9} color="#fff" strokeWidth={2.5} />
+                  <Ionicons name="notifications-outline" size={9} color="#fff" />
                   <Text style={styles.newRequestBadgeText}>Nouvelle demande</Text>
                 </View>
               )}
@@ -268,20 +268,20 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
             </Text>
             {item.listingCity && (
               <View style={styles.cityBadge}>
-                <MapPin size={9} color={GREEN_DARK} strokeWidth={2.5} />
+                <Ionicons name="location-outline" size={9} color={GREEN_DARK} />
                 <Text style={styles.cityBadgeText}>{item.listingCity}</Text>
               </View>
             )}
           </View>
 
           <View style={styles.datesRow}>
-            <CalendarDays size={10} color={GREEN_DARK} strokeWidth={2} />
+            <Ionicons name="calendar-outline" size={10} color={GREEN_DARK} />
             <Text style={styles.datesText}>
               {formatDateShort(item.startDate)} → {formatDateShort(item.endDate)}
             </Text>
             {item.totalPrice != null && (
               <View style={styles.totalPriceChip}>
-                <Euro size={9} color={GREEN_DARK} strokeWidth={2.5} />
+                <Ionicons name="cash-outline" size={9} color={GREEN_DARK} />
                 <Text style={styles.totalPriceText}>{item.totalPrice}</Text>
               </View>
             )}
@@ -306,7 +306,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
           <View style={styles.cardBottom}>
             <View style={styles.lastMessageRow}>
               {item.lastMessageIsOwn && (
-                <CheckCheck size={12} color={GREEN_DARK} strokeWidth={2} />
+                <Ionicons name="checkmark-done-outline" size={12} color={GREEN_DARK} />
               )}
               <Text
                 style={[styles.lastMessage, isUnread && styles.lastMessageUnread]}
@@ -328,7 +328,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Trash2 size={14} color="#C0392B" strokeWidth={2} />
+                  <Ionicons name="trash-outline" size={14} color="#C0392B" />
                 </TouchableOpacity>
               )}
             </View>
@@ -575,7 +575,7 @@ export default function MessagesScreen() {
       <View style={[styles.infoBanner, isDesktop && { marginHorizontal: 0 }]}>
         <View style={styles.infoBannerLeft}>
           <View style={styles.infoBannerIconWrap}>
-            <CalendarDays size={20} color="#fff" strokeWidth={2} />
+            <Ionicons name="calendar-outline" size={20} color="#fff" />
           </View>
           <View style={styles.infoBannerBody}>
             <Text style={styles.infoBannerTitle}>Organisez vos locations</Text>
@@ -585,14 +585,14 @@ export default function MessagesScreen() {
           </View>
         </View>
         <View style={styles.infoBannerAccent}>
-          <MessageCircle size={28} color="rgba(255,255,255,0.18)" strokeWidth={1.5} />
+          <Ionicons name="chatbubble-outline" size={28} color="rgba(255,255,255,0.18)" />
         </View>
       </View>
 
       {!loading && conversations.length > 0 && (
         <View style={styles.statsRow}>
           <View style={styles.statChip}>
-            <Package size={14} color={GREEN_DARK} strokeWidth={2} />
+            <Ionicons name="cube-outline" size={14} color={GREEN_DARK} />
             <Text style={styles.statChipText}>
               {conversations.length} échange{conversations.length > 1 ? 's' : ''}
             </Text>
@@ -607,7 +607,7 @@ export default function MessagesScreen() {
       ) : conversations.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIconWrap}>
-            <MessageCircle size={36} color={GREEN} strokeWidth={1.5} />
+            <Ionicons name="chatbubble-outline" size={36} color={GREEN} />
           </View>
           <Text style={styles.emptyTitle}>Aucun message</Text>
           <Text style={styles.emptySubtitle}>
@@ -644,7 +644,7 @@ export default function MessagesScreen() {
       >
         <View style={styles.modalSheet}>
           <View style={styles.modalIconWrap}>
-            <Trash2 size={24} color="#C0392B" strokeWidth={2} />
+            <Ionicons name="trash-outline" size={24} color="#C0392B" />
           </View>
           <Text style={styles.modalTitle}>Supprimer la conversation</Text>
           <Text style={styles.modalDesc}>
@@ -660,7 +660,7 @@ export default function MessagesScreen() {
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
-                <Trash2 size={15} color="#fff" strokeWidth={2} />
+                <Ionicons name="trash-outline" size={15} color="#fff" />
                 <Text style={styles.modalBtnDeleteText}>Supprimer</Text>
               </>
             )}
@@ -714,7 +714,7 @@ export default function MessagesScreen() {
                   <Text style={desktopStyles.detailWith}>Avec {conv.otherUsername}</Text>
                   <BookingBadge status={conv.displayStatus} />
                   <View style={desktopStyles.detailDates}>
-                    <CalendarDays size={14} color={GREEN_DARK} strokeWidth={2} />
+                    <Ionicons name="calendar-outline" size={14} color={GREEN_DARK} />
                     <Text style={desktopStyles.detailDatesText}>
                       {new Date(conv.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                       {' → '}
@@ -723,7 +723,7 @@ export default function MessagesScreen() {
                   </View>
                   {conv.totalPrice != null && (
                     <View style={desktopStyles.detailPrice}>
-                      <Euro size={16} color={GREEN_DARK} strokeWidth={2} />
+                      <Ionicons name="cash-outline" size={16} color={GREEN_DARK} />
                       <Text style={desktopStyles.detailPriceText}>{conv.totalPrice} € total</Text>
                     </View>
                   )}
@@ -737,7 +737,7 @@ export default function MessagesScreen() {
                     activeOpacity={0.85}
                     onPress={() => router.push(`/chat/${selectedConvId}` as any)}
                   >
-                    <MessageCircle size={18} color="#fff" strokeWidth={2} />
+                    <Ionicons name="chatbubble-outline" size={18} color="#fff" />
                     <Text style={desktopStyles.openChatBtnText}>Ouvrir la conversation</Text>
                   </TouchableOpacity>
                 </View>
@@ -746,7 +746,7 @@ export default function MessagesScreen() {
           })() : (
             <View style={desktopStyles.emptyRight}>
               <View style={desktopStyles.emptyRightIcon}>
-                <MessageCircle size={40} color={GREEN} strokeWidth={1.5} />
+                <Ionicons name="chatbubble-outline" size={40} color={GREEN} />
               </View>
               <Text style={desktopStyles.emptyRightTitle}>Sélectionnez une conversation</Text>
               <Text style={desktopStyles.emptyRightSub}>

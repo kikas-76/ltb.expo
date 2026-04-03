@@ -14,7 +14,7 @@ import {
   Easing,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDeepLink } from '@/contexts/DeepLinkContext';
 
@@ -223,8 +223,8 @@ export default function LoginScreen() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               {showPassword
-                ? <EyeOff size={18} color="#A8A8A0" />
-                : <Eye size={18} color="#A8A8A0" />
+                ? <Ionicons name="eye-off-outline" size={18} color="#A8A8A0" />
+                : <Ionicons name="eye-outline" size={18} color="#A8A8A0" />
               }
             </TouchableOpacity>
           </View>

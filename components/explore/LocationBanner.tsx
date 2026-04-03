@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { MapPin, Pencil } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
@@ -18,7 +18,7 @@ export default function LocationBanner({ address }: LocationBannerProps) {
         activeOpacity={0.75}
       >
         <View style={styles.iconWrap}>
-          <MapPin size={16} color={Colors.primaryDark} strokeWidth={2.5} />
+          <Ionicons name="location-outline" size={16} color={Colors.primaryDark} />
         </View>
         <View style={styles.textBlock}>
           <Text style={styles.label}>Votre adresse</Text>
@@ -27,7 +27,7 @@ export default function LocationBanner({ address }: LocationBannerProps) {
           </Text>
         </View>
         <View style={styles.editBtn}>
-          <Pencil size={13} color={Colors.primaryDark} strokeWidth={2} />
+          <Ionicons name="pencil-outline" size={13} color={Colors.primaryDark} />
           <Text style={styles.editText}>Modifier</Text>
         </View>
       </TouchableOpacity>

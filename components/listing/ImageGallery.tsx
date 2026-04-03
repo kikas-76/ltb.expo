@@ -13,7 +13,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import { X, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -98,7 +98,7 @@ function LightboxModal({
       >
         {/* Close button */}
         <TouchableOpacity style={styles.lightboxClose} onPress={handleClose} activeOpacity={0.8}>
-          <X size={20} color="#fff" strokeWidth={2.5} />
+          <Ionicons name="close-outline" size={20} color="#fff" />
         </TouchableOpacity>
 
         {/* Counter */}
@@ -142,12 +142,12 @@ function LightboxModal({
           <>
             {currentIndex > 0 && (
               <TouchableOpacity style={[styles.lightboxArrow, styles.lightboxArrowLeft]} onPress={() => goTo(-1)}>
-                <ChevronLeft size={22} color="#fff" strokeWidth={2.5} />
+                <Ionicons name="chevron-back-outline" size={22} color="#fff" />
               </TouchableOpacity>
             )}
             {currentIndex < photos.length - 1 && (
               <TouchableOpacity style={[styles.lightboxArrow, styles.lightboxArrowRight]} onPress={() => goTo(1)}>
-                <ChevronRight size={22} color="#fff" strokeWidth={2.5} />
+                <Ionicons name="chevron-forward-outline" size={22} color="#fff" />
               </TouchableOpacity>
             )}
           </>
@@ -164,7 +164,7 @@ function LightboxModal({
 
         {/* Zoom hint */}
         <View style={styles.zoomHint}>
-          <ZoomIn size={12} color="rgba(255,255,255,0.6)" strokeWidth={2} />
+          <Ionicons name="expand-outline" size={12} color="rgba(255,255,255,0.6)" />
           <Text style={styles.zoomHintText}>Double-tap pour zoomer</Text>
         </View>
       </Animated.View>
@@ -242,18 +242,18 @@ export default function ImageGallery({ photos, height = 340, onPhotoChange }: Im
 
       {/* Zoom icon hint */}
       <View style={styles.zoomIconHint} pointerEvents="none">
-        <ZoomIn size={14} color="rgba(255,255,255,0.9)" strokeWidth={2} />
+        <Ionicons name="expand-outline" size={14} color="rgba(255,255,255,0.9)" />
       </View>
 
       {/* Prev/Next buttons for multi-photo */}
       {photos.length > 1 && activeIndex > 0 && (
         <TouchableOpacity style={[styles.navArrow, styles.navArrowLeft]} onPress={() => goTo(-1)} activeOpacity={0.85}>
-          <ChevronLeft size={18} color="#fff" strokeWidth={2.5} />
+          <Ionicons name="chevron-back-outline" size={18} color="#fff" />
         </TouchableOpacity>
       )}
       {photos.length > 1 && activeIndex < photos.length - 1 && (
         <TouchableOpacity style={[styles.navArrow, styles.navArrowRight]} onPress={() => goTo(1)} activeOpacity={0.85}>
-          <ChevronRight size={18} color="#fff" strokeWidth={2.5} />
+          <Ionicons name="chevron-forward-outline" size={18} color="#fff" />
         </TouchableOpacity>
       )}
 

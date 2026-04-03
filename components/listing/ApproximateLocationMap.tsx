@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Image, StyleSheet, Platform, LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
-import { MapPin } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { getStaticMapUrl } from '@/lib/googleMaps';
 
@@ -78,7 +78,7 @@ export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLo
 
       <View style={styles.footer}>
         <View style={styles.footerLeft}>
-          <MapPin size={13} color={Colors.primaryDark} strokeWidth={2.5} />
+          <Ionicons name="location-outline" size={13} color={Colors.primaryDark} />
           {city ? (
             <Text style={styles.cityText}>{city}</Text>
           ) : (
