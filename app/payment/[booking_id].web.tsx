@@ -75,7 +75,19 @@ function StripeEmbedForm({
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Inter, -apple-system, sans-serif; background: transparent; padding: 0; }
-  #payment-element { margin-bottom: 16px; }
+  #name-label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
+  #cardholder-name {
+    width: 100%; height: 40px; border-radius: 6px;
+    border: 1px solid #E0E0E0; padding: 0 12px;
+    font-size: 14px; color: #1A1F17; outline: none;
+    margin-bottom: 12px;
+  }
+  #cardholder-name:focus { border-color: #1B4332; box-shadow: 0 0 0 2px rgba(27,67,50,0.12); }
+  #card-element {
+    border: 1px solid #E0E0E0; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 16px;
+    background: #fff;
+  }
   #submit {
     width: 100%; height: 52px; border-radius: 999px;
     background: #1B4332; color: #fff; border: none;
@@ -90,7 +102,9 @@ function StripeEmbedForm({
 </head>
 <body>
 <form id="payment-form">
-  <div id="payment-element"></div>
+  <label id="name-label" for="cardholder-name">Full name</label>
+  <input id="cardholder-name" type="text" placeholder="First and last name" autocomplete="cc-name" />
+  <div id="card-element"></div>
   <button id="submit" type="submit">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     Confirmer le paiement &nbsp;&nbsp;<span style="opacity:0.75">${totalNow} €</span>
@@ -104,32 +118,42 @@ function StripeEmbedForm({
 <script>
 (async function() {
   var stripe = Stripe(${JSON.stringify(publishableKey)});
-  var elements = stripe.elements({ clientSecret: ${JSON.stringify(rentalClientSecret)}, appearance: { theme: 'stripe' } });
-  var paymentElement = elements.create('payment');
-  paymentElement.mount('#payment-element');
+  var elements = stripe.elements();
+  var cardElement = elements.create('card', {
+    style: {
+      base: { fontSize: '14px', color: '#1A1F17', fontFamily: 'Inter, -apple-system, sans-serif', '::placeholder': { color: '#AAAAAA' } },
+      invalid: { color: '#C0392B' }
+    }
+  });
+  cardElement.mount('#card-element');
 
   document.getElementById('payment-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     var btn = document.getElementById('submit');
     var errDiv = document.getElementById('error-msg');
+    var name = document.getElementById('cardholder-name').value.trim();
     btn.disabled = true;
     errDiv.textContent = '';
     window.parent.postMessage({ type: 'stripe_loading', value: true }, '*');
 
     try {
-      var rentalResult = await stripe.confirmPayment({
-        elements,
-        redirect: 'if_required',
+      var rentalResult = await stripe.confirmCardPayment(${JSON.stringify(rentalClientSecret)}, {
+        payment_method: { card: cardElement, billing_details: { name: name || undefined } },
       });
       if (rentalResult.error) throw new Error(rentalResult.error.message);
+      if (rentalResult.paymentIntent.status !== 'succeeded') throw new Error('Paiement location échoué');
 
       var depositSecret = ${JSON.stringify(depositClientSecret)};
       var depositAmt = ${depositAmount};
       if (depositSecret && depositAmt > 0) {
+        var paymentMethodId = rentalResult.paymentIntent.payment_method;
+        var pmId = typeof paymentMethodId === 'string' ? paymentMethodId : (paymentMethodId && paymentMethodId.id);
         var depositResult = await stripe.confirmCardPayment(depositSecret, {
-          payment_method: rentalResult.paymentIntent.payment_method,
+          payment_method: pmId,
         });
         if (depositResult.error) throw new Error(depositResult.error.message);
+        var ds = depositResult.paymentIntent.status;
+        if (ds !== 'requires_capture' && ds !== 'succeeded') throw new Error('Autorisation caution échouée');
       }
 
       window.parent.postMessage({
