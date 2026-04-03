@@ -27,8 +27,6 @@ import FilterPanel, {
   CategoryOption,
 } from '@/components/explore/FilterPanel';
 
-
-
 interface Listing {
   id: string;
   name: string;
@@ -39,9 +37,13 @@ interface Listing {
   latitude: number | null;
   longitude: number | null;
   owner_type: string | null;
+  location_data?: { address?: string; city?: string } | null;
   owner: {
+    id?: string;
     username: string | null;
     photo_url: string | null;
+    is_pro?: boolean;
+    location_data?: { address?: string; city?: string } | null;
   } | null;
 }
 
@@ -69,6 +71,7 @@ export default function SearchScreen() {
   const inputRef = useRef<TextInput>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
@@ -77,6 +80,7 @@ export default function SearchScreen() {
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [showPanel, setShowPanel] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoRequested, setGeoRequested] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(12)).current;
@@ -84,59 +88,71 @@ export default function SearchScreen() {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 240,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 240,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
-
     setTimeout(() => inputRef.current?.focus(), 150);
   }, []);
 
-  useEffect(() => {
+  const requestGeo = useCallback(() => {
+    if (geoRequested) return;
+    setGeoRequested(true);
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
         () => {}
       );
     }
-  }, []);
+  }, [geoRequested]);
 
   useEffect(() => {
     loadCategories();
   }, []);
 
   const loadCategories = async () => {
-    const { data } = await supabase
-      .from('categories')
-      .select('id, name, value')
-      .order('order');
+    const { data } = await supabase.from('categories').select('id, name, value').order('order');
     setCategories(data ?? []);
   };
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const fetchListings = useCallback(async () => {
     setLoading(true);
-
     try {
       let query = supabase
         .from('listings')
-        .select(
-          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
-        )
+        .select('id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)')
         .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
+
+      if (debouncedQuery.trim()) {
+        query = query.ilike('name', `%${debouncedQuery.trim()}%`);
+      }
 
       if (selectedCategoryIds.length > 0) {
         query = query.in('category_id', selectedCategoryIds);
+      }
+
+      if (appliedFilters.ownerType !== 'all') {
+        query = query.eq('owner_type', appliedFilters.ownerType);
+      }
+
+      if (appliedFilters.priceMin !== '') {
+        query = query.gte('price', Number(appliedFilters.priceMin));
+      }
+      if (appliedFilters.priceMax !== '') {
+        query = query.lte('price', Number(appliedFilters.priceMax));
+      }
+
+      if (appliedFilters.sortKey === 'price_asc') {
+        query = query.order('price', { ascending: true });
+      } else if (appliedFilters.sortKey === 'price_desc') {
+        query = query.order('price', { ascending: false });
+      } else {
+        query = query.order('created_at', { ascending: false });
       }
 
       const { data } = await query;
@@ -151,12 +167,17 @@ export default function SearchScreen() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCategoryIds]);
+  }, [debouncedQuery, selectedCategoryIds, appliedFilters]);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchListings(), 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, selectedCategoryIds, fetchListings]);
+    fetchListings();
+  }, [fetchListings]);
+
+  useEffect(() => {
+    if (appliedFilters.locationMode === 'around_me') {
+      requestGeo();
+    }
+  }, [appliedFilters.locationMode, requestGeo]);
 
   const toggleCategory = (id: string) => {
     setSelectedCategoryIds((prev) =>
@@ -177,46 +198,32 @@ export default function SearchScreen() {
     setShowPanel(false);
   };
 
+  const openPanel = () => {
+    setFilters(appliedFilters);
+    setShowPanel(true);
+  };
+
   const getRefCoords = (): { lat: number; lng: number } | null => {
     if (appliedFilters.locationMode === 'around_me') return userCoords;
-    const city = CITIES.find((c) => c.value === appliedFilters.selectedCity);
-    return city ? { lat: city.lat, lng: city.lng } : null;
+    if (appliedFilters.locationMode === 'city') {
+      const city = CITIES.find((c) => c.value === appliedFilters.selectedCity);
+      return city ? { lat: city.lat, lng: city.lng } : null;
+    }
+    return null;
   };
 
   const applyClientFilters = (items: Listing[]): Listing[] => {
     let result = [...items];
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((l) => l.name.toLowerCase().includes(q));
-    }
-
-    if (appliedFilters.ownerType !== 'all') {
-      result = result.filter((l) => l.owner_type === appliedFilters.ownerType);
-    }
-
-    if (appliedFilters.priceMin !== '') {
-      const min = Number(appliedFilters.priceMin);
-      result = result.filter((l) => l.price >= min);
-    }
-    if (appliedFilters.priceMax !== '') {
-      const max = Number(appliedFilters.priceMax);
-      result = result.filter((l) => l.price <= max);
-    }
-
     const ref = getRefCoords();
-    if (ref) {
+    if (ref && appliedFilters.locationMode !== 'none') {
       result = result.filter((l) => {
         if (!l.latitude || !l.longitude) return true;
-        return haversineKm(ref.lat, ref.lng, l.latitude, l.longitude) <= 30;
+        return haversineKm(ref.lat, ref.lng, l.latitude, l.longitude) <= appliedFilters.radiusKm;
       });
     }
 
-    if (appliedFilters.sortKey === 'price_asc') {
-      result.sort((a, b) => a.price - b.price);
-    } else if (appliedFilters.sortKey === 'price_desc') {
-      result.sort((a, b) => b.price - a.price);
-    } else if (appliedFilters.sortKey === 'nearest' && ref) {
+    if (appliedFilters.sortKey === 'nearest' && ref) {
       result.sort((a, b) => {
         const dA = a.latitude && a.longitude ? haversineKm(ref.lat, ref.lng, a.latitude, a.longitude) : 9999;
         const dB = b.latitude && b.longitude ? haversineKm(ref.lat, ref.lng, b.latitude, b.longitude) : 9999;
@@ -228,17 +235,25 @@ export default function SearchScreen() {
   };
 
   const filtered = applyClientFilters(listings);
+
   const activeFiltersCount = [
     appliedFilters.sortKey !== 'recent',
     appliedFilters.ownerType !== 'all',
     appliedFilters.priceMin !== '' || appliedFilters.priceMax !== '',
     selectedCategoryIds.length > 0,
+    appliedFilters.locationMode !== 'none',
   ].filter(Boolean).length;
 
-  const locationLabel =
-    appliedFilters.locationMode === 'around_me'
-      ? 'Autour de moi'
-      : CITIES.find((c) => c.value === appliedFilters.selectedCity)?.label ?? '';
+  const locationChipLabel = () => {
+    if (appliedFilters.locationMode === 'around_me') return `Autour de moi · ${appliedFilters.radiusKm}km`;
+    if (appliedFilters.locationMode === 'city') {
+      const city = CITIES.find((c) => c.value === appliedFilters.selectedCity);
+      return city ? `${city.label} · ${appliedFilters.radiusKm}km` : 'Ville';
+    }
+    return 'Zone';
+  };
+
+  const locationChipActive = appliedFilters.locationMode !== 'none';
 
   const renderItem = ({ item }: { item: Listing }) => (
     <View style={styles.gridItem}>
@@ -252,20 +267,18 @@ export default function SearchScreen() {
         <Text style={styles.resultCountNum}>{filtered.length}</Text>
         {' '}annonce{filtered.length !== 1 ? 's' : ''}
       </Text>
-      {locationLabel ? (
+      {locationChipActive && (
         <View style={styles.locationChip}>
-          <Ionicons name="location-outline" size={11} color={Colors.primary} />
-          <Text style={styles.locationChipText}>{locationLabel}</Text>
+          <Ionicons name="location-outline" size={11} color={Colors.primaryDark} />
+          <Text style={styles.locationChipText}>{locationChipLabel()}</Text>
         </View>
-      ) : null}
+      )}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Animated.View
-        style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
-      >
+      <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
@@ -283,34 +296,21 @@ export default function SearchScreen() {
             autoFocus={false}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearchQuery('')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="close-outline" size={14} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
       </Animated.View>
 
-      <Animated.View
-        style={[styles.chipsBar, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsContent}
-        >
+      <Animated.View style={[styles.chipsBar, { opacity: fadeAnim }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContent}>
           <TouchableOpacity
             style={[styles.filterChip, activeFiltersCount > 0 && styles.filterChipActive]}
-            onPress={() => { setFilters(appliedFilters); setShowPanel(true); }}
+            onPress={openPanel}
             activeOpacity={0.75}
           >
-            <Ionicons
-              name="filter-outline"
-              size={13}
-              color={activeFiltersCount > 0 ? Colors.white : Colors.primary}
-            />
+            <Ionicons name="options-outline" size={13} color={activeFiltersCount > 0 ? Colors.white : Colors.primary} />
             <Text style={[styles.filterChipText, activeFiltersCount > 0 && styles.filterChipTextActive]}>
               Filtres
             </Text>
@@ -323,29 +323,36 @@ export default function SearchScreen() {
 
           <TouchableOpacity
             style={[styles.chip, appliedFilters.sortKey !== 'recent' && styles.chipActive]}
-            onPress={() => { setFilters(appliedFilters); setShowPanel(true); }}
+            onPress={openPanel}
             activeOpacity={0.75}
           >
+            <Ionicons name="swap-vertical-outline" size={12} color={appliedFilters.sortKey !== 'recent' ? Colors.white : Colors.primary} />
             <Text style={[styles.chipText, appliedFilters.sortKey !== 'recent' && styles.chipTextActive]}>
               {SORT_LABEL[appliedFilters.sortKey]}
             </Text>
-            <Ionicons name="chevron-down-outline" size={12} color={appliedFilters.sortKey !== 'recent' ? Colors.white : Colors.primary} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.chip}
-            onPress={() => { setFilters(appliedFilters); setShowPanel(true); }}
+            style={[styles.chip, locationChipActive && styles.chipActive]}
+            onPress={openPanel}
             activeOpacity={0.75}
           >
-            <Ionicons name="navigate-outline" size={12} color={Colors.primary} />
-            <Text style={styles.chipText}>{locationLabel || 'Zone'}</Text>
+            <Ionicons name="location-outline" size={12} color={locationChipActive ? Colors.white : Colors.primary} />
+            <Text style={[styles.chipText, locationChipActive && styles.chipTextActive]}>
+              {locationChipLabel()}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.chip, (appliedFilters.priceMin !== '' || appliedFilters.priceMax !== '') && styles.chipActive]}
-            onPress={() => { setFilters(appliedFilters); setShowPanel(true); }}
+            onPress={openPanel}
             activeOpacity={0.75}
           >
+            <Ionicons
+              name="cash-outline"
+              size={12}
+              color={(appliedFilters.priceMin !== '' || appliedFilters.priceMax !== '') ? Colors.white : Colors.primary}
+            />
             <Text style={[styles.chipText, (appliedFilters.priceMin !== '' || appliedFilters.priceMax !== '') && styles.chipTextActive]}>
               {appliedFilters.priceMin !== '' || appliedFilters.priceMax !== ''
                 ? `${appliedFilters.priceMin || '0'} – ${appliedFilters.priceMax || '∞'} €`
@@ -355,13 +362,17 @@ export default function SearchScreen() {
 
           <TouchableOpacity
             style={[styles.chip, appliedFilters.ownerType !== 'all' && styles.chipActive]}
-            onPress={() => { setFilters(appliedFilters); setShowPanel(true); }}
+            onPress={openPanel}
             activeOpacity={0.75}
           >
+            <Ionicons
+              name={appliedFilters.ownerType === 'professionnel' ? 'business-outline' : 'person-outline'}
+              size={12}
+              color={appliedFilters.ownerType !== 'all' ? Colors.white : Colors.primary}
+            />
             <Text style={[styles.chipText, appliedFilters.ownerType !== 'all' && styles.chipTextActive]}>
               {appliedFilters.ownerType === 'all' ? 'Tous' : appliedFilters.ownerType === 'particulier' ? 'Particulier' : 'Pro'}
             </Text>
-            <Ionicons name="chevron-down-outline" size={12} color={appliedFilters.ownerType !== 'all' ? Colors.white : Colors.primary} />
           </TouchableOpacity>
 
           {activeFiltersCount > 0 && (
@@ -377,9 +388,7 @@ export default function SearchScreen() {
         </ScrollView>
       </Animated.View>
 
-      <Animated.View
-        style={[styles.flex, { opacity: fadeAnim }]}
-      >
+      <Animated.View style={[styles.flex, { opacity: fadeAnim }]}>
         {loading ? (
           <View style={styles.skeletonGrid}>
             {[1, 2, 3, 4].map((i) => (
@@ -466,14 +475,15 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     gap: 8,
     ...Platform.select({
-      ios: { shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 8 },
+      ios: { shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 8 },
       android: { elevation: 3 },
+      web: { boxShadow: `0 2px 8px ${Colors.primary}30` } as any,
     }),
   },
   searchInput: {
     flex: 1,
     fontFamily: 'Inter-Regular',
-    fontSize: 14,
+    fontSize: 16,
     color: Colors.text,
     padding: 0,
   },
@@ -501,8 +511,8 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
+    borderColor: Colors.primaryDark,
   },
   filterChipText: {
     fontFamily: 'Inter-SemiBold',
@@ -524,12 +534,12 @@ const styles = StyleSheet.create({
   filterBadgeText: {
     fontFamily: 'Inter-Bold',
     fontSize: 10,
-    color: Colors.primary,
+    color: Colors.primaryDark,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: Colors.white,
     borderRadius: 999,
     borderWidth: 1,
@@ -591,7 +601,7 @@ const styles = StyleSheet.create({
   locationChipText: {
     fontFamily: 'Inter-Medium',
     fontSize: 11,
-    color: Colors.primary,
+    color: Colors.primaryDark,
   },
   skeletonGrid: {
     flexDirection: 'row',

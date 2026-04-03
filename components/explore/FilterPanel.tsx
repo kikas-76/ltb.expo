@@ -15,12 +15,25 @@ import { Colors } from '@/constants/colors';
 
 export type SortKey = 'recent' | 'price_asc' | 'price_desc' | 'nearest';
 export type OwnerType = 'all' | 'particulier' | 'professionnel';
-export type LocationMode = 'around_me' | 'city';
+export type LocationMode = 'around_me' | 'city' | 'none';
 
 export const CITIES: { label: string; value: string; lat: number; lng: number }[] = [
+  { label: 'Paris', value: 'paris', lat: 48.8566, lng: 2.3522 },
   { label: 'Lyon', value: 'lyon', lat: 45.7640, lng: 4.8357 },
+  { label: 'Marseille', value: 'marseille', lat: 43.2965, lng: 5.3698 },
+  { label: 'Bordeaux', value: 'bordeaux', lat: 44.8378, lng: -0.5792 },
+  { label: 'Toulouse', value: 'toulouse', lat: 43.6047, lng: 1.4442 },
+  { label: 'Nantes', value: 'nantes', lat: 47.2184, lng: -1.5536 },
   { label: 'Reims', value: 'reims', lat: 49.2583, lng: 4.0317 },
   { label: 'Rouen', value: 'rouen', lat: 49.4432, lng: 1.0993 },
+];
+
+export const RADIUS_OPTIONS: { label: string; value: number }[] = [
+  { label: '5 km', value: 5 },
+  { label: '10 km', value: 10 },
+  { label: '30 km', value: 30 },
+  { label: '50 km', value: 50 },
+  { label: '100 km', value: 100 },
 ];
 
 export interface FilterState {
@@ -28,6 +41,7 @@ export interface FilterState {
   ownerType: OwnerType;
   locationMode: LocationMode;
   selectedCity: string;
+  radiusKm: number;
   priceMin: string;
   priceMax: string;
 }
@@ -52,8 +66,9 @@ interface FilterPanelProps {
 export const DEFAULT_FILTERS: FilterState = {
   sortKey: 'recent',
   ownerType: 'all',
-  locationMode: 'around_me',
-  selectedCity: 'lyon',
+  locationMode: 'none',
+  selectedCity: '',
+  radiusKm: 30,
   priceMin: '',
   priceMax: '',
 };
@@ -62,16 +77,17 @@ export function hasActiveFilters(f: FilterState): boolean {
   return (
     f.sortKey !== 'recent' ||
     f.ownerType !== 'all' ||
+    f.locationMode !== 'none' ||
     f.priceMin !== '' ||
     f.priceMax !== ''
   );
 }
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'recent', label: 'Plus récentes' },
-  { key: 'nearest', label: 'Plus proches' },
-  { key: 'price_asc', label: 'Prix croissant' },
-  { key: 'price_desc', label: 'Prix décroissant' },
+const SORT_OPTIONS: { key: SortKey; label: string; icon: string }[] = [
+  { key: 'recent', label: 'Plus récentes', icon: 'time-outline' },
+  { key: 'nearest', label: 'Plus proches', icon: 'location-outline' },
+  { key: 'price_asc', label: 'Prix croissant', icon: 'trending-up-outline' },
+  { key: 'price_desc', label: 'Prix décroissant', icon: 'trending-down-outline' },
 ];
 
 const CATEGORY_ICONS: Record<string, { iconName: string; bg: string; iconColor: string }> = {
@@ -97,11 +113,13 @@ export default function FilterPanel({
   selectedCategoryIds = [],
   onToggleCategory,
 }: FilterPanelProps) {
-  const translateY = useRef(new Animated.Value(700)).current;
+  const translateY = useRef(new Animated.Value(800)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const isRendered = useRef(false);
 
   useEffect(() => {
     if (visible) {
+      isRendered.current = true;
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: 0,
@@ -118,7 +136,7 @@ export default function FilterPanel({
     } else {
       Animated.parallel([
         Animated.timing(translateY, {
-          toValue: 700,
+          toValue: 800,
           duration: 260,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
@@ -132,7 +150,7 @@ export default function FilterPanel({
     }
   }, [visible]);
 
-  if (!visible && (translateY as any)._value === 700) return null;
+  if (!visible && !isRendered.current) return null;
 
   const set = (patch: Partial<FilterState>) =>
     onFiltersChange({ ...filters, ...patch });
@@ -142,7 +160,13 @@ export default function FilterPanel({
     filters.ownerType !== 'all',
     filters.priceMin !== '' || filters.priceMax !== '',
     selectedCategoryIds.length > 0,
+    filters.locationMode !== 'none',
   ].filter(Boolean).length;
+
+  const priceInvalid =
+    filters.priceMin !== '' &&
+    filters.priceMax !== '' &&
+    Number(filters.priceMin) > Number(filters.priceMax);
 
   return (
     <View style={styles.overlay} pointerEvents={visible ? 'auto' : 'none'}>
@@ -167,20 +191,39 @@ export default function FilterPanel({
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-
-          {/* ZONE DE RECHERCHE — EN PREMIER */}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ZONE DE RECHERCHE */}
           <View style={styles.section}>
-            <View style={styles.sectionLabelRow}>
-              <View style={styles.sectionDot} />
-              <Text style={styles.sectionLabel}>Zone de recherche</Text>
-            </View>
+            <SectionLabel label="Zone de recherche" />
+
             <View style={styles.locationToggle}>
               <TouchableOpacity
-                style={[
-                  styles.locationTab,
-                  filters.locationMode === 'around_me' && styles.locationTabActive,
-                ]}
+                style={[styles.locationTab, filters.locationMode === 'none' && styles.locationTabActive]}
+                onPress={() => set({ locationMode: 'none' })}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.locationIconWrap, filters.locationMode === 'none' && styles.locationIconWrapActive]}>
+                  <Ionicons name="earth-outline" size={15} color={filters.locationMode === 'none' ? Colors.white : Colors.primary} />
+                </View>
+                <View style={styles.locationTabContent}>
+                  <Text style={[styles.locationTabTitle, filters.locationMode === 'none' && styles.locationTabTitleActive]}>
+                    Toute la France
+                  </Text>
+                  <Text style={[styles.locationTabSub, filters.locationMode === 'none' && styles.locationTabSubActive]}>
+                    Sans restriction géographique
+                  </Text>
+                </View>
+                {filters.locationMode === 'none' && (
+                  <Ionicons name="checkmark-circle-outline" size={16} color={Colors.primary} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.locationTab, filters.locationMode === 'around_me' && styles.locationTabActive]}
                 onPress={() => set({ locationMode: 'around_me' })}
                 activeOpacity={0.8}
               >
@@ -196,16 +239,13 @@ export default function FilterPanel({
                   </Text>
                 </View>
                 {filters.locationMode === 'around_me' && (
-                  <Ionicons name="checkmark-outline" size={15} color={Colors.primary} />
+                  <Ionicons name="checkmark-circle-outline" size={16} color={Colors.primary} />
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.locationTab,
-                  filters.locationMode === 'city' && styles.locationTabActive,
-                ]}
-                onPress={() => set({ locationMode: 'city' })}
+                style={[styles.locationTab, filters.locationMode === 'city' && styles.locationTabActive]}
+                onPress={() => set({ locationMode: 'city', selectedCity: filters.selectedCity || 'paris' })}
                 activeOpacity={0.8}
               >
                 <View style={[styles.locationIconWrap, filters.locationMode === 'city' && styles.locationIconWrapActive]}>
@@ -216,17 +256,17 @@ export default function FilterPanel({
                     Choisir une ville
                   </Text>
                   <Text style={[styles.locationTabSub, filters.locationMode === 'city' && styles.locationTabSubActive]}>
-                    Lyon, Reims, Rouen
+                    {CITIES.map((c) => c.label).slice(0, 3).join(', ')}…
                   </Text>
                 </View>
                 {filters.locationMode === 'city' && (
-                  <Ionicons name="checkmark-outline" size={15} color={Colors.primary} />
+                  <Ionicons name="checkmark-circle-outline" size={16} color={Colors.primary} />
                 )}
               </TouchableOpacity>
             </View>
 
             {filters.locationMode === 'city' && (
-              <View style={styles.cityRow}>
+              <View style={styles.cityGrid}>
                 {CITIES.map((city) => (
                   <TouchableOpacity
                     key={city.value}
@@ -237,16 +277,34 @@ export default function FilterPanel({
                     onPress={() => set({ selectedCity: city.value })}
                     activeOpacity={0.8}
                   >
-                    <Text
-                      style={[
-                        styles.cityChipText,
-                        filters.selectedCity === city.value && styles.cityChipTextActive,
-                      ]}
-                    >
+                    <Text style={[styles.cityChipText, filters.selectedCity === city.value && styles.cityChipTextActive]}>
                       {city.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+            )}
+
+            {filters.locationMode !== 'none' && (
+              <View style={styles.radiusSection}>
+                <Text style={styles.radiusLabel}>
+                  Rayon de recherche
+                  <Text style={styles.radiusValue}> — {filters.radiusKm} km</Text>
+                </Text>
+                <View style={styles.radiusRow}>
+                  {RADIUS_OPTIONS.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[styles.radiusChip, filters.radiusKm === opt.value && styles.radiusChipActive]}
+                      onPress={() => set({ radiusKm: opt.value })}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.radiusChipText, filters.radiusKm === opt.value && styles.radiusChipTextActive]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             )}
           </View>
@@ -255,28 +313,28 @@ export default function FilterPanel({
 
           {/* TRIER PAR */}
           <View style={styles.section}>
-            <View style={styles.sectionLabelRow}>
-              <View style={styles.sectionDot} />
-              <Text style={styles.sectionLabel}>Trier par</Text>
-            </View>
+            <SectionLabel label="Trier par" />
             <View style={styles.sortGrid}>
-              {SORT_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.key}
-                  style={[styles.sortCard, filters.sortKey === opt.key && styles.sortCardActive]}
-                  onPress={() => set({ sortKey: opt.key })}
-                  activeOpacity={0.75}
-                >
-                  {filters.sortKey === opt.key && (
-                    <View style={styles.sortCardCheck}>
-                      <Ionicons name="checkmark-outline" size={10} color={Colors.white} />
-                    </View>
-                  )}
-                  <Text style={[styles.sortCardText, filters.sortKey === opt.key && styles.sortCardTextActive]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {SORT_OPTIONS.map((opt) => {
+                const active = filters.sortKey === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[styles.sortCard, active && styles.sortCardActive]}
+                    onPress={() => set({ sortKey: opt.key })}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons
+                      name={opt.icon as any}
+                      size={14}
+                      color={active ? Colors.white : Colors.primary}
+                    />
+                    <Text style={[styles.sortCardText, active && styles.sortCardTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -284,37 +342,33 @@ export default function FilterPanel({
 
           {/* TYPE D'ANNONCEUR */}
           <View style={styles.section}>
-            <View style={styles.sectionLabelRow}>
-              <View style={styles.sectionDot} />
-              <Text style={styles.sectionLabel}>Type d'annonceur</Text>
-            </View>
+            <SectionLabel label="Type d'annonceur" />
             <View style={styles.ownerRow}>
               {[
-                { key: 'all' as OwnerType, label: 'Tous', sub: 'Voir tout', iconName: null },
+                { key: 'all' as OwnerType, label: 'Tous', sub: 'Voir tout', iconName: 'apps-outline' },
                 { key: 'particulier' as OwnerType, label: 'Particulier', sub: 'Non professionnel', iconName: 'person-outline' },
                 { key: 'professionnel' as OwnerType, label: 'Pro', sub: 'Certifié', iconName: 'business-outline' },
-              ].map(({ key, label, sub, iconName }) => (
-                <TouchableOpacity
-                  key={key}
-                  style={[styles.ownerCard, filters.ownerType === key && styles.ownerCardActive]}
-                  onPress={() => set({ ownerType: key })}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.ownerIconWrap, filters.ownerType === key && styles.ownerIconWrapActive]}>
-                    {iconName ? (
-                      <Ionicons name={iconName as any} size={16} color={filters.ownerType === key ? Colors.white : Colors.primary} />
-                    ) : (
-                      <View style={[styles.ownerAllDot, filters.ownerType === key && styles.ownerAllDotActive]} />
-                    )}
-                  </View>
-                  <Text style={[styles.ownerCardText, filters.ownerType === key && styles.ownerCardTextActive]}>
-                    {label}
-                  </Text>
-                  <Text style={[styles.ownerCardSub, filters.ownerType === key && styles.ownerCardSubActive]}>
-                    {sub}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              ].map(({ key, label, sub, iconName }) => {
+                const active = filters.ownerType === key;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.ownerCard, active && styles.ownerCardActive]}
+                    onPress={() => set({ ownerType: key })}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.ownerIconWrap, active && styles.ownerIconWrapActive]}>
+                      <Ionicons name={iconName as any} size={16} color={active ? Colors.white : Colors.primary} />
+                    </View>
+                    <Text style={[styles.ownerCardText, active && styles.ownerCardTextActive]}>
+                      {label}
+                    </Text>
+                    <Text style={[styles.ownerCardSub, active && styles.ownerCardSubActive]}>
+                      {sub}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -322,10 +376,7 @@ export default function FilterPanel({
 
           {/* PRIX */}
           <View style={styles.section}>
-            <View style={styles.sectionLabelRow}>
-              <View style={styles.sectionDot} />
-              <Text style={styles.sectionLabel}>Budget (€ / jour)</Text>
-            </View>
+            <SectionLabel label="Budget (€ / jour)" />
             <View style={styles.priceRow}>
               <View style={[styles.priceInputWrap, filters.priceMin !== '' && styles.priceInputWrapActive]}>
                 <Text style={styles.priceLabel}>Min</Text>
@@ -339,10 +390,13 @@ export default function FilterPanel({
                     value={filters.priceMin}
                     onChangeText={(v) => set({ priceMin: v.replace(/[^0-9]/g, '') })}
                   />
+                  {filters.priceMin !== '' && (
+                    <Text style={styles.priceCurrency}>€</Text>
+                  )}
                 </View>
               </View>
               <View style={styles.priceDivider}>
-                <View style={styles.priceDividerLine} />
+                <Ionicons name="arrow-forward-outline" size={14} color={Colors.border} />
               </View>
               <View style={[styles.priceInputWrap, filters.priceMax !== '' && styles.priceInputWrapActive]}>
                 <Text style={styles.priceLabel}>Max</Text>
@@ -356,14 +410,18 @@ export default function FilterPanel({
                     value={filters.priceMax}
                     onChangeText={(v) => set({ priceMax: v.replace(/[^0-9]/g, '') })}
                   />
+                  {filters.priceMax !== '' && (
+                    <Text style={styles.priceCurrency}>€</Text>
+                  )}
                 </View>
               </View>
             </View>
-
-            {filters.priceMin !== '' && filters.priceMax !== '' &&
-              Number(filters.priceMin) > Number(filters.priceMax) && (
+            {priceInvalid && (
+              <View style={styles.priceErrorRow}>
+                <Ionicons name="warning-outline" size={13} color={Colors.error} />
                 <Text style={styles.priceError}>Le minimum doit être inférieur au maximum</Text>
-              )}
+              </View>
+            )}
           </View>
 
           {categories.length > 0 && (
@@ -423,14 +481,33 @@ export default function FilterPanel({
             onPress={() => onFiltersChange(DEFAULT_FILTERS)}
             activeOpacity={0.7}
           >
+            <Ionicons name="refresh-outline" size={14} color={Colors.textSecondary} />
             <Text style={styles.resetBtnText}>Réinitialiser</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[styles.applyBtn, priceInvalid && styles.applyBtnDisabled]}
+            onPress={priceInvalid ? undefined : onApply}
+            activeOpacity={0.85}
+          >
             <Text style={styles.applyBtnText}>Voir les résultats</Text>
+            {activeCount > 0 && (
+              <View style={styles.applyBadge}>
+                <Text style={styles.applyBadgeText}>{activeCount}</Text>
+              </View>
+            )}
             <Ionicons name="chevron-forward-outline" size={15} color={Colors.background} />
           </TouchableOpacity>
         </View>
       </Animated.View>
+    </View>
+  );
+}
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <View style={styles.sectionLabelRow}>
+      <View style={styles.sectionDot} />
+      <Text style={styles.sectionLabel}>{label}</Text>
     </View>
   );
 }
@@ -443,21 +520,17 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20,18,14,0.5)',
+    backgroundColor: 'rgba(20,18,14,0.52)',
   },
   panel: {
     backgroundColor: Colors.background,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: '90%',
+    maxHeight: '92%',
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 20,
-      },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.14, shadowRadius: 20 },
       android: { elevation: 20 },
+      web: { boxShadow: '0 -4px 24px rgba(0,0,0,0.12)' } as any,
     }),
   },
   handleBar: {
@@ -515,7 +588,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   section: {
-    paddingVertical: 22,
+    paddingVertical: 20,
   },
   sectionLabelRow: {
     flexDirection: 'row',
@@ -535,6 +608,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+    flex: 1,
   },
   divider: {
     height: 1,
@@ -590,18 +664,19 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   locationTabSubActive: {
-    color: Colors.primary,
+    color: Colors.primaryDark,
   },
-  cityRow: {
+
+  cityGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginTop: 12,
   },
   cityChip: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 11,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
     borderWidth: 1.5,
     borderColor: Colors.border,
     backgroundColor: Colors.white,
@@ -616,6 +691,45 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   cityChipTextActive: {
+    color: Colors.white,
+  },
+
+  radiusSection: {
+    marginTop: 14,
+    gap: 10,
+  },
+  radiusLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  radiusValue: {
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.primaryDark,
+  },
+  radiusRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  radiusChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+  },
+  radiusChipActive: {
+    backgroundColor: Colors.primaryDark,
+    borderColor: Colors.primaryDark,
+  },
+  radiusChipText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  radiusChipTextActive: {
     color: Colors.white,
   },
 
@@ -639,14 +753,6 @@ const styles = StyleSheet.create({
   sortCardActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
-  },
-  sortCardCheck: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   sortCardText: {
     fontFamily: 'Inter-Medium',
@@ -687,17 +793,6 @@ const styles = StyleSheet.create({
   },
   ownerIconWrapActive: {
     backgroundColor: Colors.primary,
-  },
-  ownerAllDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-  },
-  ownerAllDotActive: {
-    backgroundColor: Colors.white,
-    borderColor: Colors.white,
   },
   ownerCardText: {
     fontFamily: 'Inter-SemiBold',
@@ -756,22 +851,26 @@ const styles = StyleSheet.create({
     color: Colors.text,
     padding: 0,
   },
+  priceCurrency: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
   priceDivider: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 4,
   },
-  priceDividerLine: {
-    width: 16,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: Colors.border,
+  priceErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
   },
   priceError: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: Colors.error,
-    marginTop: 8,
   },
 
   /* Categories */
@@ -823,7 +922,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   resetBtn: {
-    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 1.5,
@@ -843,11 +945,27 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
+  },
+  applyBtnDisabled: {
+    opacity: 0.45,
   },
   applyBtnText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: Colors.background,
+    color: Colors.white,
+  },
+  applyBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  applyBadgeText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 10,
+    color: Colors.white,
   },
 });

@@ -289,11 +289,12 @@ export default function CreateListingScreen() {
 
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('location_data')
+      .select('location_data, is_pro')
       .eq('id', user.id)
       .maybeSingle();
     const lat = profileData?.location_data?.lat ?? null;
     const lng = profileData?.location_data?.lng ?? null;
+    const ownerType = profileData?.is_pro ? 'professionnel' : 'particulier';
 
     const { error: insertError } = await supabase.from('listings').insert({
       owner_id: user.id,
@@ -307,6 +308,7 @@ export default function CreateListingScreen() {
       is_active: true,
       latitude: lat,
       longitude: lng,
+      owner_type: ownerType,
     });
     setSubmitting(false);
     if (insertError) { setError(insertError.message); return; }
