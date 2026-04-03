@@ -1943,7 +1943,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontFamily: 'Inter-Regular',
-    fontSize: 15,
+    fontSize: 16,
     color: Colors.text,
     maxHeight: 120,
     borderWidth: 1,

@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   inputFlex: {
     flex: 1,
     height: '100%',
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#1C1C18',
   },

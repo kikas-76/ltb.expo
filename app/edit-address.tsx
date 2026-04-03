@@ -398,9 +398,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   inputRowGPS: { borderColor: GREEN, backgroundColor: '#ECEEE6' },
-  gpsLabel: { flex: 1, fontSize: 15, fontFamily: 'Inter-SemiBold', color: GREEN },
+  gpsLabel: { flex: 1, fontSize: 16, fontFamily: 'Inter-SemiBold', color: GREEN },
   inputIcon: { flexShrink: 0 },
-  inputFlex: { flex: 1, height: '100%', fontSize: 15, fontFamily: 'Inter-Regular', color: '#1C1C18' },
+  inputFlex: { flex: 1, height: '100%', fontSize: 16, fontFamily: 'Inter-Regular', color: '#1C1C18' },
   suggestionsBox: {
     backgroundColor: '#fff',
     borderRadius: 16,
