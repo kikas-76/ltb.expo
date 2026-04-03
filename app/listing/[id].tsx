@@ -238,19 +238,31 @@ export default function ListingDetailScreen() {
         }
       }
 
-      const { data: bookedConvs } = await supabase
+      const { data: activeBookings } = await supabase
+        .from('bookings')
+        .select('start_date, end_date, status')
+        .eq('listing_id', id)
+        .in('status', ['accepted', 'active', 'in_progress', 'pending_return', 'pending_owner_validation']);
+
+      const { data: pendingConvs } = await supabase
         .from('conversations')
         .select('start_date, end_date')
         .eq('listing_id', id)
-        .in('status', ['pending', 'accepted']);
+        .eq('status', 'pending');
 
-      if (bookedConvs) {
-        setBookedRanges(
-          bookedConvs.map((c: any) => ({
-            start: new Date(c.start_date + 'T00:00:00'),
-            end: new Date(c.end_date + 'T00:00:00'),
-          }))
-        );
+      const allBookedRanges = [
+        ...(activeBookings ?? []).map((b: any) => ({
+          start: new Date(b.start_date.split('T')[0] + 'T00:00:00'),
+          end: new Date(b.end_date.split('T')[0] + 'T00:00:00'),
+        })),
+        ...(pendingConvs ?? []).map((c: any) => ({
+          start: new Date(c.start_date + 'T00:00:00'),
+          end: new Date(c.end_date + 'T00:00:00'),
+        })),
+      ];
+
+      if (allBookedRanges.length > 0) {
+        setBookedRanges(allBookedRanges);
       }
     }
     setLoading(false);
