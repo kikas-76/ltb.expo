@@ -30,6 +30,12 @@ const CATEGORY_STYLES: Record<
   vetements: { bg: '#FFD6D6', iconColor: '#B85050', iconName: 'shirt-outline' },
   enfants: { bg: '#EDD6FF', iconColor: '#8050B8', iconName: 'happy-outline' },
   autre: { bg: '#E8E5D8', iconColor: '#7A7A6A', iconName: 'cube-outline' },
+  mobilite: { bg: '#D6F0E8', iconColor: '#3A8C6A', iconName: 'bicycle-outline' },
+  hightech: { bg: '#D6E0FF', iconColor: '#4A5EC7', iconName: 'game-controller-outline' },
+  musique: { bg: '#FFE8F0', iconColor: '#C04070', iconName: 'musical-notes-outline' },
+  cuisine: { bg: '#FFF0D6', iconColor: '#C08030', iconName: 'restaurant-outline' },
+  camping: { bg: '#E0F0D6', iconColor: '#5A9040', iconName: 'compass-outline' },
+  pro: { bg: '#E8E0D6', iconColor: '#8A6A50', iconName: 'briefcase-outline' },
 };
 
 const DEFAULT_STYLE = { bg: '#E8E5D8', iconColor: '#7A7A6A', iconName: 'cube-outline' };

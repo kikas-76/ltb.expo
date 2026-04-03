@@ -63,6 +63,12 @@ const CATEGORY_ICONS: Record<string, { iconName: string; bg: string; iconColor: 
   vetements: { iconName: 'shirt-outline', bg: '#FFD6D6', iconColor: '#B85050' },
   enfants: { iconName: 'happy-outline', bg: '#EDD6FF', iconColor: '#8050B8' },
   autre: { iconName: 'cube-outline', bg: '#E8E5D8', iconColor: '#7A7A6A' },
+  mobilite: { iconName: 'bicycle-outline', bg: '#D6F0E8', iconColor: '#3A8C6A' },
+  hightech: { iconName: 'game-controller-outline', bg: '#D6E0FF', iconColor: '#4A5EC7' },
+  musique: { iconName: 'musical-notes-outline', bg: '#FFE8F0', iconColor: '#C04070' },
+  cuisine: { iconName: 'restaurant-outline', bg: '#FFF0D6', iconColor: '#C08030' },
+  camping: { iconName: 'compass-outline', bg: '#E0F0D6', iconColor: '#5A9040' },
+  pro: { iconName: 'briefcase-outline', bg: '#E8E0D6', iconColor: '#8A6A50' },
 };
 const DEFAULT_CAT_ICON = { iconName: 'cube-outline', bg: '#E8E5D8', iconColor: '#7A7A6A' };
 
@@ -70,6 +76,13 @@ interface Category {
   id: string;
   name: string;
   value: string;
+}
+
+interface Subcategory {
+  id: string;
+  name: string;
+  value: string;
+  category_id: string;
 }
 
 interface PhotoItem {
@@ -94,6 +107,9 @@ export default function CreateListingScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
+  const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
 
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
 
@@ -117,7 +133,8 @@ export default function CreateListingScreen() {
     const { data } = await supabase
       .from('listings')
       .select(`id, name, description, price, deposit_amount, photos_url,
-        category:categories!listings_category_id_fkey(id, name, value)`)
+        category:categories!listings_category_id_fkey(id, name, value),
+        subcategory:subcategories!listings_subcategory_id_fkey(id, name, value, category_id)`)
       .eq('id', editId)
       .maybeSingle();
 
@@ -128,7 +145,11 @@ export default function CreateListingScreen() {
       setDeposit(data.deposit_amount ? String(data.deposit_amount) : '');
 
       const cat = Array.isArray(data.category) ? data.category[0] : data.category;
-      if (cat) setSelectedCategory(cat as Category);
+      if (cat) {
+        setSelectedCategory(cat as Category);
+        const sub = Array.isArray(data.subcategory) ? data.subcategory[0] : data.subcategory;
+        if (sub) setSelectedSubcategory(sub as Subcategory);
+      }
 
       if (data.photos_url && data.photos_url.length > 0) {
         setPhotos(
@@ -153,6 +174,25 @@ export default function CreateListingScreen() {
       .order('order');
     setCategories(data ?? []);
     setCategoriesLoading(false);
+  };
+
+  const loadSubcategories = async (categoryId: string) => {
+    setSubcategoriesLoading(true);
+    setSelectedSubcategory(null);
+    const { data } = await supabase
+      .from('subcategories')
+      .select('id, name, value, category_id')
+      .eq('category_id', categoryId)
+      .order('order');
+    setSubcategories(data ?? []);
+    setSubcategoriesLoading(false);
+  };
+
+  const handleSelectCategory = (cat: Category) => {
+    setSelectedCategory(cat);
+    setSelectedSubcategory(null);
+    setSubcategories([]);
+    loadSubcategories(cat.id);
   };
 
   const canAdvance = () => {
@@ -276,6 +316,8 @@ export default function CreateListingScreen() {
         description: description.trim(),
         category_id: selectedCategory?.id ?? null,
         category_name: selectedCategory?.name ?? null,
+        subcategory_id: selectedSubcategory?.id ?? null,
+        subcategory_name: selectedSubcategory?.name ?? null,
         price: priceNum,
         deposit_amount: depositNum,
         photos_url: photoUrls,
@@ -302,6 +344,8 @@ export default function CreateListingScreen() {
       description: description.trim(),
       category_id: selectedCategory?.id ?? null,
       category_name: selectedCategory?.name ?? null,
+      subcategory_id: selectedSubcategory?.id ?? null,
+      subcategory_name: selectedSubcategory?.name ?? null,
       price: priceNum,
       deposit_amount: depositNum,
       photos_url: photoUrls,
@@ -426,32 +470,66 @@ export default function CreateListingScreen() {
                   <ActivityIndicator color={Colors.primary} />
                 </View>
               ) : (
-                <View style={styles.categoryGrid}>
-                  {categories.map((cat) => {
-                    const isSelected = selectedCategory?.id === cat.id;
-                    const cs = CATEGORY_ICONS[cat.value] ?? DEFAULT_CAT_ICON;
-                    return (
-                      <TouchableOpacity
-                        key={cat.id}
-                        style={[styles.categoryCard, isSelected && styles.categoryCardSelected]}
-                        onPress={() => setSelectedCategory(cat)}
-                        activeOpacity={0.75}
-                      >
-                        <View style={[styles.categoryIconWrap, { backgroundColor: isSelected ? Colors.primary + '22' : cs.bg }]}>
-                          <Ionicons name={cs.iconName as any} size={30} color={isSelected ? Colors.primaryDark : cs.iconColor} />
-                        </View>
-                        <Text style={[styles.categoryName, isSelected && styles.categoryNameSelected]}>
-                          {cat.name}
-                        </Text>
-                        {isSelected && (
-                          <View style={styles.categoryCheckBadge}>
-                            <Ionicons name="checkmark-outline" size={10} color={Colors.white} />
+                <>
+                  <View style={styles.categoryGrid}>
+                    {categories.map((cat) => {
+                      const isSelected = selectedCategory?.id === cat.id;
+                      const cs = CATEGORY_ICONS[cat.value] ?? DEFAULT_CAT_ICON;
+                      return (
+                        <TouchableOpacity
+                          key={cat.id}
+                          style={[styles.categoryCard, isSelected && styles.categoryCardSelected]}
+                          onPress={() => handleSelectCategory(cat)}
+                          activeOpacity={0.75}
+                        >
+                          <View style={[styles.categoryIconWrap, { backgroundColor: isSelected ? Colors.primary + '22' : cs.bg }]}>
+                            <Ionicons name={cs.iconName as any} size={30} color={isSelected ? Colors.primaryDark : cs.iconColor} />
                           </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                          <Text style={[styles.categoryName, isSelected && styles.categoryNameSelected]}>
+                            {cat.name}
+                          </Text>
+                          {isSelected && (
+                            <View style={styles.categoryCheckBadge}>
+                              <Ionicons name="checkmark-outline" size={10} color={Colors.white} />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {selectedCategory && (
+                    <View style={styles.subcategorySection}>
+                      <Text style={styles.subcategoryLabel}>
+                        Sous-catégorie <Text style={styles.subcategoryOptional}>(facultatif)</Text>
+                      </Text>
+                      {subcategoriesLoading ? (
+                        <ActivityIndicator color={Colors.primary} style={{ marginTop: 8 }} />
+                      ) : (
+                        <View style={styles.subcategoryList}>
+                          {subcategories.map((sub) => {
+                            const isSel = selectedSubcategory?.id === sub.id;
+                            return (
+                              <TouchableOpacity
+                                key={sub.id}
+                                style={[styles.subcategoryChip, isSel && styles.subcategoryChipSelected]}
+                                onPress={() => setSelectedSubcategory(isSel ? null : sub)}
+                                activeOpacity={0.75}
+                              >
+                                <Text style={[styles.subcategoryChipText, isSel && styles.subcategoryChipTextSelected]}>
+                                  {sub.name}
+                                </Text>
+                                {isSel && (
+                                  <Ionicons name="checkmark-outline" size={12} color={Colors.primaryDark} style={{ marginLeft: 4 }} />
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </>
               )}
             </View>
           )}
@@ -969,6 +1047,55 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  subcategorySection: {
+    marginTop: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  subcategoryLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  subcategoryOptional: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  subcategoryList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  subcategoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    ...Platform.select({
+      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
+    }),
+  },
+  subcategoryChipSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight + '25',
+  },
+  subcategoryChipText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.text,
+  },
+  subcategoryChipTextSelected: {
+    fontFamily: 'Inter-Medium',
+    color: Colors.primaryDark,
   },
 
   /* Photos */
