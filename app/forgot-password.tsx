@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
 
 const BG = '#F5F0E8';
 const GREEN = '#B7BF9C';
@@ -79,18 +80,31 @@ export default function ForgotPasswordScreen() {
     ]).start();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     animateBtnPress();
     setError(null);
     if (!email.trim()) { setError("L'email est requis."); return; }
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!emailOk) { setError('Adresse email invalide.'); return; }
 
-    setSent(true);
-    Animated.parallel([
-      Animated.spring(successScale, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
-      Animated.timing(successFade, { toValue: 1, duration: 350, useNativeDriver: true }),
-    ]).start();
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: Platform.OS === 'web'
+          ? `${window.location.origin}/login`
+          : 'louetonbien://login',
+      });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      setSent(true);
+      Animated.parallel([
+        Animated.spring(successScale, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
+        Animated.timing(successFade, { toValue: 1, duration: 350, useNativeDriver: true }),
+      ]).start();
+    } catch (e: any) {
+      setError(e.message ?? "Erreur lors de l'envoi.");
+    }
   };
 
   return (
