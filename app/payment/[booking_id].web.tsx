@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -66,95 +67,185 @@ function StripeEmbedForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+  const iframeHeight = isDesktop ? 340 : 380;
 
   const html = `<!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://js.stripe.com/v3/"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Inter, -apple-system, sans-serif; background: transparent; padding: 0; }
-  #name-label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
-  #cardholder-name {
-    width: 100%; height: 40px; border-radius: 6px;
-    border: 1px solid #E0E0E0; padding: 0 12px;
-    font-size: 14px; color: #1A1F17; outline: none;
-    margin-bottom: 12px;
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: transparent;
+    padding: 0 2px;
   }
-  #cardholder-name:focus { border-color: #1B4332; box-shadow: 0 0 0 2px rgba(27,67,50,0.12); }
-  #card-element {
-    border: 1px solid #E0E0E0; border-radius: 6px;
-    padding: 10px 12px; margin-bottom: 16px;
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #30313D;
+    margin-bottom: 6px;
+    letter-spacing: 0.01em;
+  }
+  #cardholder-name {
+    width: 100%;
+    height: 44px;
+    border-radius: 6px;
+    border: 1.5px solid #E0E0E0;
+    padding: 0 12px;
+    font-size: 15px;
+    color: #30313D;
+    outline: none;
+    margin-bottom: 16px;
+    transition: border-color 0.15s, box-shadow 0.15s;
     background: #fff;
   }
-  #submit {
-    width: 100%; height: 52px; border-radius: 999px;
-    background: #1B4332; color: #fff; border: none;
-    font-size: 16px; font-weight: 700; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    box-shadow: 0 4px 16px rgba(27,67,50,0.35);
+  #cardholder-name:focus {
+    border-color: #0570DE;
+    box-shadow: 0 0 0 3px rgba(5,112,222,0.12);
   }
+  #cardholder-name::placeholder { color: #A3A3A3; }
+  #payment-element {
+    margin-bottom: 20px;
+  }
+  #submit {
+    width: 100%;
+    height: 52px;
+    border-radius: 6px;
+    background: #0570DE;
+    color: #fff;
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    letter-spacing: -0.1px;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  #submit:hover:not(:disabled) { background: #0461C1; }
   #submit:disabled { opacity: 0.55; cursor: not-allowed; }
-  #error-msg { color: #C0392B; font-size: 13px; margin-top: 10px; text-align: center; }
-  .secure-row { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:10px; color:#7A7A7A; font-size:11px; }
+  #error-msg {
+    color: #DF1B41;
+    font-size: 13px;
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.5;
+    min-height: 18px;
+  }
+  .secure-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+    color: #8A8A9A;
+    font-size: 11px;
+  }
+  .spinner {
+    display: none;
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading .spinner { display: block; }
+  .loading .btn-text { display: none; }
 </style>
 </head>
 <body>
 <form id="payment-form">
-  <label id="name-label" for="cardholder-name">Full name</label>
-  <input id="cardholder-name" type="text" placeholder="First and last name" autocomplete="cc-name" />
-  <div id="card-element"></div>
+  <label for="cardholder-name">Nom complet</label>
+  <input id="cardholder-name" type="text" placeholder="Prénom et nom" autocomplete="cc-name" />
+  <div id="payment-element"></div>
   <button id="submit" type="submit">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    Confirmer le paiement &nbsp;&nbsp;<span style="opacity:0.75">${totalNow} €</span>
+    <div class="spinner"></div>
+    <span class="btn-text">
+      <svg style="display:inline;vertical-align:middle;margin-right:7px" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Confirmer le paiement &mdash; ${totalNow}&nbsp;€
+    </span>
   </button>
   <div id="error-msg"></div>
   <div class="secure-row">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8E9878" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8A8A9A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     Paiement sécurisé par Stripe. Données jamais stockées sur nos serveurs.
   </div>
 </form>
 <script>
 (async function() {
   var stripe = Stripe(${JSON.stringify(publishableKey)});
-  var elements = stripe.elements();
-  var cardElement = elements.create('card', {
-    style: {
-      base: { fontSize: '14px', color: '#1A1F17', fontFamily: 'Inter, -apple-system, sans-serif', '::placeholder': { color: '#AAAAAA' } },
-      invalid: { color: '#C0392B' }
-    }
+  var elements = stripe.elements({
+    clientSecret: ${JSON.stringify(rentalClientSecret)},
+    locale: 'fr',
+    appearance: {
+      theme: 'stripe',
+      variables: {
+        colorPrimary: '#0570DE',
+        colorBackground: '#ffffff',
+        colorText: '#30313D',
+        colorDanger: '#DF1B41',
+        fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+        borderRadius: '6px',
+        fontSizeBase: '15px',
+      },
+    },
   });
-  cardElement.mount('#card-element');
 
-  document.getElementById('payment-form').addEventListener('submit', async function(e) {
+  var paymentElement = elements.create('payment', {
+    layout: 'tabs',
+    fields: { billingDetails: { name: 'never' } },
+  });
+  paymentElement.mount('#payment-element');
+
+  var form = document.getElementById('payment-form');
+  var btn = document.getElementById('submit');
+  var errDiv = document.getElementById('error-msg');
+
+  form.addEventListener('submit', async function(e) {
     e.preventDefault();
-    var btn = document.getElementById('submit');
-    var errDiv = document.getElementById('error-msg');
     var name = document.getElementById('cardholder-name').value.trim();
     btn.disabled = true;
+    btn.classList.add('loading');
     errDiv.textContent = '';
     window.parent.postMessage({ type: 'stripe_loading', value: true }, '*');
 
     try {
-      var rentalResult = await stripe.confirmCardPayment(${JSON.stringify(rentalClientSecret)}, {
-        payment_method: { card: cardElement, billing_details: { name: name || undefined } },
-        setup_future_usage: 'off_session',
+      var rentalResult = await stripe.confirmPayment({
+        elements: elements,
+        confirmParams: {
+          payment_method_data: { billing_details: { name: name || '' } },
+        },
+        redirect: 'if_required',
       });
+
       if (rentalResult.error) throw new Error(rentalResult.error.message);
-      if (rentalResult.paymentIntent.status !== 'succeeded') throw new Error('Paiement location échoué');
+      var rentalPI = rentalResult.paymentIntent;
+      if (!rentalPI || rentalPI.status !== 'succeeded') throw new Error('Paiement location échoué');
 
       var depositSecret = ${JSON.stringify(depositClientSecret)};
       var depositAmt = ${depositAmount};
       if (depositSecret && depositAmt > 0) {
-        var paymentMethodId = rentalResult.paymentIntent.payment_method;
-        var pmId = typeof paymentMethodId === 'string' ? paymentMethodId : (paymentMethodId && paymentMethodId.id);
+        var pmId = typeof rentalPI.payment_method === 'string'
+          ? rentalPI.payment_method
+          : (rentalPI.payment_method && rentalPI.payment_method.id);
+
+        var depositElements = stripe.elements({
+          clientSecret: depositSecret,
+          locale: 'fr',
+        });
+
         var depositResult = await stripe.confirmCardPayment(depositSecret, {
           payment_method: pmId,
-          return_url: window.location.href,
         });
         if (depositResult.error) throw new Error(depositResult.error.message);
-        var ds = depositResult.paymentIntent.status;
+        var ds = depositResult.paymentIntent && depositResult.paymentIntent.status;
         if (ds !== 'requires_capture' && ds !== 'succeeded') throw new Error('Autorisation caution échouée');
       }
 
@@ -167,6 +258,7 @@ function StripeEmbedForm({
     } catch(err) {
       errDiv.textContent = err.message || 'Une erreur est survenue';
       btn.disabled = false;
+      btn.classList.remove('loading');
       window.parent.postMessage({ type: 'stripe_loading', value: false }, '*');
     }
   });
@@ -247,7 +339,7 @@ function StripeEmbedForm({
           srcDoc={html}
           style={{
             width: '100%',
-            minHeight: 260,
+            height: iframeHeight,
             border: 'none',
             borderRadius: 12,
             background: 'transparent',
@@ -267,6 +359,8 @@ function StripeEmbedForm({
 export default function PaymentScreen() {
   const { booking_id } = useLocalSearchParams<{ booking_id: string }>();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
 
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
@@ -392,112 +486,120 @@ export default function PaymentScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 32 },
+          isDesktop && styles.scrollContentDesktop,
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Récapitulatif</Text>
-          <View style={styles.card}>
-            <View style={styles.listingRow}>
-              {thumb ? (
-                <Image source={{ uri: thumb }} style={styles.listingThumb} />
-              ) : (
-                <View style={[styles.listingThumb, styles.listingThumbFallback]} />
-              )}
-              <View style={styles.listingInfo}>
-                <Text style={styles.listingName} numberOfLines={2}>
-                  {booking.listing?.name}
+        <View style={[styles.twoCol, isDesktop && styles.twoColDesktop]}>
+          <View style={[styles.colLeft, isDesktop && styles.colLeftDesktop]}>
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Récapitulatif</Text>
+              <View style={styles.card}>
+                <View style={styles.listingRow}>
+                  {thumb ? (
+                    <Image source={{ uri: thumb }} style={styles.listingThumb} />
+                  ) : (
+                    <View style={[styles.listingThumb, styles.listingThumbFallback]} />
+                  )}
+                  <View style={styles.listingInfo}>
+                    <Text style={styles.listingName} numberOfLines={2}>
+                      {booking.listing?.name}
+                    </Text>
+                    {booking.owner?.username && (
+                      <Text style={styles.ownerName}>par {booking.owner.username}</Text>
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.datesRow}>
+                  <Ionicons name="calendar-outline" size={14} color={GREEN_MID} />
+                  <Text style={styles.datesText}>
+                    Du {formatDate(booking.start_date)} au {formatDate(booking.end_date)}
+                  </Text>
+                </View>
+
+                <View style={styles.separator} />
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Location</Text>
+                  <Text style={styles.priceValue}>{booking.total_price} €</Text>
+                </View>
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabelMuted}>Frais de service (7%)</Text>
+                  <Text style={styles.priceValueMuted}>{serviceFee} €</Text>
+                </View>
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabelOrange}>Caution (bloquée)</Text>
+                  <Text style={styles.priceValueOrange}>{booking.deposit_amount} €</Text>
+                </View>
+
+                <View style={styles.separator} />
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.totalLabel}>Total débité maintenant</Text>
+                  <Text style={styles.totalValue}>{totalNow} €</Text>
+                </View>
+
+                <Text style={styles.depositNote}>
+                  La caution de {booking.deposit_amount} € est bloquée mais non débitée — libérée après le retour
                 </Text>
-                {booking.owner?.username && (
-                  <Text style={styles.ownerName}>par {booking.owner.username}</Text>
-                )}
               </View>
             </View>
+          </View>
 
-            <View style={styles.datesRow}>
-              <Ionicons name="calendar-outline" size={14} color={GREEN_MID} />
-              <Text style={styles.datesText}>
-                Du {formatDate(booking.start_date)} au {formatDate(booking.end_date)}
-              </Text>
-            </View>
-
-            <View style={styles.separator} />
-
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Location</Text>
-              <Text style={styles.priceValue}>{booking.total_price} €</Text>
-            </View>
-
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabelMuted}>Frais de service (7%)</Text>
-              <Text style={styles.priceValueMuted}>{serviceFee} €</Text>
-            </View>
-
-            <View style={styles.priceRow}>
-              <View style={styles.depositLabelRow}>
-                <Text style={styles.priceLabelOrange}>Caution (bloquée)</Text>
+          <View style={[styles.colRight, isDesktop && styles.colRightDesktop]}>
+            {loadingIntent && (
+              <View style={styles.intentLoadingWrapper}>
+                <ActivityIndicator size="small" color={GREEN} />
+                <Text style={styles.intentLoadingText}>Préparation du paiement...</Text>
               </View>
-              <Text style={styles.priceValueOrange}>{booking.deposit_amount} €</Text>
-            </View>
+            )}
 
-            <View style={styles.separator} />
+            {stripeAccountError && (
+              <View style={styles.stripeAccountErrorCard}>
+                <View style={styles.stripeAccountErrorHeader}>
+                  <Ionicons name="warning-outline" size={18} color="#721C24" />
+                  <Text style={styles.stripeAccountErrorTitle}>Paiement impossible</Text>
+                </View>
+                <Text style={styles.stripeAccountErrorBody}>
+                  Le loueur n'a pas encore activé son compte de paiement. Contacte-le via la messagerie pour qu'il configure son compte Stripe.
+                </Text>
+                <TouchableOpacity
+                  style={styles.stripeAccountErrorBtn}
+                  onPress={() => router.back()}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chatbubble-outline" size={15} color="#721C24" />
+                  <Text style={styles.stripeAccountErrorBtnText}>Contacter le loueur</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-            <View style={styles.priceRow}>
-              <Text style={styles.totalLabel}>Total débité maintenant</Text>
-              <Text style={styles.totalValue}>{totalNow} €</Text>
-            </View>
+            {intentError && !stripeAccountError && (
+              <View style={styles.intentErrorWrapper}>
+                <Text style={styles.intentErrorText}>{intentError}</Text>
+              </View>
+            )}
 
-            <Text style={styles.depositNote}>
-              La caution de {booking.deposit_amount} € est bloquée mais non débitée — libérée après le retour
-            </Text>
+            {rentalClientSecret && !loadingIntent && (
+              <StripeEmbedForm
+                rentalClientSecret={rentalClientSecret}
+                depositClientSecret={depositClientSecret}
+                depositAmount={booking.deposit_amount}
+                bookingId={booking_id!}
+                rentalPaymentIntentId={rentalPaymentIntentId}
+                depositPaymentIntentId={depositPaymentIntentId}
+                totalNow={totalNow}
+              />
+            )}
           </View>
         </View>
-
-        {loadingIntent && (
-          <View style={styles.intentLoadingWrapper}>
-            <ActivityIndicator size="small" color={GREEN} />
-            <Text style={styles.intentLoadingText}>Préparation du paiement...</Text>
-          </View>
-        )}
-
-        {stripeAccountError && (
-          <View style={styles.stripeAccountErrorCard}>
-            <View style={styles.stripeAccountErrorHeader}>
-              <Ionicons name="warning-outline" size={18} color="#721C24" />
-              <Text style={styles.stripeAccountErrorTitle}>Paiement impossible</Text>
-            </View>
-            <Text style={styles.stripeAccountErrorBody}>
-              Le loueur n'a pas encore activé son compte de paiement. Contacte-le via la messagerie pour qu'il configure son compte Stripe.
-            </Text>
-            <TouchableOpacity
-              style={styles.stripeAccountErrorBtn}
-              onPress={() => router.back()}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chatbubble-outline" size={15} color="#721C24" />
-              <Text style={styles.stripeAccountErrorBtnText}>Contacter le loueur</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {intentError && !stripeAccountError && (
-          <View style={styles.intentErrorWrapper}>
-            <Text style={styles.intentErrorText}>{intentError}</Text>
-          </View>
-        )}
-
-        {rentalClientSecret && !loadingIntent && (
-          <StripeEmbedForm
-            rentalClientSecret={rentalClientSecret}
-            depositClientSecret={depositClientSecret}
-            depositAmount={booking.deposit_amount}
-            bookingId={booking_id!}
-            rentalPaymentIntentId={rentalPaymentIntentId}
-            depositPaymentIntentId={depositPaymentIntentId}
-            totalNow={totalNow}
-          />
-        )}
       </ScrollView>
     </View>
   );
@@ -559,7 +661,30 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 20,
+  },
+  scrollContentDesktop: {
+    paddingHorizontal: 40,
+    paddingTop: 32,
+    maxWidth: 1100,
+    alignSelf: 'center' as any,
+    width: '100%',
+  },
+  twoCol: {
+    flexDirection: 'column',
     gap: 20,
+  },
+  twoColDesktop: {
+    flexDirection: 'row',
+    gap: 32,
+    alignItems: 'flex-start',
+  },
+  colLeft: {},
+  colLeftDesktop: {
+    flex: 1,
+  },
+  colRight: {},
+  colRightDesktop: {
+    flex: 1,
   },
   section: {
     gap: 10,
@@ -670,11 +795,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#7A7A7A',
   },
-  depositLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
   priceLabelOrange: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
@@ -705,35 +825,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     marginTop: 2,
   },
-  payBtnWrapper: {
-    marginTop: 4,
-  },
-  payBtn: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: GREEN,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    ...Platform.select({
-      web: { boxShadow: '0 4px 16px rgba(27,67,50,0.35)' },
-    }),
-  },
-  payBtnDisabled: {
-    opacity: 0.5,
-  },
-  payBtnText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: '#FFFFFF',
-    letterSpacing: -0.2,
-  },
-  payBtnAmount: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.75)',
-  },
   intentLoadingWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -752,6 +843,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: '#FECACA',
+    marginTop: 8,
   },
   intentErrorText: {
     fontFamily: 'Inter-Regular',
@@ -763,7 +855,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8D7DA',
     borderRadius: 12,
     padding: 16,
-    marginHorizontal: 0,
     gap: 10,
   },
   stripeAccountErrorHeader: {
