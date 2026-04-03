@@ -35,7 +35,7 @@ const helpData: HelpCategory[] = [
         id: 'd3',
         question: "Est-ce gratuit de s'inscrire ?",
         answer:
-          "Oui, l'inscription sur LoueTonBien est entièrement gratuite. LoueTonBien prend une commission de 15% uniquement sur les transactions réalisées. Cette commission couvre les frais de paiement sécurisé, la protection des transactions et la maintenance de la plateforme. En tant que loueur, tu reçois 85% du prix de location que tu as fixé.",
+          "Oui, l'inscription sur LoueTonBien est entièrement gratuite. LoueTonBien applique une commission de 8 % sur le montant reversé au propriétaire, et des frais de service de 7 % ajoutés au prix affiché pour le locataire uniquement sur les transactions réalisées. Cette commission couvre les frais de paiement sécurisé, la protection des transactions et la maintenance de la plateforme. En tant que loueur, tu reçois 92 % du prix de location que tu as fixé (8 % de commission plateforme).",
       },
       {
         id: 'd4',
@@ -117,7 +117,7 @@ const helpData: HelpCategory[] = [
         id: 'p2',
         question: 'Comment fixer mon prix ?',
         answer:
-          "Pour fixer un prix cohérent, nous te recommandons de prendre entre 3% et 8% de la valeur neuve de l'objet par jour de location. Par exemple, pour un vélo vaut 400€, un prix entre 12€ et 32€ par jour est raisonnable. Regarde aussi les annonces similaires sur LoueTonBien pour te positionner. N'oublie pas que LoueTonBien prend 15% de commission, donc si tu affiches 20€/jour, tu reçois 17€.",
+          "Pour fixer un prix cohérent, nous te recommandons de prendre entre 3% et 8% de la valeur neuve de l'objet par jour de location. Par exemple, pour un vélo vaut 400€, un prix entre 12€ et 32€ par jour est raisonnable. Regarde aussi les annonces similaires sur LoueTonBien pour te positionner. N'oublie pas que LoueTonBien prend 8 % de commission : si tu affiches 20 €/jour, tu reçois 18,40 €. Le locataire paie en plus 7 % de frais de service.",
       },
       {
         id: 'p3',
@@ -197,7 +197,7 @@ const helpData: HelpCategory[] = [
         id: 'pay7',
         question: 'Combien prend LoueTonBien de commission ?',
         answer:
-          "LoueTonBien prend une commission de 15% sur chaque transaction, déduite automatiquement du montant reçu par le loueur. Par exemple, si le prix de location affiché est 40€, le loueur reçoit 34€ et LoueTonBien perçoit 6€. Cette commission couvre les frais de paiement sécurisé Stripe, la protection des transactions, le support en cas de litige et la maintenance de la plateforme. Le locataire paie toujours le prix affiché, sans frais supplémentaires.",
+          "LoueTonBien applique deux types de frais, clairement affichés avant tout paiement. Le propriétaire verse une commission de 8 % sur le montant de la location (déduite automatiquement de son versement). Le locataire paie des frais de service de 7 % ajoutés au prix affiché. Par exemple, pour une location à 40 €/jour : le locataire paie 42,80 € (40 € + 2,80 € de frais), et le propriétaire reçoit 36,80 € (40 € − 3,20 € de commission). Ces frais couvrent le paiement sécurisé via Stripe, la protection des transactions, le support en cas de litige et la maintenance de la plateforme.",
       },
       {
         id: 'pay8',
