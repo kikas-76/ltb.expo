@@ -12,7 +12,7 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
@@ -38,6 +38,7 @@ interface Listing {
   longitude: number | null;
   owner_type: string | null;
   location_data?: { address?: string; city?: string } | null;
+  rank?: number;
   owner: {
     id?: string;
     username: string | null;
@@ -46,6 +47,14 @@ interface Listing {
     location_data?: { address?: string; city?: string } | null;
   } | null;
 }
+
+interface Suggestion {
+  suggestion: string;
+  category: string | null;
+}
+
+const HISTORY_KEY = 'ltb_search_history';
+const MAX_HISTORY = 8;
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -59,6 +68,66 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function highlightMatch(text: string, query: string): { parts: { text: string; bold: boolean }[] } {
+  if (!query.trim()) return { parts: [{ text, bold: false }] };
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+  const rawParts = text.split(regex);
+  return {
+    parts: rawParts.map((p) => ({
+      text: p,
+      bold: regex.test(p),
+    })),
+  };
+}
+
+function HighlightedText({ text, query, style, boldStyle }: {
+  text: string;
+  query: string;
+  style?: any;
+  boldStyle?: any;
+}) {
+  const { parts } = highlightMatch(text, query);
+  return (
+    <Text style={style}>
+      {parts.map((p, i) =>
+        p.bold ? (
+          <Text key={i} style={boldStyle}>{p.text}</Text>
+        ) : (
+          <Text key={i}>{p.text}</Text>
+        )
+      )}
+    </Text>
+  );
+}
+
+function getLocalHistory(): string[] {
+  if (Platform.OS !== 'web') return [];
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveToLocalHistory(query: string) {
+  if (Platform.OS !== 'web' || !query.trim()) return;
+  try {
+    const prev = getLocalHistory().filter((q) => q.toLowerCase() !== query.toLowerCase());
+    const next = [query.trim(), ...prev].slice(0, MAX_HISTORY);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  } catch {}
+}
+
+function removeFromLocalHistory(query: string) {
+  if (Platform.OS !== 'web') return;
+  try {
+    const next = getLocalHistory().filter((q) => q.toLowerCase() !== query.toLowerCase());
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  } catch {}
+}
+
 const SORT_LABEL: Record<SortKey, string> = {
   recent: 'Plus récentes',
   nearest: 'Plus proches',
@@ -68,10 +137,11 @@ const SORT_LABEL: Record<SortKey, string> = {
 
 export default function SearchScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ q?: string }>();
   const inputRef = useRef<TextInput>(null);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(params.q ?? '');
+  const [debouncedQuery, setDebouncedQuery] = useState(params.q ?? '');
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
@@ -81,10 +151,15 @@ export default function SearchScreen() {
   const [showPanel, setShowPanel] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoRequested, setGeoRequested] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [localHistory, setLocalHistory] = useState<string[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(12)).current;
   const filterBadgeScale = useRef(new Animated.Value(1)).current;
+  const suggestionsAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -92,6 +167,7 @@ export default function SearchScreen() {
       Animated.timing(slideAnim, { toValue: 0, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
     setTimeout(() => inputRef.current?.focus(), 150);
+    setLocalHistory(getLocalHistory());
   }, []);
 
   const requestGeo = useCallback(() => {
@@ -119,50 +195,118 @@ export default function SearchScreen() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  useEffect(() => {
+    if (debouncedQuery.trim().length >= 2) {
+      fetchSuggestions(debouncedQuery);
+    } else {
+      setSuggestions([]);
+    }
+  }, [debouncedQuery]);
+
+  const fetchSuggestions = async (q: string) => {
+    const { data } = await supabase.rpc('get_search_suggestions', {
+      prefix: q.trim(),
+      lim: 6,
+    });
+    setSuggestions(data ?? []);
+  };
+
+  const animateSuggestions = (visible: boolean) => {
+    Animated.timing(suggestionsAnim, {
+      toValue: visible ? 1 : 0,
+      duration: 160,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  useEffect(() => {
+    const hasSugg = suggestions.length > 0 || (showSuggestions && localHistory.length > 0 && !searchQuery.trim());
+    animateSuggestions(hasSugg && showSuggestions);
+  }, [suggestions, showSuggestions, localHistory, searchQuery]);
+
   const fetchListings = useCallback(async () => {
     setLoading(true);
+    setHasSearched(true);
     try {
-      let query = supabase
-        .from('listings')
-        .select('id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)')
-        .eq('is_active', true)
-        .limit(200);
+      let ownersMap: Record<string, any> = {};
 
-      if (debouncedQuery.trim()) {
-        query = query.ilike('name', `%${debouncedQuery.trim()}%`);
+      const { data: ftsData } = await supabase.rpc('search_listings', {
+        search_query: debouncedQuery.trim(),
+        lim: 200,
+      });
+
+      if (!ftsData || ftsData.length === 0) {
+        setListings([]);
+        setLoading(false);
+        return;
       }
 
+      let results: any[] = ftsData ?? [];
+
       if (selectedCategoryIds.length > 0) {
-        query = query.in('category_id', selectedCategoryIds);
+        results = results.filter((l: any) => selectedCategoryIds.includes(l.category_id));
       }
 
       if (appliedFilters.ownerType !== 'all') {
-        query = query.eq('owner_type', appliedFilters.ownerType);
+        results = results.filter((l: any) => l.owner_type === appliedFilters.ownerType);
       }
 
       if (appliedFilters.priceMin !== '') {
-        query = query.gte('price', Number(appliedFilters.priceMin));
+        results = results.filter((l: any) => Number(l.price) >= Number(appliedFilters.priceMin));
       }
       if (appliedFilters.priceMax !== '') {
-        query = query.lte('price', Number(appliedFilters.priceMax));
+        results = results.filter((l: any) => Number(l.price) <= Number(appliedFilters.priceMax));
       }
 
       if (appliedFilters.sortKey === 'price_asc') {
-        query = query.order('price', { ascending: true });
+        results.sort((a, b) => Number(a.price) - Number(b.price));
       } else if (appliedFilters.sortKey === 'price_desc') {
-        query = query.order('price', { ascending: false });
-      } else {
-        query = query.order('created_at', { ascending: false });
+        results.sort((a, b) => Number(b.price) - Number(a.price));
       }
 
-      const { data } = await query;
+      const ids = results.map((l: any) => l.id);
+      if (ids.length > 0) {
+        const { data: ownersData } = await supabase
+          .from('listings')
+          .select('id, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)')
+          .in('id', ids);
 
-      if (data) {
-        const mapped: Listing[] = data.map((l: any) => ({
-          ...l,
-          owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
-        }));
-        setListings(mapped);
+        if (ownersData) {
+          ownersData.forEach((row: any) => {
+            ownersMap[row.id] = Array.isArray(row.owner) ? (row.owner[0] ?? null) : row.owner;
+          });
+        }
+      }
+
+      const mapped: Listing[] = results.map((l: any) => ({
+        id: l.id,
+        name: l.name,
+        price: l.price,
+        photos_url: l.photos_url,
+        category_name: l.category_name,
+        category_id: l.category_id,
+        latitude: l.latitude,
+        longitude: l.longitude,
+        location_data: l.location_data,
+        owner_type: l.owner_type,
+        rank: l.rank,
+        owner: ownersMap[l.id] ?? null,
+      }));
+
+      setListings(mapped);
+
+      if (debouncedQuery.trim()) {
+        saveToLocalHistory(debouncedQuery.trim());
+        setLocalHistory(getLocalHistory());
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('search_history').insert({
+            user_id: user.id,
+            query: debouncedQuery.trim(),
+            result_count: mapped.length,
+          });
+        }
       }
     } finally {
       setLoading(false);
@@ -214,7 +358,6 @@ export default function SearchScreen() {
 
   const applyClientFilters = (items: Listing[]): Listing[] => {
     let result = [...items];
-
     const ref = getRefCoords();
     if (ref && appliedFilters.locationMode !== 'none') {
       result = result.filter((l) => {
@@ -222,7 +365,6 @@ export default function SearchScreen() {
         return haversineKm(ref.lat, ref.lng, l.latitude, l.longitude) <= appliedFilters.radiusKm;
       });
     }
-
     if (appliedFilters.sortKey === 'nearest' && ref) {
       result.sort((a, b) => {
         const dA = a.latitude && a.longitude ? haversineKm(ref.lat, ref.lng, a.latitude, a.longitude) : 9999;
@@ -230,7 +372,6 @@ export default function SearchScreen() {
         return dA - dB;
       });
     }
-
     return result;
   };
 
@@ -255,6 +396,20 @@ export default function SearchScreen() {
 
   const locationChipActive = appliedFilters.locationMode !== 'none';
 
+  const handleSelectSuggestion = (q: string) => {
+    setSearchQuery(q);
+    setShowSuggestions(false);
+    inputRef.current?.blur();
+  };
+
+  const handleRemoveHistory = (q: string) => {
+    removeFromLocalHistory(q);
+    setLocalHistory(getLocalHistory());
+  };
+
+  const showHistoryList = showSuggestions && !searchQuery.trim() && localHistory.length > 0;
+  const showSuggestionList = showSuggestions && searchQuery.trim().length >= 2 && suggestions.length > 0;
+
   const renderItem = ({ item }: { item: Listing }) => (
     <View style={styles.gridItem}>
       <ListingCard listing={item} variant="grid" />
@@ -266,6 +421,9 @@ export default function SearchScreen() {
       <Text style={styles.resultCount}>
         <Text style={styles.resultCountNum}>{filtered.length}</Text>
         {' '}annonce{filtered.length !== 1 ? 's' : ''}
+        {debouncedQuery.trim() ? (
+          <Text style={styles.resultCountQuery}> pour "{debouncedQuery.trim()}"</Text>
+        ) : null}
       </Text>
       {locationChipActive && (
         <View style={styles.locationChip}>
@@ -294,14 +452,94 @@ export default function SearchScreen() {
             onChangeText={setSearchQuery}
             returnKeyType="search"
             autoFocus={false}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            onSubmitEditing={() => {
+              setShowSuggestions(false);
+              inputRef.current?.blur();
+            }}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close-outline" size={14} color={Colors.textMuted} />
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
       </Animated.View>
+
+      {/* Suggestions / History dropdown */}
+      {(showHistoryList || showSuggestionList) && (
+        <Animated.View
+          style={[
+            styles.suggestionsContainer,
+            { opacity: suggestionsAnim, transform: [{ translateY: suggestionsAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }] },
+          ]}
+        >
+          {showHistoryList && (
+            <>
+              <View style={styles.suggestionsSectionHeader}>
+                <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
+                <Text style={styles.suggestionsSectionTitle}>Recherches récentes</Text>
+              </View>
+              {localHistory.map((q, i) => (
+                <View key={i} style={styles.suggestionRow}>
+                  <TouchableOpacity
+                    style={styles.suggestionMain}
+                    onPress={() => handleSelectSuggestion(q)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+                    <Text style={styles.suggestionText}>{q}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveHistory(q)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={styles.suggestionRemove}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="close-outline" size={14} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </>
+          )}
+
+          {showSuggestionList && (
+            <>
+              <View style={styles.suggestionsSectionHeader}>
+                <Ionicons name="search-outline" size={13} color={Colors.textMuted} />
+                <Text style={styles.suggestionsSectionTitle}>Suggestions</Text>
+              </View>
+              {suggestions.map((s, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={styles.suggestionRow}
+                  onPress={() => handleSelectSuggestion(s.suggestion)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.suggestionMain}>
+                    <Ionicons name="search-outline" size={14} color={Colors.primary} />
+                    <View style={styles.suggestionContent}>
+                      <HighlightedText
+                        text={s.suggestion}
+                        query={searchQuery}
+                        style={styles.suggestionText}
+                        boldStyle={styles.suggestionTextBold}
+                      />
+                      {s.category ? (
+                        <Text style={styles.suggestionCategory}>{s.category}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </Animated.View>
+      )}
 
       <Animated.View style={[styles.chipsBar, { opacity: fadeAnim }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContent}>
@@ -378,7 +616,11 @@ export default function SearchScreen() {
           {activeFiltersCount > 0 && (
             <TouchableOpacity
               style={styles.resetChip}
-              onPress={() => { setFilters(DEFAULT_FILTERS); setAppliedFilters(DEFAULT_FILTERS); setSelectedCategoryIds([]); }}
+              onPress={() => {
+                setFilters(DEFAULT_FILTERS);
+                setAppliedFilters(DEFAULT_FILTERS);
+                setSelectedCategoryIds([]);
+              }}
               activeOpacity={0.7}
             >
               <Ionicons name="close-outline" size={12} color={Colors.error} />
@@ -397,7 +639,7 @@ export default function SearchScreen() {
               </View>
             ))}
           </View>
-        ) : filtered.length === 0 ? (
+        ) : filtered.length === 0 && hasSearched ? (
           <View style={styles.emptyWrap}>
             <CategoryEmptyState
               categoryName={
@@ -486,6 +728,69 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
     padding: 0,
+  },
+  suggestionsContainer: {
+    marginHorizontal: 16,
+    marginBottom: 6,
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 16 },
+      android: { elevation: 8 },
+      web: { boxShadow: '0 8px 24px rgba(0,0,0,0.1)' } as any,
+    }),
+    zIndex: 100,
+  },
+  suggestionsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  suggestionsSectionTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  suggestionMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  suggestionContent: {
+    flex: 1,
+    gap: 1,
+  },
+  suggestionText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: Colors.text,
+  },
+  suggestionTextBold: {
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.primaryDark,
+  },
+  suggestionCategory: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
+  suggestionRemove: {
+    paddingLeft: 8,
   },
   chipsBar: {
     backgroundColor: Colors.background,
@@ -579,15 +884,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 4,
     paddingBottom: 12,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   resultCount: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
     color: Colors.textMuted,
+    flex: 1,
   },
   resultCountNum: {
     fontFamily: 'Inter-SemiBold',
     color: Colors.text,
+  },
+  resultCountQuery: {
+    fontFamily: 'Inter-Regular',
+    color: Colors.textMuted,
   },
   locationChip: {
     flexDirection: 'row',
