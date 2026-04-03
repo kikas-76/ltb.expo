@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,15 @@ import {
   Platform,
   Animated,
   useWindowDimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function LandingScreen() {
-  const { signInWithGoogle } = useAuth();
-  const [googleLoading, setGoogleLoading] = useState(false);
   const { width, height } = useWindowDimensions();
-  const HERO_HEIGHT = height * 0.62;
+  const HERO_HEIGHT = height * 0.65;
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -33,32 +29,21 @@ export default function LandingScreen() {
   }, []);
 
   const logoAnim = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.85)).current;
-  const btn1Anim = useRef(new Animated.Value(0)).current;
-  const btn2Anim = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.88)).current;
+  const btnAnim = useRef(new Animated.Value(0)).current;
+  const btnTranslate = useRef(new Animated.Value(28)).current;
   const loginAnim = useRef(new Animated.Value(0)).current;
-  const btn1Translate = useRef(new Animated.Value(30)).current;
-  const btn2Translate = useRef(new Animated.Value(30)).current;
   const loginTranslate = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(logoAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.spring(logoScale, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
+        Animated.timing(logoAnim, { toValue: 1, duration: 650, useNativeDriver: true }),
+        Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(btn1Anim, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.timing(btn1Translate, { toValue: 0, duration: 400, useNativeDriver: true }),
-      ]),
-      Animated.parallel([
-        Animated.timing(btn2Anim, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.timing(btn2Translate, { toValue: 0, duration: 350, useNativeDriver: true }),
+        Animated.timing(btnAnim, { toValue: 1, duration: 420, useNativeDriver: true }),
+        Animated.timing(btnTranslate, { toValue: 0, duration: 420, useNativeDriver: true }),
       ]),
       Animated.parallel([
         Animated.timing(loginAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
@@ -67,21 +52,12 @@ export default function LandingScreen() {
     ]).start();
   }, []);
 
-  const handleGoogleRegister = async () => {
-    setGoogleLoading(true);
-    const { error, emailConflict } = await signInWithGoogle();
-    setGoogleLoading(false);
-    if (emailConflict) {
-      router.replace({ pathname: '/link-google-account', params: { email: emailConflict } } as any);
-    }
-  };
-
   return (
-    <View style={[styles.root, { backgroundColor: Colors.background }]}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+    <View style={[styles.root, { backgroundColor: '#1A1A14' }]}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <Image
-        source={require('@/assets/images/634ee61c025bd510ec83ead5536aaf702800416d-CFY_-5en.png')}
+        source={require('@/assets/images/image.png')}
         style={[styles.heroImage, { height: HERO_HEIGHT }]}
         resizeMode="cover"
       />
@@ -89,79 +65,59 @@ export default function LandingScreen() {
       <LinearGradient
         colors={[
           'transparent',
-          'rgba(245,242,227,0.15)',
-          'rgba(245,242,227,0.6)',
-          'rgba(245,242,227,0.92)',
-          Colors.background,
+          'rgba(26,26,20,0.3)',
+          'rgba(26,26,20,0.72)',
+          'rgba(26,26,20,0.95)',
+          '#1A1A14',
         ]}
-        locations={[0, 0.38, 0.6, 0.8, 1]}
-        style={[styles.gradient, { top: HERO_HEIGHT * 0.28, height: HERO_HEIGHT * 0.72 }]}
+        locations={[0, 0.35, 0.58, 0.8, 1]}
+        style={[styles.gradient, { top: HERO_HEIGHT * 0.2, height: HERO_HEIGHT * 0.8 }]}
       />
 
       <Animated.View
         style={[
           styles.logoWrap,
-          { top: HERO_HEIGHT * 0.28 },
-          {
-            opacity: logoAnim,
-            transform: [{ scale: logoScale }],
-          },
+          { top: HERO_HEIGHT * 0.22 },
+          { opacity: logoAnim, transform: [{ scale: logoScale }] },
         ]}
       >
         <Image
           source={require('@/assets/images/logoLTBwhitoutbaground.png')}
-          style={[styles.logo, { width: Math.min(width * 0.82, 340) }]}
+          style={[styles.logo, { width: Math.min(width * 0.78, 320) }]}
           resizeMode="contain"
+          tintColor="#FFFFFF"
         />
       </Animated.View>
 
-      <View style={[styles.bottom, { paddingBottom: Platform.OS === 'web' ? 52 : 44, paddingHorizontal: Math.min(width * 0.07, 32) }]}>
-        <View style={styles.actions}>
-          <Animated.View
-            style={{
-              opacity: btn1Anim,
-              transform: [{ translateY: btn1Translate }],
-            }}
-          >
-            <TouchableOpacity
-              style={styles.mailBtn}
-              onPress={() => router.push('/register')}
-              activeOpacity={0.82}
-            >
-              <Ionicons name="mail-outline" size={20} color={Colors.white} />
-              <Text style={styles.mailBtnText}>S'inscrire par Mail</Text>
-            </TouchableOpacity>
-          </Animated.View>
+      <View
+        style={[
+          styles.bottom,
+          {
+            paddingBottom: Platform.OS === 'web' ? 56 : 48,
+            paddingHorizontal: Math.min(width * 0.07, 32),
+          },
+        ]}
+      >
+        <Animated.View style={styles.taglineWrap}>
+          <Text style={styles.tagline}>Louez. Partagez. Consommez autrement.</Text>
+        </Animated.View>
 
-          <Animated.View style={[styles.separator, { opacity: btn1Anim }]}>
-            <View style={styles.separatorLine} />
-            <Text style={styles.separatorText}>ou</Text>
-            <View style={styles.separatorLine} />
-          </Animated.View>
-
-          <Animated.View
-            style={{
-              opacity: btn2Anim,
-              transform: [{ translateY: btn2Translate }],
-            }}
+        <Animated.View
+          style={{
+            opacity: btnAnim,
+            transform: [{ translateY: btnTranslate }],
+            marginBottom: 20,
+          }}
+        >
+          <TouchableOpacity
+            style={styles.mainBtn}
+            onPress={() => router.push('/register')}
+            activeOpacity={0.82}
           >
-            <TouchableOpacity
-              style={[styles.googleBtn, googleLoading && { opacity: 0.65 }]}
-              activeOpacity={0.82}
-              disabled={googleLoading}
-              onPress={handleGoogleRegister}
-            >
-              {googleLoading ? (
-                <ActivityIndicator size="small" color={Colors.text} />
-              ) : (
-                <>
-                  <Text style={styles.googleG}>G</Text>
-                  <Text style={styles.googleBtnText}>S'inscrire via Google</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
+            <Ionicons name="mail-outline" size={20} color="#1A1A14" />
+            <Text style={styles.mainBtnText}>Commencer avec un email</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
         <Animated.View
           style={{
@@ -174,7 +130,7 @@ export default function LandingScreen() {
             activeOpacity={0.7}
             style={styles.loginRow}
           >
-            <Text style={styles.loginText}>Vous avez déjà un compte ? </Text>
+            <Text style={styles.loginText}>Déjà un compte ? </Text>
             <Text style={styles.loginLink}>Se connecter</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -207,7 +163,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    height: 72,
+    height: 68,
   },
   bottom: {
     position: 'absolute',
@@ -215,67 +171,32 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  actions: {
-    gap: 14,
-    marginBottom: 24,
+  taglineWrap: {
+    marginBottom: 28,
+    alignItems: 'center',
   },
-  mailBtn: {
+  tagline: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: 'rgba(255,255,255,0.65)',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+    lineHeight: 22,
+  },
+  mainBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#D4D9C0',
     height: 56,
     borderRadius: 100,
-    shadowColor: Colors.primaryDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
   },
-  mailBtnText: {
-    color: Colors.white,
+  mainBtnText: {
+    color: '#1A1A14',
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.2,
-  },
-  separator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 2,
-  },
-  separatorLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.border,
-  },
-  separatorText: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: Colors.textMuted,
-  },
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: Colors.background,
-    height: 56,
-    borderRadius: 100,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-  },
-  googleG: {
-    fontSize: 17,
-    fontFamily: 'Inter-Bold',
-    color: '#4285F4',
-  },
-  googleBtnText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.text,
-    letterSpacing: 0.15,
   },
   loginRow: {
     flexDirection: 'row',
@@ -287,12 +208,12 @@ const styles = StyleSheet.create({
   loginText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.5)',
   },
   loginLink: {
     fontSize: 14,
     fontFamily: 'Inter-Bold',
-    color: Colors.text,
+    color: 'rgba(255,255,255,0.85)',
     textDecorationLine: 'underline',
   },
 });
