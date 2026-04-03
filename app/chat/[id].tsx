@@ -14,7 +14,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import BookingBadge from '@/components/BookingBadge';
+import BookingBadge, { BookingProgress } from '@/components/BookingBadge';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -109,6 +109,11 @@ export default function ChatScreen() {
   const [bookingTotal, setBookingTotal] = useState<number | null>(null);
   const [bookingStatus, setBookingStatus] = useState<string | null>(null);
   const [payLoading, setPayLoading] = useState(false);
+  const [handoverConfirmedOwner, setHandoverConfirmedOwner] = useState(false);
+  const [handoverConfirmedRenter, setHandoverConfirmedRenter] = useState(false);
+  const [returnConfirmedOwner, setReturnConfirmedOwner] = useState(false);
+  const [returnConfirmedRenter, setReturnConfirmedRenter] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!id || !user) return;
@@ -164,25 +169,53 @@ export default function ChatScreen() {
         status: (conv.status as 'pending' | 'accepted' | 'refused') ?? 'pending',
       });
 
-      if (conv.status === 'accepted' && isRequester) {
-        const [{ data: booking }, { data: profile }] = await Promise.all([
+      if (conv.status === 'accepted') {
+        const queries: Promise<any>[] = [
           supabase
             .from('bookings')
-            .select('id, total_price, status, renter_id')
+            .select('id, total_price, status, renter_id, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter')
             .eq('conversation_id', id)
             .maybeSingle(),
-          supabase
-            .from('profiles')
-            .select('stripe_onboarding_complete')
-            .eq('id', user.id)
-            .maybeSingle(),
-        ]);
+        ];
+        if (!isRequester) {
+          queries.push(Promise.resolve({ data: null }));
+        } else {
+          queries.push(
+            supabase
+              .from('profiles')
+              .select('stripe_onboarding_complete')
+              .eq('id', user.id)
+              .maybeSingle()
+          );
+        }
+        const [{ data: booking }, { data: profile }] = await Promise.all(queries);
         if (booking) {
           setBookingId(booking.id);
           setBookingTotal(booking.total_price ?? null);
           setBookingStatus(booking.status ?? null);
+          setHandoverConfirmedOwner(booking.handover_confirmed_owner ?? false);
+          setHandoverConfirmedRenter(booking.handover_confirmed_renter ?? false);
+          setReturnConfirmedOwner(booking.return_confirmed_owner ?? false);
+          setReturnConfirmedRenter(booking.return_confirmed_renter ?? false);
         }
-        setStripeReady(profile?.stripe_onboarding_complete === true);
+        if (isRequester) {
+          setStripeReady(profile?.stripe_onboarding_complete === true);
+        }
+      } else if (['active', 'in_progress', 'pending_return', 'completed'].some(s => conv.status === s)) {
+        const { data: booking } = await supabase
+          .from('bookings')
+          .select('id, total_price, status, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter')
+          .eq('conversation_id', id)
+          .maybeSingle();
+        if (booking) {
+          setBookingId(booking.id);
+          setBookingTotal(booking.total_price ?? null);
+          setBookingStatus(booking.status ?? null);
+          setHandoverConfirmedOwner(booking.handover_confirmed_owner ?? false);
+          setHandoverConfirmedRenter(booking.handover_confirmed_renter ?? false);
+          setReturnConfirmedOwner(booking.return_confirmed_owner ?? false);
+          setReturnConfirmedRenter(booking.return_confirmed_renter ?? false);
+        }
       }
     }
 
@@ -256,6 +289,20 @@ export default function ChatScreen() {
           const updated = payload.new as any;
           if (updated?.status) {
             setMeta((prev) => prev ? { ...prev, status: updated.status } : prev);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `conversation_id=eq.${id}` },
+        (payload) => {
+          const b = payload.new as any;
+          if (b) {
+            setBookingStatus(b.status ?? null);
+            setHandoverConfirmedOwner(b.handover_confirmed_owner ?? false);
+            setHandoverConfirmedRenter(b.handover_confirmed_renter ?? false);
+            setReturnConfirmedOwner(b.return_confirmed_owner ?? false);
+            setReturnConfirmedRenter(b.return_confirmed_renter ?? false);
           }
         }
       )
@@ -649,6 +696,72 @@ export default function ChatScreen() {
     }
   };
 
+  const handleConfirmHandover = async () => {
+    if (!bookingId || !meta || !user || confirmLoading) return;
+    setConfirmLoading(true);
+    try {
+      const isOwner = meta.isOwner;
+      const updateField = isOwner ? { handover_confirmed_owner: true } : { handover_confirmed_renter: true };
+      const newOwnerVal = isOwner ? true : handoverConfirmedOwner;
+      const newRenterVal = !isOwner ? true : handoverConfirmedRenter;
+
+      await supabase.from('bookings').update(updateField).eq('id', bookingId);
+
+      if (newOwnerVal && newRenterVal) {
+        await supabase.from('bookings').update({ status: 'in_progress' }).eq('id', bookingId);
+        await supabase.from('chat_messages').insert({
+          conversation_id: id,
+          sender_id: null,
+          content: 'Remise confirmée par les deux parties — Location en cours',
+          is_system: true,
+        });
+      } else {
+        const who = isOwner ? meta.ownerUsername : meta.requesterUsername;
+        await supabase.from('chat_messages').insert({
+          conversation_id: id,
+          sender_id: null,
+          content: `Remise confirmée par ${who} — En attente de l'autre partie`,
+          is_system: true,
+        });
+      }
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
+  const handleConfirmReturn = async () => {
+    if (!bookingId || !meta || !user || confirmLoading) return;
+    setConfirmLoading(true);
+    try {
+      const isOwner = meta.isOwner;
+      const updateField = isOwner ? { return_confirmed_owner: true } : { return_confirmed_renter: true };
+      const newOwnerVal = isOwner ? true : returnConfirmedOwner;
+      const newRenterVal = !isOwner ? true : returnConfirmedRenter;
+
+      await supabase.from('bookings').update(updateField).eq('id', bookingId);
+
+      if (newOwnerVal && newRenterVal) {
+        await supabase.from('bookings').update({ status: 'completed' }).eq('id', bookingId);
+        await supabase.from('chat_messages').insert({
+          conversation_id: id,
+          sender_id: null,
+          content: 'Retour confirmé par les deux parties — Location terminée',
+          is_system: true,
+        });
+      } else {
+        const who = isOwner ? meta.ownerUsername : meta.requesterUsername;
+        await supabase.from('chat_messages').insert({
+          conversation_id: id,
+          sender_id: null,
+          content: `Retour confirmé par ${who} — En attente de l'autre partie`,
+          is_system: true,
+        });
+      }
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
   const renderMessage = ({ item, index }: { item: MessageItem; index: number }) => {
     if (item.isSystem) {
       return (
@@ -871,19 +984,131 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Status badge banner */}
+      {/* Status badge + progress stepper */}
       {meta && meta.status !== 'pending' && (
         <View style={styles.statusBadgeRow}>
           <BookingBadge status={bookingStatus ?? meta.status} />
+          {bookingStatus && ['active', 'in_progress', 'pending_return', 'completed'].includes(bookingStatus) && (
+            <View style={styles.progressWrapper}>
+              <BookingProgress status={bookingStatus} />
+            </View>
+          )}
         </View>
       )}
 
-      {/* Active confirmation card */}
-      {bookingStatus === 'active' && (
-        <View style={styles.activeConfirmCard}>
-          <Text style={styles.activeConfirmText}>
-            Paiement confirmé — Vous pouvez vous retrouver pour la remise
+      {/* Handover confirmation card — shown when bookingStatus === 'active' */}
+      {bookingStatus === 'active' && bookingId && meta && (
+        <View style={styles.confirmCard}>
+          <View style={styles.confirmCardHeader}>
+            <Ionicons name="hand-left-outline" size={16} color="#1B4332" />
+            <Text style={styles.confirmCardTitle}>Confirmez la remise de l'objet</Text>
+          </View>
+          <Text style={styles.confirmCardSub}>
+            Les deux parties doivent confirmer sur place pour démarrer la location.
           </Text>
+          <View style={styles.confirmPeers}>
+            <View style={styles.confirmPeerItem}>
+              <Ionicons
+                name={handoverConfirmedOwner ? 'checkmark-circle' : 'ellipse-outline'}
+                size={16}
+                color={handoverConfirmedOwner ? '#1B4332' : '#A0A0A0'}
+              />
+              <Text style={[styles.confirmPeerName, handoverConfirmedOwner && styles.confirmPeerDone]}>
+                {meta.ownerUsername} (loueur)
+              </Text>
+            </View>
+            <View style={styles.confirmPeerItem}>
+              <Ionicons
+                name={handoverConfirmedRenter ? 'checkmark-circle' : 'ellipse-outline'}
+                size={16}
+                color={handoverConfirmedRenter ? '#1B4332' : '#A0A0A0'}
+              />
+              <Text style={[styles.confirmPeerName, handoverConfirmedRenter && styles.confirmPeerDone]}>
+                {meta.requesterUsername} (locataire)
+              </Text>
+            </View>
+          </View>
+          {!(meta.isOwner ? handoverConfirmedOwner : handoverConfirmedRenter) && (
+            <TouchableOpacity
+              style={[styles.confirmBtn, confirmLoading && { opacity: 0.6 }]}
+              activeOpacity={0.85}
+              onPress={handleConfirmHandover}
+              disabled={confirmLoading}
+            >
+              {confirmLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-outline" size={16} color="#fff" />
+                  <Text style={styles.confirmBtnText}>Je confirme la remise</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+          {(meta.isOwner ? handoverConfirmedOwner : handoverConfirmedRenter) && !(meta.isOwner ? handoverConfirmedRenter : handoverConfirmedOwner) && (
+            <View style={styles.confirmWaitingRow}>
+              <ActivityIndicator size="small" color="#8E9878" />
+              <Text style={styles.confirmWaitingText}>En attente de la confirmation de l'autre partie...</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Return confirmation card — shown when bookingStatus === 'in_progress' */}
+      {bookingStatus === 'in_progress' && bookingId && meta && (
+        <View style={[styles.confirmCard, styles.confirmCardReturn]}>
+          <View style={styles.confirmCardHeader}>
+            <Ionicons name="return-down-back-outline" size={16} color="#004085" />
+            <Text style={[styles.confirmCardTitle, { color: '#004085' }]}>Confirmez le retour de l'objet</Text>
+          </View>
+          <Text style={styles.confirmCardSub}>
+            Confirmez ensemble quand l'objet a été restitué pour clôturer la location.
+          </Text>
+          <View style={styles.confirmPeers}>
+            <View style={styles.confirmPeerItem}>
+              <Ionicons
+                name={returnConfirmedOwner ? 'checkmark-circle' : 'ellipse-outline'}
+                size={16}
+                color={returnConfirmedOwner ? '#004085' : '#A0A0A0'}
+              />
+              <Text style={[styles.confirmPeerName, returnConfirmedOwner && { color: '#004085', fontFamily: 'Inter-SemiBold' }]}>
+                {meta.ownerUsername} (loueur)
+              </Text>
+            </View>
+            <View style={styles.confirmPeerItem}>
+              <Ionicons
+                name={returnConfirmedRenter ? 'checkmark-circle' : 'ellipse-outline'}
+                size={16}
+                color={returnConfirmedRenter ? '#004085' : '#A0A0A0'}
+              />
+              <Text style={[styles.confirmPeerName, returnConfirmedRenter && { color: '#004085', fontFamily: 'Inter-SemiBold' }]}>
+                {meta.requesterUsername} (locataire)
+              </Text>
+            </View>
+          </View>
+          {!(meta.isOwner ? returnConfirmedOwner : returnConfirmedRenter) && (
+            <TouchableOpacity
+              style={[styles.confirmBtn, styles.confirmBtnReturn, confirmLoading && { opacity: 0.6 }]}
+              activeOpacity={0.85}
+              onPress={handleConfirmReturn}
+              disabled={confirmLoading}
+            >
+              {confirmLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-outline" size={16} color="#fff" />
+                  <Text style={styles.confirmBtnText}>Je confirme le retour</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+          {(meta.isOwner ? returnConfirmedOwner : returnConfirmedRenter) && !(meta.isOwner ? returnConfirmedRenter : returnConfirmedOwner) && (
+            <View style={styles.confirmWaitingRow}>
+              <ActivityIndicator size="small" color="#8E9878" />
+              <Text style={styles.confirmWaitingText}>En attente de la confirmation de l'autre partie...</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -1640,25 +1865,101 @@ const styles = StyleSheet.create({
   statusBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#EAE6D8',
     backgroundColor: '#FFFDF7',
+    gap: 10,
   },
-  activeConfirmCard: {
-    backgroundColor: '#D4EDDA',
+  progressWrapper: {
+    flex: 1,
+  },
+  confirmCard: {
+    backgroundColor: '#ECFDF5',
     borderBottomWidth: 1,
-    borderBottomColor: '#B7DFC0',
+    borderBottomColor: '#A7F3D0',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 14,
+    gap: 10,
   },
-  activeConfirmText: {
-    fontFamily: 'Inter-SemiBold',
+  confirmCardReturn: {
+    backgroundColor: '#EFF6FF',
+    borderBottomColor: '#BFDBFE',
+  },
+  confirmCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  confirmCardTitle: {
+    fontFamily: 'Inter-Bold',
     fontSize: 13,
-    color: '#155724',
-    textAlign: 'center',
-    lineHeight: 19,
+    color: '#1B4332',
+    letterSpacing: -0.1,
+  },
+  confirmCardSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#555',
+    lineHeight: 17,
+  },
+  confirmPeers: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  confirmPeerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  confirmPeerName: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#888',
+  },
+  confirmPeerDone: {
+    color: '#1B4332',
+    fontFamily: 'Inter-SemiBold',
+  },
+  confirmBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: '#1B4332',
+    ...Platform.select({
+      ios: { shadowColor: '#1B4332', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      android: { elevation: 3 },
+      web: { boxShadow: '0 3px 10px rgba(27,67,50,0.3)' },
+    }),
+  },
+  confirmBtnReturn: {
+    backgroundColor: '#1D4ED8',
+    ...Platform.select({
+      ios: { shadowColor: '#1D4ED8', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      android: { elevation: 3 },
+      web: { boxShadow: '0 3px 10px rgba(29,78,216,0.3)' },
+    }),
+  },
+  confirmBtnText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: '#fff',
+  },
+  confirmWaitingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  confirmWaitingText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#8E9878',
+    fontStyle: 'italic',
   },
   bubblePending: { opacity: 0.65 },
   bubbleImage: {

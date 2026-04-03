@@ -16,6 +16,8 @@ export function getBookingBadge(status: string): BadgeConfig {
       return { label: 'Acceptée', backgroundColor: '#D4EDDA', textColor: '#155724', iconName: 'checkmark-circle-outline' };
     case 'active':
       return { label: 'Prêt pour la remise', backgroundColor: '#1B4332', textColor: '#FFFFFF', iconName: 'hand-left-outline' };
+    case 'in_progress':
+      return { label: 'En cours', backgroundColor: '#0369A1', textColor: '#FFFFFF', iconName: 'play-circle-outline' };
     case 'pending_return':
       return { label: 'Retour en cours', backgroundColor: '#CCE5FF', textColor: '#004085', iconName: 'return-down-back-outline' };
     case 'completed':
@@ -30,6 +32,64 @@ export function getBookingBadge(status: string): BadgeConfig {
     default:
       return { label: status, backgroundColor: '#E2E3E5', textColor: '#383D41', iconName: 'time-outline' };
   }
+}
+
+export type RentalStep = 'accepted' | 'active' | 'in_progress' | 'pending_return' | 'completed';
+
+const STEPS: { key: RentalStep; label: string }[] = [
+  { key: 'accepted', label: 'Payé' },
+  { key: 'active', label: 'Remise' },
+  { key: 'in_progress', label: 'En cours' },
+  { key: 'pending_return', label: 'Retour' },
+  { key: 'completed', label: 'Terminé' },
+];
+
+const STEP_ORDER: Record<string, number> = {
+  accepted: 0,
+  active: 1,
+  in_progress: 2,
+  pending_return: 3,
+  completed: 4,
+};
+
+interface BookingProgressProps {
+  status: string;
+}
+
+export function BookingProgress({ status }: BookingProgressProps) {
+  const currentIndex = STEP_ORDER[status] ?? -1;
+  if (currentIndex === -1) return null;
+
+  return (
+    <View style={progressStyles.container}>
+      {STEPS.map((step, i) => {
+        const done = i < currentIndex;
+        const active = i === currentIndex;
+        return (
+          <View key={step.key} style={progressStyles.stepWrapper}>
+            <View style={[
+              progressStyles.dot,
+              done && progressStyles.dotDone,
+              active && progressStyles.dotActive,
+            ]}>
+              {done && <Ionicons name="checkmark" size={9} color="#fff" />}
+              {active && <View style={progressStyles.dotInner} />}
+            </View>
+            <Text style={[
+              progressStyles.stepLabel,
+              done && progressStyles.stepLabelDone,
+              active && progressStyles.stepLabelActive,
+            ]}>
+              {step.label}
+            </Text>
+            {i < STEPS.length - 1 && (
+              <View style={[progressStyles.line, done && progressStyles.lineDone]} />
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
 }
 
 interface BookingBadgeProps {
@@ -59,5 +119,70 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
+  },
+});
+
+const progressStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  stepWrapper: {
+    alignItems: 'center',
+    flex: 1,
+    position: 'relative',
+  },
+  dot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E0DDD0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  dotDone: {
+    backgroundColor: '#1B4332',
+  },
+  dotActive: {
+    backgroundColor: '#0369A1',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+  dotInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+  },
+  stepLabel: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 9,
+    color: '#A0A0A0',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  stepLabelDone: {
+    color: '#1B4332',
+    fontFamily: 'Inter-SemiBold',
+  },
+  stepLabelActive: {
+    color: '#0369A1',
+    fontFamily: 'Inter-Bold',
+  },
+  line: {
+    position: 'absolute',
+    top: 10,
+    left: '50%',
+    right: '-50%',
+    height: 2,
+    backgroundColor: '#E0DDD0',
+    zIndex: 0,
+  },
+  lineDone: {
+    backgroundColor: '#1B4332',
   },
 });

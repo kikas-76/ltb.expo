@@ -107,11 +107,23 @@ function getConvSubtext(displayStatus: ConvDisplayStatus, isRequester: boolean):
         ? 'Finalise ta réservation en payant'
         : 'En attente du paiement du locataire';
     case 'active':
-      return 'Paiement confirmé — Rendez-vous pour la remise';
+      return isRequester
+        ? 'Confirme la remise sur place avec le loueur'
+        : 'Confirme la remise sur place avec le locataire';
+    case 'in_progress':
+      return 'Location en cours';
     case 'pending_return':
-      return 'En attente de confirmation du retour';
+      return isRequester
+        ? 'Confirme le retour sur place avec le loueur'
+        : 'Confirme le retour sur place avec le locataire';
     case 'completed':
       return 'Location terminée';
+    case 'refused':
+      return 'Demande refusée';
+    case 'cancelled':
+      return 'Annulée';
+    case 'disputed':
+      return 'Litige en cours';
     default:
       return null;
   }
@@ -404,14 +416,12 @@ export default function MessagesScreen() {
     const bookingStatusRaw = booking?.status ?? null;
 
     let displayStatus: ConvDisplayStatus;
-    if (bookingStatusRaw && ['active', 'pending_return', 'completed', 'disputed', 'cancelled'].includes(bookingStatusRaw)) {
+    if (bookingStatusRaw && ['active', 'in_progress', 'pending_return', 'completed', 'disputed', 'cancelled'].includes(bookingStatusRaw)) {
       displayStatus = bookingStatusRaw as ConvDisplayStatus;
     } else if (rawStatus === 'refused' || rawStatus === 'rejected') {
       displayStatus = 'refused';
     } else if (rawStatus === 'accepted') {
-      if (today > endD) displayStatus = 'completed';
-      else if (today >= startD) displayStatus = 'in_progress';
-      else displayStatus = 'accepted';
+      displayStatus = 'accepted';
     } else {
       displayStatus = rawStatus as ConvDisplayStatus;
     }
