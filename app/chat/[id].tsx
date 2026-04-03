@@ -534,6 +534,12 @@ export default function ChatScreen() {
           .maybeSingle();
 
         if (!existingBooking) {
+          const { data: listingData } = await supabase
+            .from('listings')
+            .select('deposit_amount')
+            .eq('id', meta.listingId)
+            .maybeSingle();
+
           await supabase.from('bookings').insert({
             listing_id: meta.listingId,
             renter_id: meta.requesterUserId,
@@ -542,6 +548,7 @@ export default function ChatScreen() {
             start_date: new Date(meta.startDate + 'T00:00:00').toISOString(),
             end_date: new Date(meta.endDate + 'T23:59:59').toISOString(),
             total_price: totalPrice,
+            deposit_amount: listingData?.deposit_amount ?? 0,
             conversation_id: id,
           });
         }
@@ -578,11 +585,24 @@ export default function ChatScreen() {
     try {
       const { data: existingBooking } = await supabase
         .from('bookings')
-        .select('id, total_price, status')
+        .select('id, total_price, status, deposit_amount')
         .eq('conversation_id', id)
         .maybeSingle();
 
       if (existingBooking) {
+        if (!existingBooking.deposit_amount || existingBooking.deposit_amount === 0) {
+          const { data: listingData } = await supabase
+            .from('listings')
+            .select('deposit_amount')
+            .eq('id', meta.listingId)
+            .maybeSingle();
+          if (listingData?.deposit_amount) {
+            await supabase
+              .from('bookings')
+              .update({ deposit_amount: listingData.deposit_amount })
+              .eq('id', existingBooking.id);
+          }
+        }
         setBookingId(existingBooking.id);
         setBookingTotal(existingBooking.total_price ?? null);
         setBookingStatus(existingBooking.status ?? null);
@@ -596,6 +616,12 @@ export default function ChatScreen() {
         ? Math.round(meta.listingPrice * days * (1 - disc))
         : 0;
 
+      const { data: listingDepositData } = await supabase
+        .from('listings')
+        .select('deposit_amount')
+        .eq('id', meta.listingId)
+        .maybeSingle();
+
       const { data: newBooking, error } = await supabase
         .from('bookings')
         .insert({
@@ -606,6 +632,7 @@ export default function ChatScreen() {
           start_date: new Date(meta.startDate + 'T00:00:00').toISOString(),
           end_date: new Date(meta.endDate + 'T23:59:59').toISOString(),
           total_price: totalPrice,
+          deposit_amount: listingDepositData?.deposit_amount ?? 0,
           conversation_id: id,
         })
         .select('id, total_price, status')

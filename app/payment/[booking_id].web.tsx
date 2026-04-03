@@ -175,6 +175,26 @@ function StripeEmbedForm({
             })
             .eq('id', msg.bookingId);
 
+          const { data: { session } } = await supabase.auth.getSession();
+          if (msg.depositPaymentIntentId && session?.access_token) {
+            await fetch(
+              `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/manage-deposit`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+                  'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  action: 'authorize',
+                  booking_id: msg.bookingId,
+                  payment_intent_id: msg.depositPaymentIntentId,
+                }),
+              }
+            );
+          }
+
           router.replace({
             pathname: '/payment-success',
             params: { booking_id: msg.bookingId },

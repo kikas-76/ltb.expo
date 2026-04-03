@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
       .from("bookings")
       .select(`
         *,
-        listing:listings(name, platform_fee_percent),
+        listing:listings(name, platform_fee_percent, deposit_amount),
         owner_profile:profiles!bookings_owner_id_fkey(stripe_account_id)
       `)
       .eq("id", booking_id)
@@ -66,7 +66,19 @@ Deno.serve(async (req: Request) => {
     const feePercent = 0.07;
     const rentalAmount = Math.round(booking.total_price * 100);
     const serviceFee = Math.round(booking.total_price * feePercent * 100);
-    const depositAmount = Math.round(booking.deposit_amount * 100);
+
+    const rawDeposit = (!booking.deposit_amount || booking.deposit_amount === 0)
+      ? (booking.listing?.deposit_amount ?? 0)
+      : booking.deposit_amount;
+
+    if (rawDeposit > 0 && (!booking.deposit_amount || booking.deposit_amount === 0)) {
+      await supabaseAdmin
+        .from("bookings")
+        .update({ deposit_amount: rawDeposit })
+        .eq("id", booking_id);
+    }
+
+    const depositAmount = Math.round(rawDeposit * 100);
 
     const stripeHeaders = {
       "Authorization": `Bearer ${stripeKey}`,
