@@ -115,6 +115,8 @@ export default function ChatScreen() {
   const [returnConfirmedRenter, setReturnConfirmedRenter] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmCardExpanded, setConfirmCardExpanded] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [ownerValidated, setOwnerValidated] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!id || !user) return;
@@ -174,7 +176,7 @@ export default function ChatScreen() {
         const queries: Promise<any>[] = [
           supabase
             .from('bookings')
-            .select('id, total_price, status, renter_id, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter')
+            .select('id, total_price, status, renter_id, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter, owner_validated')
             .eq('conversation_id', id)
             .maybeSingle(),
         ];
@@ -198,14 +200,15 @@ export default function ChatScreen() {
           setHandoverConfirmedRenter(booking.handover_confirmed_renter ?? false);
           setReturnConfirmedOwner(booking.return_confirmed_owner ?? false);
           setReturnConfirmedRenter(booking.return_confirmed_renter ?? false);
+          setOwnerValidated(booking.owner_validated ?? false);
         }
         if (isRequester) {
           setStripeReady(profile?.stripe_onboarding_complete === true);
         }
-      } else if (['active', 'in_progress', 'pending_return', 'completed'].some(s => conv.status === s)) {
+      } else if (['active', 'in_progress', 'pending_return', 'completed', 'pending_owner_validation', 'disputed'].some(s => conv.status === s)) {
         const { data: booking } = await supabase
           .from('bookings')
-          .select('id, total_price, status, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter')
+          .select('id, total_price, status, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter, owner_validated')
           .eq('conversation_id', id)
           .maybeSingle();
         if (booking) {
@@ -216,6 +219,7 @@ export default function ChatScreen() {
           setHandoverConfirmedRenter(booking.handover_confirmed_renter ?? false);
           setReturnConfirmedOwner(booking.return_confirmed_owner ?? false);
           setReturnConfirmedRenter(booking.return_confirmed_renter ?? false);
+          setOwnerValidated(booking.owner_validated ?? false);
         }
       }
     }
@@ -304,6 +308,10 @@ export default function ChatScreen() {
             setHandoverConfirmedRenter(b.handover_confirmed_renter ?? false);
             setReturnConfirmedOwner(b.return_confirmed_owner ?? false);
             setReturnConfirmedRenter(b.return_confirmed_renter ?? false);
+            setOwnerValidated(b.owner_validated ?? false);
+            if (b.status === 'pending_owner_validation') {
+              setShowValidationModal(true);
+            }
           }
         }
       )
@@ -742,13 +750,14 @@ export default function ChatScreen() {
       await supabase.from('bookings').update(updateField).eq('id', bookingId);
 
       if (newOwnerVal && newRenterVal) {
-        await supabase.from('bookings').update({ status: 'completed' }).eq('id', bookingId);
+        await supabase.from('bookings').update({ status: 'pending_owner_validation' }).eq('id', bookingId);
         await supabase.from('chat_messages').insert({
           conversation_id: id,
           sender_id: null,
-          content: 'Retour confirmé par les deux parties — Location terminée',
+          content: "Retour confirmé par les deux parties — En attente de la validation finale du propriétaire",
           is_system: true,
         });
+        if (isOwner) setShowValidationModal(true);
       } else {
         const who = isOwner ? meta.ownerUsername : meta.requesterUsername;
         await supabase.from('chat_messages').insert({
@@ -761,6 +770,30 @@ export default function ChatScreen() {
     } finally {
       setConfirmLoading(false);
     }
+  };
+
+  const handleOwnerValidateOk = async () => {
+    if (!bookingId || !id || confirmLoading) return;
+    setConfirmLoading(true);
+    try {
+      await supabase.from('bookings').update({ status: 'completed', owner_validated: true }).eq('id', bookingId);
+      await supabase.from('chat_messages').insert({
+        conversation_id: id,
+        sender_id: null,
+        content: "Location terminée — L'objet a été validé par le propriétaire. La caution a été libérée.",
+        is_system: true,
+      });
+      setShowValidationModal(false);
+      setOwnerValidated(true);
+      setBookingStatus('completed');
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
+  const handleOpenDispute = () => {
+    setShowValidationModal(false);
+    router.push(`/dispute/${bookingId}?conversation_id=${id}` as any);
   };
 
   const renderMessage = ({ item, index }: { item: MessageItem; index: number }) => {
@@ -1163,6 +1196,23 @@ export default function ChatScreen() {
         );
       })()}
 
+      {/* Owner pending validation banner — shown when bookingStatus === 'pending_owner_validation' */}
+      {bookingStatus === 'pending_owner_validation' && meta?.isOwner && !ownerValidated && (
+        <TouchableOpacity
+          style={styles.validationBanner}
+          activeOpacity={0.88}
+          onPress={() => setShowValidationModal(true)}
+        >
+          <View style={styles.validationBannerLeft}>
+            <Ionicons name="shield-checkmark-outline" size={16} color="#1A5C38" />
+            <Text style={styles.validationBannerText}>Valider l'état de l'objet rendu</Text>
+          </View>
+          <View style={styles.validationBannerBtn}>
+            <Text style={styles.validationBannerBtnText}>Vérifier →</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
       {/* Payment action banner for renter when booking is accepted and not yet paid */}
       {meta && meta.status === 'accepted' && !meta.isOwner && !['active', 'in_progress', 'pending_return', 'completed'].includes(bookingStatus ?? '') && (
         stripeReady ? (
@@ -1388,6 +1438,64 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Owner validation modal — shown when bookingStatus === 'pending_owner_validation' and user is owner */}
+      <Modal
+        visible={showValidationModal && !!meta?.isOwner}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowValidationModal(false)}
+      >
+        <View style={styles.validationOverlay}>
+          <View style={[styles.validationSheet, { paddingBottom: insets.bottom + 24 }]}>
+            <View style={styles.validationHandle} />
+            <View style={styles.validationIconRow}>
+              <View style={styles.validationIconWrap}>
+                <Ionicons name="shield-checkmark-outline" size={32} color="#1A5C38" />
+              </View>
+            </View>
+            <Text style={styles.validationTitle}>L'objet est-il en bon état ?</Text>
+            <Text style={styles.validationSub}>
+              Vérifiez l'état de l'objet rendu. Si tout est bon, confirmez pour libérer la caution à l'emprunteur. Sinon, ouvrez un litige.
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.validationBtnOk, confirmLoading && { opacity: 0.6 }]}
+              activeOpacity={0.85}
+              onPress={handleOwnerValidateOk}
+              disabled={confirmLoading}
+            >
+              {confirmLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                  <Text style={styles.validationBtnOkText}>Tout est OK — Libérer la caution</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.validationBtnDispute}
+              activeOpacity={0.85}
+              onPress={handleOpenDispute}
+              disabled={confirmLoading}
+            >
+              <Ionicons name="warning-outline" size={18} color="#C0392B" />
+              <Text style={styles.validationBtnDisputeText}>Signaler un problème — Ouvrir un litige</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.validationBtnLater}
+              activeOpacity={0.75}
+              onPress={() => setShowValidationModal(false)}
+              disabled={confirmLoading}
+            >
+              <Text style={styles.validationBtnLaterText}>Plus tard</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </KeyboardAvoidingView>
   );
@@ -2049,6 +2157,129 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8E9878',
     fontStyle: 'italic',
+  },
+  validationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#D1FAE5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#6EE7B7',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  validationBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  validationBannerText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: '#1A5C38',
+  },
+  validationBannerBtn: {
+    backgroundColor: '#1A5C38',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  validationBannerBtnText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 12,
+    color: '#fff',
+  },
+  validationOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  validationSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    gap: 14,
+  },
+  validationHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E0DDD0',
+    alignSelf: 'center',
+    marginBottom: 6,
+  },
+  validationIconRow: {
+    alignItems: 'center',
+  },
+  validationIconWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  validationTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: '#1A1A1A',
+    textAlign: 'center',
+  },
+  validationSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 21,
+  },
+  validationBtnOk: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#1A5C38',
+    borderRadius: 14,
+    paddingVertical: 16,
+    marginTop: 4,
+    ...Platform.select({
+      ios: { shadowColor: '#1A5C38', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 4px 12px rgba(26,92,56,0.3)' },
+    }),
+  },
+  validationBtnOkText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 15,
+    color: '#fff',
+  },
+  validationBtnDispute: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FDF2F2',
+    borderWidth: 1,
+    borderColor: '#F5C6CB',
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  validationBtnDisputeText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#C0392B',
+  },
+  validationBtnLater: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  validationBtnLaterText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: '#999',
   },
   bubblePending: { opacity: 0.65 },
   bubbleImage: {
