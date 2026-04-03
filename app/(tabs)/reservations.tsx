@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Ionicons } from '@expo/vector-icons';
-import BookingBadge, { BookingProgress } from '@/components/BookingBadge';
+import BookingBadge from '@/components/BookingBadge';
 import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -319,11 +319,6 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
                 if (!subtext) return null;
                 return <Text style={styles.statusSubtext}>{subtext}</Text>;
               })()}
-              {['pending_return', 'pending_owner_validation', 'completed'].includes(item.displayStatus) && (
-                <View style={styles.progressContainer}>
-                  <BookingProgress status={item.displayStatus} />
-                </View>
-              )}
               {item.isRequester && item.displayStatus === 'accepted' && item.bookingStatus !== 'active' && (
                 <PaymentDeadlineBanner
                   stripeReady={stripeReady}

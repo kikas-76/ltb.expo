@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Modal,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BookingBadge, { BookingProgress } from '@/components/BookingBadge';
@@ -92,6 +93,8 @@ export default function ChatScreen() {
   const { user } = useAuth();
   const { refresh: refreshUnread } = useUnread();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const listRef = useRef<FlatList>(null);
   const inputScale = useRef(new Animated.Value(1)).current;
 
@@ -1056,10 +1059,10 @@ export default function ChatScreen() {
 
       {/* Status badge + progress stepper */}
       {meta && meta.status !== 'pending' && (
-        <View style={styles.statusBadgeRow}>
+        <View style={[styles.statusBadgeRow, isMobile && bookingStatus && ['active', 'in_progress', 'pending_return', 'pending_owner_validation', 'completed'].includes(bookingStatus) && styles.statusBadgeRowColumn]}>
           <BookingBadge status={bookingStatus ?? meta.status} />
           {bookingStatus && ['active', 'in_progress', 'pending_return', 'pending_owner_validation', 'completed'].includes(bookingStatus) && (
-            <View style={styles.progressWrapper}>
+            <View style={[styles.progressWrapper, isMobile && styles.progressWrapperFull]}>
               <BookingProgress status={bookingStatus} />
             </View>
           )}
@@ -1267,7 +1270,7 @@ export default function ChatScreen() {
       )}
 
       {/* Payment action banner for renter when booking is accepted and not yet paid */}
-      {meta && meta.status === 'accepted' && !meta.isOwner && !['active', 'in_progress', 'pending_return', 'completed'].includes(bookingStatus ?? '') && (
+      {meta && meta.status === 'accepted' && !meta.isOwner && !['active', 'in_progress', 'pending_return', 'pending_owner_validation', 'completed', 'disputed'].includes(bookingStatus ?? '') && (
         stripeReady ? (
           <TouchableOpacity
             style={styles.payBannerGreen}
@@ -2087,6 +2090,15 @@ const styles = StyleSheet.create({
   },
   progressWrapper: {
     flex: 1,
+  },
+  progressWrapperFull: {
+    width: '100%',
+    flex: undefined,
+  },
+  statusBadgeRowColumn: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   confirmCard: {
     backgroundColor: '#ECFDF5',

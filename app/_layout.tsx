@@ -86,6 +86,7 @@ function RootNavigator() {
       const inReport = segments[0] === 'report';
       const inPayment = segments[0] === 'payment';
       const inPaymentSuccess = segments[0] === 'payment-success';
+      const inDispute = segments[0] === 'dispute';
 
       const inLogin = segments[0] === 'login';
       const inRegister = segments[0] === 'register';
@@ -95,7 +96,7 @@ function RootNavigator() {
       } else if (session && !inOnboarding && !inLogin && !inRegister && segments[0] !== undefined) {
         if (!profile?.username) {
           router.replace('/onboarding/profile' as any);
-        } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess) {
+        } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess && !inDispute) {
           if (pendingListingId) {
             const id = pendingListingId;
             setPendingListingId(null);
@@ -144,6 +145,7 @@ function RootNavigator() {
         <Stack.Screen name="report" />
         <Stack.Screen name="payment/[booking_id]" />
         <Stack.Screen name="payment-success" />
+        <Stack.Screen name="dispute/[booking_id]" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="dark" />
