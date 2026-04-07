@@ -100,7 +100,10 @@ export default function LandingScreen() {
   useEffect(() => {
     if (Platform.OS === 'web') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('stripe_return') === '1') window.close();
+      if (params.get('stripe_return') === '1') {
+        router.replace('/wallet');
+        return;
+      }
     }
   }, []);
 

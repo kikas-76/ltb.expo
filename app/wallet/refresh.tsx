@@ -21,19 +21,36 @@ export default function WalletRefreshScreen() {
   const insets = useSafeAreaInsets();
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const fetchSession = async () => {
+    const verifyFirst = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          setAccessToken(session.access_token);
+        if (!session?.access_token) { setChecking(false); return; }
+        setAccessToken(session.access_token);
+
+        const response = await fetch(
+          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/check-account-status`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+            },
+            body: JSON.stringify({ access_token: session.access_token }),
+          }
+        );
+        const data = await response.json();
+        if (data.complete === true) {
+          router.replace('/wallet');
+          return;
         }
-      } catch (err) {
-        console.error('session error:', err);
-      }
+      } catch {}
+      setChecking(false);
     };
-    fetchSession();
+    verifyFirst();
   }, []);
 
   const resumeOnboarding = async () => {
@@ -90,6 +107,14 @@ export default function WalletRefreshScreen() {
       status: 'pending' as const,
     },
   ];
+
+  if (checking) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={DARK_GREEN} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>

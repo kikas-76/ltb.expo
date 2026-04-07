@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -224,8 +224,8 @@ function HistorySection({ transactions }: { transactions: Transaction[] }) {
 function InfoCard() {
   const items = [
     'La location est payée à la réservation',
-    'Tu reçois 85% du montant total',
-    'LoueTonBien retient 15% de commission',
+    'Tu reçois 92% du montant total (8% de commission)',
+    'Le locataire paie 7% de frais de service en plus du prix affiché',
   ];
 
   return (
@@ -343,29 +343,31 @@ export default function WalletScreen() {
     }
   };
 
-  useEffect(() => {
-    const initWallet = async () => {
-      const token = await getValidToken();
+  useFocusEffect(
+    useCallback(() => {
+      const initWallet = async () => {
+        const token = await getValidToken();
 
-      if (!token) {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          (async () => {
-            if (session?.access_token) {
-              await checkAccountStatus(session.access_token);
-              await loadEarnings();
-              subscription.unsubscribe();
-            }
-          })();
-        });
-        return;
-      }
+        if (!token) {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            (async () => {
+              if (session?.access_token) {
+                await checkAccountStatus(session.access_token);
+                await loadEarnings();
+                subscription.unsubscribe();
+              }
+            })();
+          });
+          return;
+        }
 
-      await checkAccountStatus(token);
-      await loadEarnings();
-    };
+        await checkAccountStatus(token);
+        await loadEarnings();
+      };
 
-    initWallet();
-  }, []);
+      initWallet();
+    }, [])
+  );
 
   const activateStripeAccount = async () => {
     setActivateLoading(true);
