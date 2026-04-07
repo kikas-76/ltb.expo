@@ -13,6 +13,7 @@ interface Profile {
   phone_number: string | null;
   location_data: { address: string; lat: number | null; lng: number | null } | null;
   is_pro: boolean;
+  bio: string | null;
 }
 
 interface AuthContextType {
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileLoading(true);
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, username, photo_url, phone_number, location_data, is_pro')
+      .select('id, email, username, photo_url, phone_number, location_data, is_pro, bio')
       .eq('id', userId)
       .maybeSingle();
     setProfile(data);

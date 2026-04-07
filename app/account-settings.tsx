@@ -103,7 +103,7 @@ export default function AccountSettingsScreen() {
     setPasswordSuccess(false); setPasswordError(null);
     setDeleteError(null); setDeleteConfirm('');
     if (s === 'username') setUsername(profile?.username ?? '');
-    if (s === 'bio') setBio((profile as any)?.bio ?? '');
+    if (s === 'bio') setBio(profile?.bio ?? '');
     if (s === 'email') setEmail(profile?.email ?? user?.email ?? '');
     if (s === 'phone') setPhone(profile?.phone_number ?? '');
     if (s === 'password') {
@@ -299,7 +299,7 @@ export default function AccountSettingsScreen() {
     }
   };
 
-  const bioText: string = (profile as any)?.bio ?? '';
+  const bioText: string = profile?.bio ?? '';
   const bioPreview = bioText
     ? bioText.slice(0, 50) + (bioText.length > 50 ? '...' : '')
     : 'Ajouter une bio';
