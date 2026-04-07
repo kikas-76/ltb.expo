@@ -136,9 +136,9 @@ export default function ChatScreen() {
         requester_id,
         owner_id,
         status,
-        listing:listings!conversations_listing_id_fkey(name, photos_url, price),
+        listing:listings!conversations_listing_id_fkey(name, photos_url, price, location_data),
         requester:profiles!conversations_requester_id_fkey(username, photo_url, avatar_url),
-        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url, location_data)
+        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url)
       `)
       .eq('id', id)
       .maybeSingle();
@@ -152,11 +152,17 @@ export default function ChatScreen() {
       const parseCity = (address: string | null | undefined): string | null => {
         if (!address) return null;
         const parts = address.split(',').map((p: string) => p.trim()).filter(Boolean);
-        return parts[parts.length - 1] ?? null;
+        if (parts.length >= 2) {
+          const cityPart = parts[parts.length - 2];
+          const match = cityPart.match(/^\d{4,6}\s+(.+)$/);
+          if (match) return match[1].trim();
+          return cityPart;
+        }
+        return parts[0] ?? null;
       };
       const city =
-        owner?.location_data?.city ??
-        parseCity(owner?.location_data?.address) ??
+        listing?.location_data?.city ??
+        parseCity(listing?.location_data?.address) ??
         null;
 
       setMeta({
