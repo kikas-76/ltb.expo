@@ -482,7 +482,7 @@ export default function WalletScreen() {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => router.back()}
+            onPress={() => router.replace('/(tabs)/profil')}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
@@ -508,7 +508,7 @@ export default function WalletScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => router.replace('/(tabs)/profil')}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
