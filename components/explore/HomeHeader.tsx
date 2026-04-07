@@ -1,14 +1,13 @@
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 interface HomeHeaderProps {
   username: string | null;
   photoUrl: string | null;
-  notificationCount?: number;
 }
 
-export default function HomeHeader({ username, notificationCount = 0 }: HomeHeaderProps) {
+export default function HomeHeader({ username }: HomeHeaderProps) {
   const firstName = username ?? 'vous';
   const { width } = useWindowDimensions();
   const isSmall = width < 380;
@@ -26,13 +25,6 @@ export default function HomeHeader({ username, notificationCount = 0 }: HomeHead
           Que cherchez-vous aujourd'hui ?
         </Text>
       </View>
-
-      <TouchableOpacity style={styles.bellWrapper} activeOpacity={0.7}>
-        <Ionicons name="notifications-outline" size={20} color={Colors.text} />
-        {notificationCount > 0 && (
-          <View style={styles.badge} />
-        )}
-      </TouchableOpacity>
     </View>
   );
 }
@@ -76,32 +68,5 @@ const styles = StyleSheet.create({
   subtitleSmall: {
     fontSize: 11,
     marginLeft: 21,
-  },
-  bellWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    flexShrink: 0,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
-      android: { elevation: 2 },
-      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
-    }),
-  },
-  badge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E74C3C',
-    borderWidth: 1.5,
-    borderColor: Colors.background,
   },
 });

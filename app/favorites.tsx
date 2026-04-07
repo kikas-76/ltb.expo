@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -39,6 +40,8 @@ export default function FavoritesScreen() {
   const { user, profile } = useAuth();
   const { refreshKey } = useFavoritesContext();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const numColumns = width >= 1024 ? 4 : width >= 640 ? 3 : 2;
 
   const [listings, setListings] = useState<FavoriteListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +173,8 @@ export default function FavoritesScreen() {
           data={listings}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          numColumns={2}
+          numColumns={numColumns}
+          key={numColumns}
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}
           columnWrapperStyle={styles.columnWrapper}
           showsVerticalScrollIndicator={false}
