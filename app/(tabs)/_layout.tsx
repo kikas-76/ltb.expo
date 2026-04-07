@@ -177,10 +177,12 @@ function makeTabButton(
   onPressNav: () => void,
   icon: (color: string) => React.ReactNode,
   label: string,
+  activeRoutes: string[],
   showDot?: boolean,
 ) {
-  return function TabButton({ accessibilityState }: any) {
-    const focused = accessibilityState?.selected;
+  return function TabButton(_props: any) {
+    const pathname = usePathname();
+    const focused = activeRoutes.some((r) => pathname === r || pathname.startsWith(r + '/') || pathname.includes(r));
     const color = focused ? Colors.primary : '#9CA3AF';
     return (
       <TouchableOpacity
@@ -259,6 +261,7 @@ export default function TabLayout() {
             () => router.push('/(tabs)'),
             (c) => <Ionicons name="search-outline" size={22} color={c} />,
             'Rechercher',
+            ['/', '/(tabs)', '/(tabs)/index', '/search', '/category', '/listing', '/popular', '/deals', '/favorites'],
           ),
         }}
       />
@@ -269,6 +272,7 @@ export default function TabLayout() {
             () => router.push('/create-listing'),
             (c) => <Ionicons name="add-circle-outline" size={22} color={c} />,
             'Louer',
+            ['/create-listing', '/(tabs)/mes-annonces'],
           ),
         }}
       />
@@ -279,6 +283,7 @@ export default function TabLayout() {
             () => router.push('/(tabs)/reservations'),
             (c) => <Ionicons name="chatbubble-outline" size={22} color={c} />,
             'Messages',
+            ['/(tabs)/reservations', '/chat'],
             hasIncomingRequests,
           ),
         }}
@@ -290,6 +295,7 @@ export default function TabLayout() {
             () => router.push('/(tabs)/profil'),
             (c) => <Ionicons name="person-outline" size={22} color={c} />,
             'Mon Compte',
+            ['/(tabs)/profil', '/account-settings', '/edit-address', '/wallet', '/onboarding'],
           ),
         }}
       />
