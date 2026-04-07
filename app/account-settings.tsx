@@ -299,47 +299,59 @@ export default function AccountSettingsScreen() {
     }
   };
 
+  const bioText: string = (profile as any)?.bio ?? '';
+  const bioPreview = bioText
+    ? bioText.slice(0, 50) + (bioText.length > 50 ? '...' : '')
+    : 'Ajouter une bio';
+
   const menuItems = [
     {
       icon: <Ionicons name="camera-outline" size={18} color={Colors.primaryDark} />,
       label: 'Photo de profil',
       value: profile?.photo_url ? 'Modifier' : 'Ajouter',
+      preview: undefined as string | undefined,
       onPress: () => openSection('photo'),
     },
     {
       icon: <Ionicons name="at-outline" size={18} color={Colors.primaryDark} />,
       label: "Nom d'utilisateur",
       value: profile?.username ? `@${profile.username}` : '—',
+      preview: undefined as string | undefined,
       onPress: () => openSection('username'),
     },
     {
       icon: <Ionicons name="document-text-outline" size={18} color={Colors.primaryDark} />,
       label: 'Bio',
-      value: (profile as any)?.bio ? (profile as any).bio.slice(0, 40) + ((profile as any).bio.length > 40 ? '…' : '') : 'Non renseignée',
+      value: undefined as string | undefined,
+      preview: bioPreview,
       onPress: () => openSection('bio'),
     },
     {
       icon: <Ionicons name="mail-outline" size={18} color={Colors.primaryDark} />,
       label: 'Adresse email',
       value: profile?.email ?? user?.email ?? '—',
+      preview: undefined as string | undefined,
       onPress: () => openSection('email'),
     },
     {
       icon: <Ionicons name="call-outline" size={18} color={Colors.primaryDark} />,
       label: 'Numéro de téléphone',
       value: profile?.phone_number ?? 'Non renseigné',
+      preview: undefined as string | undefined,
       onPress: () => openSection('phone'),
     },
     {
       icon: <Ionicons name="location-outline" size={18} color={Colors.primaryDark} />,
       label: 'Mon adresse',
       value: profile?.location_data?.address ?? 'Non renseignée',
+      preview: undefined as string | undefined,
       onPress: () => router.push('/edit-address'),
     },
     {
       icon: <Ionicons name="lock-closed-outline" size={18} color={Colors.primaryDark} />,
       label: 'Mot de passe',
       value: '••••••••',
+      preview: undefined as string | undefined,
       onPress: () => openSection('password'),
     },
   ];
@@ -749,7 +761,11 @@ export default function AccountSettingsScreen() {
                 <View style={styles.menuIconWrap}>{item.icon}</View>
                 <View style={styles.menuRowContent}>
                   <Text style={styles.menuRowLabel}>{item.label}</Text>
-                  <Text style={styles.menuRowValue} numberOfLines={1}>{item.value}</Text>
+                  {item.preview !== undefined ? (
+                    <Text style={[styles.menuRowValue, !bioText && styles.menuRowValueEmpty]} numberOfLines={1}>{item.preview}</Text>
+                  ) : (
+                    <Text style={styles.menuRowValue} numberOfLines={1}>{item.value}</Text>
+                  )}
                 </View>
                 <Ionicons name="chevron-forward-outline" size={15} color={Colors.textMuted} />
               </TouchableOpacity>
@@ -927,6 +943,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  menuRowValueEmpty: {
+    fontStyle: 'italic',
+    opacity: 0.6,
   },
   menuDivider: {
     height: 1,
