@@ -161,6 +161,31 @@ export default function RootLayout() {
       const style = document.createElement('style');
       style.textContent = '*, *:focus { outline: none !important; } input:focus, textarea:focus { outline: none !important; box-shadow: none !important; }';
       document.head.appendChild(style);
+
+      const appleTouchIcon = document.createElement('link');
+      appleTouchIcon.rel = 'apple-touch-icon';
+      appleTouchIcon.setAttribute('sizes', '180x180');
+      appleTouchIcon.href = '/logoLTBwhitoutbaground.png';
+      document.head.appendChild(appleTouchIcon);
+
+      const icon32 = document.createElement('link');
+      icon32.rel = 'icon';
+      icon32.type = 'image/png';
+      icon32.setAttribute('sizes', '32x32');
+      icon32.href = '/logoLTBwhitoutbaground.png';
+      document.head.appendChild(icon32);
+
+      const icon16 = document.createElement('link');
+      icon16.rel = 'icon';
+      icon16.type = 'image/png';
+      icon16.setAttribute('sizes', '16x16');
+      icon16.href = '/logoLTBwhitoutbaground.png';
+      document.head.appendChild(icon16);
+
+      const ogImage = document.createElement('meta');
+      ogImage.setAttribute('property', 'og:image');
+      ogImage.content = '/logoLTBwhitoutbaground.png';
+      document.head.appendChild(ogImage);
     }
   }, []);
 
