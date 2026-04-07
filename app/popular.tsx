@@ -129,9 +129,6 @@ export default function PopularPage() {
     fetchListings(next, sortBy);
   };
 
-  const totalViews = listings.reduce((s, l) => s + l.view_count, 0);
-  const totalFavs = listings.reduce((s, l) => s + l.favorite_count, 0);
-
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
@@ -162,22 +159,6 @@ export default function PopularPage() {
           ))}
         </View>
       </View>
-
-      {!loading && listings.length > 0 && (
-        <View style={styles.statsBar}>
-          <View style={styles.statItem}>
-            <Ionicons name="eye-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.statText}>{totalViews} vues</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Ionicons name="heart-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.statText}>{totalFavs} favoris</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <Text style={styles.statsCount}>{listings.length}+ annonces</Text>
-        </View>
-      )}
 
       {loading ? (
         <View style={styles.grid}>
@@ -212,16 +193,6 @@ export default function PopularPage() {
                   userLng={userLng}
                   userId={userId}
                 />
-              </View>
-              <View style={styles.listingMeta}>
-                <View style={styles.metaItem}>
-                  <Ionicons name="eye-outline" size={11} color={Colors.textMuted} />
-                  <Text style={styles.metaText}>{item.view_count}</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Ionicons name="heart-outline" size={11} color={Colors.textMuted} />
-                  <Text style={styles.metaText}>{item.favorite_count}</Text>
-                </View>
               </View>
             </View>
           )}
@@ -325,34 +296,6 @@ const styles = StyleSheet.create({
   sortChipTextActive: {
     color: '#fff',
   },
-  statsBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 10,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: Colors.textMuted,
-  },
-  statDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: Colors.border,
-  },
-  statsCount: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 13,
-    color: Colors.text,
-    marginLeft: 'auto',
-  },
   listContent: {
     paddingHorizontal: 12,
     paddingBottom: 32,
@@ -393,24 +336,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 9,
     color: '#fff',
-  },
-  listingMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 6,
-    paddingTop: 5,
-    paddingBottom: 2,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  metaText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 11,
-    color: Colors.textMuted,
   },
   grid: {
     flexDirection: 'row',
