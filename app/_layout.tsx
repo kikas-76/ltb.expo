@@ -79,6 +79,8 @@ function RootNavigator() {
       const inAccountSettings = segments[0] === 'account-settings';
       const inDeals = segments[0] === 'deals';
       const inPopular = segments[0] === 'popular';
+      const inRecent = segments[0] === 'recent';
+      const inNearby = segments[0] === 'nearby';
       const inWallet = segments[0] === 'wallet';
       const inHelpCenter = segments[0] === 'help-center';
       const inHelp = segments[0] === 'help';
@@ -96,7 +98,7 @@ function RootNavigator() {
       } else if (session && !inOnboarding && !inLogin && !inRegister && segments[0] !== undefined) {
         if (!profile?.username) {
           router.replace('/onboarding/profile' as any);
-        } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess && !inDispute) {
+        } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inRecent && !inNearby && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess && !inDispute) {
           if (pendingListingId) {
             const id = pendingListingId;
             setPendingListingId(null);
@@ -138,6 +140,8 @@ function RootNavigator() {
         <Stack.Screen name="account-settings" />
         <Stack.Screen name="deals" />
         <Stack.Screen name="popular" />
+        <Stack.Screen name="recent" />
+        <Stack.Screen name="nearby" />
         <Stack.Screen name="wallet" />
         <Stack.Screen name="help-center" />
         <Stack.Screen name="help/[category]" />

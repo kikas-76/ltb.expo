@@ -180,7 +180,7 @@ export default function ExploreScreen() {
           <DealsSection userLat={userLat} userLng={userLng} userId={session?.user.id} />
 
           <View style={styles.section}>
-            <TouchableOpacity style={styles.sectionHeader} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.sectionHeader} activeOpacity={0.7} onPress={() => router.push('/nearby')}>
               <Text style={styles.sectionTitle}>Objets près de chez vous</Text>
               <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
             </TouchableOpacity>
@@ -236,7 +236,7 @@ export default function ExploreScreen() {
           </View>
 
           <View style={[styles.section, styles.sectionLast]}>
-            <TouchableOpacity style={styles.sectionHeader} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.sectionHeader} activeOpacity={0.7} onPress={() => router.push('/recent')}>
               <Text style={styles.sectionTitle}>Annonces récentes</Text>
               <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
             </TouchableOpacity>
