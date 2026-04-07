@@ -65,9 +65,13 @@ function formatMemberSince(dateStr: string): string {
 
 function parseCity(address: string | undefined): string | null {
   if (!address) return null;
-  const parts = address.split(',').map((p) => p.trim());
-  if (parts.length >= 3) return parts[2];
-  if (parts.length === 2) return parts[1];
+  const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    const cityPart = parts[parts.length - 2];
+    const match = cityPart.match(/^\d{4,6}\s+(.+)$/);
+    if (match) return match[1].trim();
+    return cityPart;
+  }
   return parts[0] ?? null;
 }
 
