@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -30,11 +29,20 @@ interface Earnings {
   pending: number;
 }
 
+interface NextTransfer {
+  amount: number;
+  daysUntil: number;
+  lastTransferAt: string | null;
+}
+
 interface Transaction {
   id: string;
   title: string;
   date: string;
   amount: number;
+  type: 'income' | 'payment';
+  status: string;
+  listingName?: string;
 }
 
 function formatEur(value: number): string {
@@ -150,23 +158,47 @@ function PaymentStatusCard({
   );
 }
 
-function NextTransferCard({ accountComplete }: { accountComplete: boolean | null }) {
+function NextTransferCard({
+  accountComplete,
+  nextTransfer,
+  loading,
+}: {
+  accountComplete: boolean | null;
+  nextTransfer: NextTransfer;
+  loading: boolean;
+}) {
+  const progressPercent = nextTransfer.daysUntil > 0
+    ? Math.min(((7 - nextTransfer.daysUntil) / 7) * 100, 100)
+    : 100;
+
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Prochain virement</Text>
       {!accountComplete ? (
         <Text style={styles.emptySubtext}>Active ton compte pour recevoir tes virements</Text>
+      ) : loading ? (
+        <ActivityIndicator color={DARK_GREEN} style={{ marginTop: 12 }} />
       ) : (
         <View>
-          <Text style={[styles.cardTitle, { color: SUCCESS_GREEN, fontSize: 22, marginTop: 8 }]}>
-            0,00 €
+          <Text style={[styles.nextTransferAmount, { color: SUCCESS_GREEN }]}>
+            {formatEur(nextTransfer.amount)}
           </Text>
-          <Text style={styles.emptySubtext}>Estimé dans 4 jours</Text>
+          <Text style={styles.emptySubtext}>
+            {nextTransfer.daysUntil <= 0
+              ? 'Virement en cours de traitement'
+              : nextTransfer.daysUntil === 1
+              ? 'Estimé demain'
+              : `Estimé dans ${nextTransfer.daysUntil} jours`}
+          </Text>
           <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: '43%' }]} />
+            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
           </View>
           <View style={styles.progressLabels}>
-            <Text style={styles.progressLabel}>Aujourd'hui</Text>
+            <Text style={styles.progressLabel}>
+              {nextTransfer.lastTransferAt
+                ? `Dernier : ${formatDate(nextTransfer.lastTransferAt)}`
+                : "Aujourd'hui"}
+            </Text>
             <Text style={styles.progressLabel}>Dans 7 jours</Text>
           </View>
         </View>
@@ -176,19 +208,26 @@ function NextTransferCard({ accountComplete }: { accountComplete: boolean | null
 }
 
 function TransactionItem({ item, last }: { item: Transaction; last: boolean }) {
-  const isPositive = item.amount >= 0;
+  const isIncome = item.type === 'income';
   return (
     <View>
       <View style={styles.txRow}>
-        <View style={[styles.txIcon, { backgroundColor: isPositive ? '#DCFCE7' : '#FEE2E2' }]}>
-          <Text style={{ fontSize: 14 }}>{isPositive ? '↑' : '↓'}</Text>
+        <View style={[styles.txIcon, { backgroundColor: isIncome ? '#DCFCE7' : '#F3F4F6' }]}>
+          <Text style={{ fontSize: 14 }}>{isIncome ? '↑' : '↓'}</Text>
         </View>
         <View style={styles.txMeta}>
-          <Text style={styles.txTitle}>{item.title}</Text>
+          <Text style={styles.txTitle}>
+            {isIncome ? 'Revenu' : 'Paiement'}{item.listingName ? ` — ${item.listingName}` : ''}
+          </Text>
           <Text style={styles.txDate}>{item.date}</Text>
+          <View style={[styles.txBadge, { backgroundColor: isIncome ? '#DCFCE7' : '#F3F4F6' }]}>
+            <Text style={[styles.txBadgeText, { color: isIncome ? SUCCESS_GREEN : Colors.textSecondary }]}>
+              {isIncome ? 'Revenu' : 'Location'}
+            </Text>
+          </View>
         </View>
-        <Text style={[styles.txAmount, { color: isPositive ? SUCCESS_GREEN : Colors.error }]}>
-          {isPositive ? '+' : ''}{item.amount.toFixed(2).replace('.', ',')} €
+        <Text style={[styles.txAmount, { color: isIncome ? SUCCESS_GREEN : Colors.textSecondary }]}>
+          {isIncome ? '+' : '-'}{Math.abs(item.amount).toFixed(2).replace('.', ',')} €
         </Text>
       </View>
       {!last && <View style={styles.txDivider} />}
@@ -196,19 +235,43 @@ function TransactionItem({ item, last }: { item: Transaction; last: boolean }) {
   );
 }
 
-function HistorySection({ transactions }: { transactions: Transaction[] }) {
+function HistorySection({
+  transactions,
+  loading,
+}: {
+  transactions: Transaction[];
+  loading: boolean;
+}) {
+  const incomeCount = transactions.filter((t) => t.type === 'income').length;
+  const paymentCount = transactions.filter((t) => t.type === 'payment').length;
+
   return (
     <View style={{ marginBottom: 16 }}>
       <View style={styles.sectionHeader}>
         <Text style={styles.cardTitle}>Historique</Text>
       </View>
+      {!loading && transactions.length > 0 && (
+        <View style={styles.historyTabs}>
+          <View style={styles.historyTab}>
+            <View style={styles.historyTabDot} />
+            <Text style={styles.historyTabText}>{incomeCount} revenu{incomeCount > 1 ? 's' : ''}</Text>
+          </View>
+          <View style={styles.historyTabSep} />
+          <View style={[styles.historyTab]}>
+            <View style={[styles.historyTabDot, { backgroundColor: Colors.textMuted }]} />
+            <Text style={styles.historyTabText}>{paymentCount} paiement{paymentCount > 1 ? 's' : ''}</Text>
+          </View>
+        </View>
+      )}
       <View style={styles.card}>
-        {transactions.length === 0 ? (
+        {loading ? (
+          <ActivityIndicator color={DARK_GREEN} style={{ paddingVertical: 24 }} />
+        ) : transactions.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="mail-outline" size={36} color={Colors.textMuted} />
+            <Ionicons name="receipt-outline" size={36} color={Colors.textMuted} />
             <Text style={styles.emptyTitle}>Aucune transaction pour le moment</Text>
             <Text style={styles.emptySubtext}>
-              Tes gains apparaîtront ici après ta première location
+              Tes revenus et paiements apparaîtront ici
             </Text>
           </View>
         ) : (
@@ -254,6 +317,13 @@ export default function WalletScreen() {
   const [earnings, setEarnings] = useState<Earnings>({ monthly: 0, total: 0, pending: 0 });
   const [earningsLoading, setEarningsLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [txLoading, setTxLoading] = useState(true);
+  const [nextTransfer, setNextTransfer] = useState<NextTransfer>({
+    amount: 0,
+    daysUntil: 7,
+    lastTransferAt: null,
+  });
+  const [nextTransferLoading, setNextTransferLoading] = useState(true);
 
   const getValidToken = async (): Promise<string | null> => {
     try {
@@ -284,10 +354,8 @@ export default function WalletScreen() {
         body: JSON.stringify({ access_token: accessToken }),
       });
       const data = await response.json();
-      console.log('check-account-status:', data);
       setAccountComplete(data.complete === true);
-    } catch (err) {
-      console.error('Erreur check-account-status:', err);
+    } catch {
       setAccountComplete(false);
     }
   };
@@ -329,17 +397,106 @@ export default function WalletScreen() {
         total: calcNet(totalBookings ?? []),
         pending: calcNet(pendingBookings ?? []),
       });
-
-      const txList: Transaction[] = (totalBookings ?? []).map((b: any) => ({
-        id: b.id ?? Math.random().toString(),
-        title: 'Location',
-        date: formatDate(b.created_at),
-        amount: Number(b.total_price) * 0.92,
-      }));
-      setTransactions(txList.reverse());
     } catch {
     } finally {
       setEarningsLoading(false);
+    }
+  };
+
+  const loadNextTransfer = async () => {
+    setNextTransferLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: pendingBookings } = await supabase
+        .from('bookings')
+        .select('total_price, return_confirmed_at, stripe_transfer_id')
+        .eq('owner_id', user.id)
+        .in('status', ['completed', 'active'])
+        .is('stripe_transfer_id', null);
+
+      const { data: lastTransferBooking } = await supabase
+        .from('bookings')
+        .select('return_confirmed_at')
+        .eq('owner_id', user.id)
+        .eq('status', 'completed')
+        .not('stripe_transfer_id', 'is', null)
+        .order('return_confirmed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const pendingAmount = (pendingBookings ?? []).reduce(
+        (sum: number, b: any) => sum + Number(b.total_price) * 0.92,
+        0
+      );
+
+      const lastTransferAt = lastTransferBooking?.return_confirmed_at ?? null;
+
+      let daysUntil = 7;
+      if (lastTransferAt) {
+        const daysSinceLast = Math.floor(
+          (Date.now() - new Date(lastTransferAt).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        daysUntil = Math.max(0, 7 - daysSinceLast);
+      }
+
+      setNextTransfer({ amount: pendingAmount, daysUntil, lastTransferAt });
+    } catch {
+    } finally {
+      setNextTransferLoading(false);
+    }
+  };
+
+  const loadTransactions = async () => {
+    setTxLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [{ data: ownerBookings }, { data: renterBookings }] = await Promise.all([
+        supabase
+          .from('bookings')
+          .select('id, total_price, created_at, status, listing_id, listings(name)')
+          .eq('owner_id', user.id)
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('bookings')
+          .select('id, total_price, created_at, status, listing_id, listings(name)')
+          .eq('renter_id', user.id)
+          .in('status', ['active', 'in_progress', 'completed'])
+          .order('created_at', { ascending: false }),
+      ]);
+
+      const incomeTx: Transaction[] = (ownerBookings ?? []).map((b: any) => ({
+        id: `income-${b.id}`,
+        title: 'Revenu',
+        date: formatDate(b.created_at),
+        amount: Number(b.total_price) * 0.92,
+        type: 'income' as const,
+        status: b.status,
+        listingName: b.listings?.name,
+      }));
+
+      const paymentTx: Transaction[] = (renterBookings ?? []).map((b: any) => ({
+        id: `payment-${b.id}`,
+        title: 'Paiement',
+        date: formatDate(b.created_at),
+        amount: Number(b.total_price),
+        type: 'payment' as const,
+        status: b.status,
+        listingName: b.listings?.name,
+      }));
+
+      const merged = [...incomeTx, ...paymentTx].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      setTransactions(merged);
+    } catch {
+    } finally {
+      setTxLoading(false);
     }
   };
 
@@ -353,7 +510,7 @@ export default function WalletScreen() {
             (async () => {
               if (session?.access_token) {
                 await checkAccountStatus(session.access_token);
-                await loadEarnings();
+                await Promise.all([loadEarnings(), loadNextTransfer(), loadTransactions()]);
                 subscription.unsubscribe();
               }
             })();
@@ -362,7 +519,7 @@ export default function WalletScreen() {
         }
 
         await checkAccountStatus(token);
-        await loadEarnings();
+        await Promise.all([loadEarnings(), loadNextTransfer(), loadTransactions()]);
       };
 
       initWallet();
@@ -381,8 +538,6 @@ export default function WalletScreen() {
         return;
       }
 
-      console.log('Token transmis:', session.access_token.substring(0, 30));
-
       const response = await fetch(
         `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-connect-account`,
         {
@@ -397,8 +552,6 @@ export default function WalletScreen() {
       );
 
       const responseText = await response.text();
-      console.log('Réponse:', responseText);
-
       const data = JSON.parse(responseText);
       if (!data.url) throw new Error(data.error || 'URL manquante');
 
@@ -413,7 +566,6 @@ export default function WalletScreen() {
         setActivateLoading(false);
       }
     } catch (err: any) {
-      console.error('Erreur:', err);
       Alert.alert('Erreur', err?.message ?? 'Une erreur est survenue');
       setActivateLoading(false);
     }
@@ -421,11 +573,11 @@ export default function WalletScreen() {
 
   const openStripeDashboard = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        Alert.alert('Erreur', 'Reconnecte-toi')
-        return
+        Alert.alert('Erreur', 'Reconnecte-toi');
+        return;
       }
 
       const response = await fetch(
@@ -437,22 +589,19 @@ export default function WalletScreen() {
             'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
             'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
           },
-          body: JSON.stringify({
-            access_token: session.access_token
-          }),
+          body: JSON.stringify({ access_token: session.access_token }),
         }
-      )
+      );
 
-      const data = await response.json()
-      console.log('get-dashboard-link:', data)
+      const data = await response.json();
 
       if (data.url) {
-        window.open(data.url, '_blank')
+        window.open(data.url, '_blank');
       } else {
-        Alert.alert('Erreur', data.error || 'URL manquante')
+        Alert.alert('Erreur', data.error || 'URL manquante');
       }
     } catch (err: any) {
-      Alert.alert('Erreur', err.message)
+      Alert.alert('Erreur', err.message);
     }
   };
 
@@ -465,13 +614,17 @@ export default function WalletScreen() {
         onActivate={activateStripeAccount}
         onManage={openStripeDashboard}
       />
-      <NextTransferCard accountComplete={accountComplete} />
+      <NextTransferCard
+        accountComplete={accountComplete}
+        nextTransfer={nextTransfer}
+        loading={nextTransferLoading}
+      />
     </>
   );
 
   const rightContent = (
     <>
-      <HistorySection transactions={transactions} />
+      <HistorySection transactions={transactions} loading={txLoading} />
       <InfoCard />
     </>
   );
@@ -696,6 +849,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.text,
   },
+  nextTransferAmount: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 22,
+    marginTop: 8,
+    marginBottom: 2,
+  },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 24,
@@ -741,8 +900,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  historyTabs: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 10,
     paddingHorizontal: 2,
+    gap: 8,
+  },
+  historyTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  historyTabDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: SUCCESS_GREEN,
+  },
+  historyTabSep: {
+    width: 1,
+    height: 12,
+    backgroundColor: Colors.borderLight,
+  },
+  historyTabText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textSecondary,
   },
   txRow: {
     flexDirection: 'row',
@@ -760,17 +947,28 @@ const styles = StyleSheet.create({
   },
   txMeta: {
     flex: 1,
+    gap: 3,
   },
   txTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
     color: Colors.text,
-    marginBottom: 3,
   },
   txDate: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  txBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    marginTop: 2,
+  },
+  txBadgeText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
   },
   txAmount: {
     fontFamily: 'Inter-Bold',
