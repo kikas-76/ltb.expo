@@ -40,9 +40,9 @@ export default function WalletOnboardingScreen() {
                 headers: {
                   'Content-Type': 'application/json',
                   'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-                  'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+                  'Authorization': `Bearer ${session.access_token}`,
                 },
-                body: JSON.stringify({ access_token: session.access_token }),
+                body: JSON.stringify({}),
               }
             );
             const data = await response.json();
@@ -96,9 +96,9 @@ export default function WalletOnboardingScreen() {
             headers: {
               'Content-Type': 'application/json',
               'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-              'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+              'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ access_token: session.access_token }),
+            body: JSON.stringify({}),
           }
         );
       }
