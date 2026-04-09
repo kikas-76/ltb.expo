@@ -55,13 +55,15 @@ Deno.serve(async (req: Request) => {
     const rawPhone: string = profile?.phone_number ?? "";
     const digits = rawPhone.replace(/\D/g, "");
     let phone = "";
-    if (digits.length === 10 && digits.startsWith("0")) {
+    if (digits.length === 11 && digits.startsWith("330")) {
+      phone = "+33" + digits.slice(3);
+    } else if (digits.length === 10 && digits.startsWith("0")) {
       phone = "+33" + digits.slice(1);
     } else if (digits.length === 11 && digits.startsWith("33")) {
       phone = "+" + digits;
     } else if (digits.length === 12 && digits.startsWith("033")) {
       phone = "+" + digits.slice(1);
-    } else if (digits.length > 0) {
+    } else if (digits.length >= 9) {
       phone = "+" + digits;
     }
     const locationData = profile?.location_data as Record<string, string> | null;
