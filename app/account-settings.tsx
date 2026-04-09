@@ -292,7 +292,7 @@ export default function AccountSettingsScreen() {
     try {
       await supabase.from('profiles').delete().eq('id', user!.id);
       await supabase.auth.signOut();
-      router.replace('/onboarding/welcome');
+      router.replace('/');
     } catch {
       setDeleteError('Une erreur est survenue. Contactez le support.');
       setDeleteLoading(false);

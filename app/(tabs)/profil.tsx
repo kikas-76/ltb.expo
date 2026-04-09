@@ -169,7 +169,7 @@ export default function ProfilScreen() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.replace('/onboarding/welcome');
+    router.replace('/');
   };
 
   const avatarSection = (
