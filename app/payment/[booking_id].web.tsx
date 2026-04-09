@@ -309,10 +309,15 @@ function StripeEmbedForm({
             );
           }
 
-          router.replace({
-            pathname: '/payment-success',
-            params: { booking_id: msg.bookingId },
-          } as any);
+          await supabase.functions.invoke('create-payment-intent', {
+            body: {
+              access_token: session?.access_token,
+              booking_id: msg.bookingId,
+              confirm_payment: true,
+            },
+          });
+
+          router.replace(`/payment-success?booking_id=${msg.bookingId}` as any);
         } catch (err: any) {
           setError(err.message);
           setLoading(false);
