@@ -42,21 +42,51 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_account_id")
+      .select("stripe_account_id, username, phone_number, business_type, business_name, siren_number, location_data, is_pro")
       .eq("id", user.id)
       .maybeSingle();
 
     let accountId: string = profile?.stripe_account_id ?? "";
 
     if (!accountId) {
-      const account = await stripe.accounts.create({
+      const username: string = profile?.username ?? "";
+      const nameParts = username.trim().split(" ");
+      const firstName = nameParts[0] ?? "";
+      const lastName = nameParts.slice(1).join(" ") || firstName;
+
+      const phone: string = profile?.phone_number ?? "";
+      const locationData = profile?.location_data as Record<string, string> | null;
+
+      const accountParams: Stripe.AccountCreateParams = {
         type: "express",
         email: user.email,
+        country: "FR",
+        default_currency: "eur",
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
-      });
+      };
+
+      if (profile?.is_pro && profile?.business_name) {
+        accountParams.business_type = "company";
+        accountParams.company = {
+          name: profile.business_name,
+          ...(phone ? { phone } : {}),
+          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+        };
+      } else {
+        accountParams.business_type = "individual";
+        accountParams.individual = {
+          ...(firstName ? { first_name: firstName } : {}),
+          ...(lastName ? { last_name: lastName } : {}),
+          email: user.email ?? "",
+          ...(phone ? { phone } : {}),
+          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+        };
+      }
+
+      const account = await stripe.accounts.create(accountParams);
       accountId = account.id;
 
       await supabase

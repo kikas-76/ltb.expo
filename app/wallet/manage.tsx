@@ -457,6 +457,7 @@ export default function WalletManageScreen() {
           { paddingBottom: insets.bottom + 48 },
         ]}
         showsVerticalScrollIndicator={false}
+        style={Platform.OS === 'web' ? ({ overflowY: 'auto' } as any) : undefined}
       >
         {isDesktop ? (
           <View style={styles.desktopGrid}>
@@ -490,6 +491,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Colors.background,
+    ...Platform.select({ web: { minHeight: 0 } as any }),
   },
   center: {
     alignItems: 'center',
@@ -523,6 +525,7 @@ const styles = StyleSheet.create({
   scrollMobile: {
     paddingHorizontal: 16,
     paddingTop: 20,
+    flexGrow: 1,
   },
   scrollDesktop: {
     paddingHorizontal: 48,
