@@ -42,22 +42,52 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_account_id, username, phone_number, business_type, business_name, siren_number, location_data, is_pro")
+      .select("stripe_account_id, username, phone_number, business_type, business_name, siren_number, location_data, is_pro, bio")
       .eq("id", user.id)
       .maybeSingle();
 
     let accountId: string = profile?.stripe_account_id ?? "";
 
+    const username: string = profile?.username ?? "";
+    const nameParts = username.trim().split(" ");
+    const firstName = nameParts[0] ?? "";
+    const lastName = nameParts.slice(1).join(" ") || firstName;
+    const phone: string = profile?.phone_number ?? "";
+    const locationData = profile?.location_data as Record<string, string> | null;
+    const isPro = profile?.is_pro && profile?.business_name;
+
+    const buildAccountParams = () => {
+      if (isPro) {
+        return {
+          business_type: "company" as const,
+          company: {
+            name: profile!.business_name,
+            ...(phone ? { phone } : {}),
+            ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+          },
+          business_profile: {
+            ...(profile?.business_name ? { name: profile.business_name } : {}),
+            ...(profile?.bio ? { support_email: user.email } : {}),
+          },
+        };
+      }
+      return {
+        business_type: "individual" as const,
+        individual: {
+          ...(firstName ? { first_name: firstName } : {}),
+          ...(lastName ? { last_name: lastName } : {}),
+          email: user.email ?? "",
+          ...(phone ? { phone } : {}),
+          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+        },
+        business_profile: {
+          ...(profile?.bio ? { support_email: user.email } : {}),
+        },
+      };
+    };
+
     if (!accountId) {
-      const username: string = profile?.username ?? "";
-      const nameParts = username.trim().split(" ");
-      const firstName = nameParts[0] ?? "";
-      const lastName = nameParts.slice(1).join(" ") || firstName;
-
-      const phone: string = profile?.phone_number ?? "";
-      const locationData = profile?.location_data as Record<string, string> | null;
-
-      const accountParams: Stripe.AccountCreateParams = {
+      const account = await stripe.accounts.create({
         type: "express",
         email: user.email,
         country: "FR",
@@ -66,33 +96,19 @@ Deno.serve(async (req: Request) => {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
-      };
-
-      if (profile?.is_pro && profile?.business_name) {
-        accountParams.business_type = "company";
-        accountParams.company = {
-          name: profile.business_name,
-          ...(phone ? { phone } : {}),
-          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-        };
-      } else {
-        accountParams.business_type = "individual";
-        accountParams.individual = {
-          ...(firstName ? { first_name: firstName } : {}),
-          ...(lastName ? { last_name: lastName } : {}),
-          email: user.email ?? "",
-          ...(phone ? { phone } : {}),
-          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-        };
-      }
-
-      const account = await stripe.accounts.create(accountParams);
+        ...buildAccountParams(),
+      });
       accountId = account.id;
 
       await supabase
         .from("profiles")
         .update({ stripe_account_id: accountId })
         .eq("id", user.id);
+    } else {
+      try {
+        await stripe.accounts.update(accountId, buildAccountParams());
+      } catch (_) {
+      }
     }
 
     const accountSession = await stripe.accountSessions.create({
