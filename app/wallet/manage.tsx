@@ -206,7 +206,7 @@ export default function WalletManageScreen() {
             </Text>
             <TouchableOpacity
               style={styles.warningBtn}
-              onPress={() => router.push('/wallet/onboarding')}
+              onPress={() => router.push({ pathname: '/wallet/onboarding', params: { mode: 'edit' } })}
               activeOpacity={0.82}
             >
               <Text style={styles.warningBtnText}>Mettre à jour</Text>
@@ -271,7 +271,7 @@ export default function WalletManageScreen() {
       </View>
       <TouchableOpacity
         style={styles.outlineEditBtn}
-        onPress={() => router.push('/wallet/onboarding')}
+        onPress={() => router.push({ pathname: '/wallet/onboarding', params: { mode: 'edit' } })}
         activeOpacity={0.7}
       >
         <Text style={styles.outlineEditBtnText}>Modifier mes informations →</Text>
@@ -306,7 +306,7 @@ export default function WalletManageScreen() {
           )}
           <TouchableOpacity
             style={styles.outlineEditBtn}
-            onPress={() => router.push('/wallet/onboarding')}
+            onPress={() => router.push({ pathname: '/wallet/onboarding', params: { mode: 'edit' } })}
             activeOpacity={0.7}
           >
             <Text style={styles.outlineEditBtnText}>Modifier mon IBAN →</Text>
@@ -318,7 +318,7 @@ export default function WalletManageScreen() {
           <Text style={styles.emptyTitle}>Aucun compte bancaire ajouté</Text>
           <TouchableOpacity
             style={styles.primaryBtn}
-            onPress={() => router.push('/wallet/onboarding')}
+            onPress={() => router.push({ pathname: '/wallet/onboarding', params: { mode: 'edit' } })}
             activeOpacity={0.82}
           >
             <Text style={styles.primaryBtnText}>Ajouter un compte bancaire</Text>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -14,6 +14,7 @@ const DARK_GREEN = '#1B4332';
 
 export default function WalletOnboardingScreen() {
   const insets = useSafeAreaInsets();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
   const [stripeConnectInstance, setStripeConnectInstance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +104,12 @@ export default function WalletOnboardingScreen() {
         );
       }
     } catch {}
-    router.replace('/wallet');
+
+    if (mode === 'edit') {
+      router.replace('/wallet/manage');
+    } else {
+      router.replace('/wallet');
+    }
   };
 
   if (loading) {
@@ -134,7 +140,9 @@ export default function WalletOnboardingScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Activer les paiements</Text>
+        <Text style={styles.headerTitle}>
+          {mode === 'edit' ? 'Modifier mes informations' : 'Activer les paiements'}
+        </Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -145,7 +153,9 @@ export default function WalletOnboardingScreen() {
               <Ionicons name="shield-checkmark-outline" size={22} color="#8E9878" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.infoTitle}>Inscription sécurisée par Stripe</Text>
+              <Text style={styles.infoTitle}>
+                {mode === 'edit' ? 'Mise à jour sécurisée par Stripe' : 'Inscription sécurisée par Stripe'}
+              </Text>
               <Text style={styles.infoSubtitle}>
                 Tes données bancaires sont gérées par Stripe, leader mondial du paiement en ligne. LoueTonBien n'y a jamais accès.
               </Text>
