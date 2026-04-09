@@ -243,6 +243,42 @@ export default function WalletManageScreen() {
     </SectionCard>
   );
 
+  const personalSection = (
+    <SectionCard>
+      <Text style={styles.sectionTitle}>Informations personnelles</Text>
+      <View style={{ gap: 12, marginTop: 4 }}>
+        <View style={styles.infoRow}>
+          <Ionicons name="person-outline" size={16} color={Colors.textMuted} />
+          <Text style={styles.infoLabel}>Nom</Text>
+          <Text style={[styles.infoValue, styles.infoValueRight]}>
+            {account?.individual_name || 'Non renseigné'}
+          </Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Ionicons name="call-outline" size={16} color={Colors.textMuted} />
+          <Text style={styles.infoLabel}>Téléphone</Text>
+          <Text style={[styles.infoValue, styles.infoValueRight]}>
+            {account?.phone || 'Non renseigné'}
+          </Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Ionicons name="flag-outline" size={16} color={Colors.textMuted} />
+          <Text style={styles.infoLabel}>Pays</Text>
+          <Text style={[styles.infoValue, styles.infoValueRight]}>
+            {account?.country === 'FR' ? 'France' : account?.country || '—'}
+          </Text>
+        </View>
+      </View>
+      <TouchableOpacity
+        style={styles.outlineEditBtn}
+        onPress={() => router.push('/wallet/onboarding')}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.outlineEditBtnText}>Modifier mes informations →</Text>
+      </TouchableOpacity>
+    </SectionCard>
+  );
+
   const bankSection = (
     <SectionCard>
       <Text style={styles.sectionTitle}>Compte bancaire</Text>
@@ -268,6 +304,13 @@ export default function WalletManageScreen() {
               <Text style={styles.infoValue}>{bankAccount.currency.toUpperCase()}</Text>
             </View>
           )}
+          <TouchableOpacity
+            style={styles.outlineEditBtn}
+            onPress={() => router.push('/wallet/onboarding')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.outlineEditBtnText}>Modifier mon IBAN →</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.emptyWrap}>
@@ -392,6 +435,7 @@ export default function WalletManageScreen() {
           <View style={styles.desktopGrid}>
             <View style={styles.desktopCol}>
               {statusSection}
+              {personalSection}
               {bankSection}
               {balanceSection}
             </View>
@@ -403,6 +447,7 @@ export default function WalletManageScreen() {
         ) : (
           <View style={styles.mobileContent}>
             {statusSection}
+            {personalSection}
             {bankSection}
             {balanceSection}
             {payoutsSection}
@@ -528,6 +573,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.text,
     flex: 1,
+  },
+  infoValueRight: {
+    textAlign: 'right',
+    fontSize: 14,
+  },
+  outlineEditBtn: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#D9D5C8',
+    alignSelf: 'flex-start',
+  },
+  outlineEditBtnText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: '#2C2C2C',
   },
   bankHeader: {
     flexDirection: 'row',
