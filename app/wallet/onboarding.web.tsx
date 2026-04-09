@@ -59,8 +59,6 @@ export default function WalletOnboardingScreen() {
               colorDanger: '#C25450',
               fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
               fontSizeBase: '15px',
-              fontSizeSm: '13px',
-              fontSizeLg: '17px',
               borderRadius: '12px',
               spacingUnit: '12px',
               buttonPrimaryColorBackground: '#8E9878',
