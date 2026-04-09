@@ -136,6 +136,27 @@ export default function WalletManageScreen() {
         );
         const data = await response.json();
         if (data.error) throw new Error(data.error);
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: completedBookings } = await supabase
+            .from('bookings')
+            .select('total_price')
+            .eq('owner_id', user.id)
+            .eq('status', 'completed');
+
+          const totalFromBookings = (completedBookings ?? []).reduce(
+            (sum: number, b: any) => sum + Number(b.total_price) * 0.92,
+            0
+          );
+
+          const stripeAvailable = data.balance?.available?.[0]?.amount ?? 0;
+          if (stripeAvailable === 0 && totalFromBookings > 0) {
+            data.balance = data.balance ?? {};
+            data.balance.available_from_bookings = Math.round(totalFromBookings * 100);
+          }
+        }
+
         setAccountData(data);
       } catch (err: any) {
         setError(err.message ?? 'Erreur lors du chargement');
@@ -164,7 +185,10 @@ export default function WalletManageScreen() {
     ? { label: 'Vérifié', bg: '#ECEEE6', color: '#3B6D11' }
     : { label: 'En attente', bg: '#FFF8E1', color: '#92400E' };
 
-  const availableBalance = balance?.available?.[0]?.amount ?? 0;
+  const stripeAvailable = balance?.available?.[0]?.amount ?? 0;
+  const availableFromBookings = balance?.available_from_bookings ?? 0;
+  const isEstimated = stripeAvailable === 0 && availableFromBookings > 0;
+  const availableBalance = isEstimated ? availableFromBookings : stripeAvailable;
   const pendingBalance = balance?.pending?.[0]?.amount ?? 0;
   const currency = balance?.available?.[0]?.currency?.toUpperCase() ?? 'EUR';
 
@@ -335,6 +359,9 @@ export default function WalletManageScreen() {
         <View style={styles.balanceItem}>
           <Text style={styles.balanceItemLabel}>Disponible</Text>
           <Text style={styles.balanceItemAmount}>{formatEur(availableBalance)}</Text>
+          {isEstimated && (
+            <Text style={styles.estimatedNote}>(estimé depuis vos locations)</Text>
+          )}
         </View>
         <View style={styles.balanceDivider} />
         <View style={styles.balanceItem}>
@@ -675,6 +702,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: Colors.text,
     letterSpacing: -0.5,
+  },
+  estimatedNote: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 15,
+    marginTop: 2,
   },
   transferNote: {
     flexDirection: 'row',
