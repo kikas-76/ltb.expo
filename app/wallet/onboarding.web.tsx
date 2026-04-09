@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, Modal } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,7 @@ export default function WalletOnboardingScreen() {
   const [stripeConnectInstance, setStripeConnectInstance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showExitModal, setShowExitModal] = useState(false);
   const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
   useEffect(() => {
@@ -139,7 +140,7 @@ export default function WalletOnboardingScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => setShowExitModal(true)} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
@@ -147,6 +148,46 @@ export default function WalletOnboardingScreen() {
         </Text>
         <View style={{ width: 36 }} />
       </View>
+
+      <Modal
+        visible={showExitModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExitModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconWrap}>
+              <Ionicons name="time-outline" size={28} color={DARK_GREEN} />
+            </View>
+            <Text style={styles.modalTitle}>Reprendre plus tard ?</Text>
+            <Text style={styles.modalText}>
+              Ta progression est sauvegardée. Tu pourras reprendre l'activation de ton compte Stripe à tout moment depuis ton portefeuille.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalBtnSecondary}
+              onPress={() => setShowExitModal(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modalBtnSecondaryText}>Continuer l'inscription</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalBtnPrimary}
+              onPress={() => {
+                setShowExitModal(false);
+                if (mode === 'edit') {
+                  router.replace('/wallet/manage');
+                } else {
+                  router.replace('/wallet');
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modalBtnPrimaryText}>Quitter et reprendre plus tard</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.scrollOuter}>
         <View style={styles.contentWrapper}>
@@ -319,5 +360,73 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
     color: '#FFFFFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 28,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    ...(Platform.OS === 'web' ? { boxShadow: '0 8px 40px rgba(0,0,0,0.18)' } as any : {}),
+  },
+  modalIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#ECEEE6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  modalTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: '#1C1C18',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#6B6B6B',
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 24,
+  },
+  modalBtnSecondary: {
+    width: '100%',
+    height: 48,
+    borderRadius: 999,
+    backgroundColor: DARK_GREEN,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  modalBtnSecondaryText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+  modalBtnPrimary: {
+    width: '100%',
+    height: 48,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#D9D5C8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBtnPrimaryText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
+    color: '#1C1C18',
   },
 });
