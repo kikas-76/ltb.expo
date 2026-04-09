@@ -121,7 +121,7 @@ function PaymentStatusCard({
           {loading ? (
             <ActivityIndicator color={DARK_GREEN} size="small" />
           ) : (
-            <Text style={styles.outlineBtnText}>Gérer mon compte Stripe →</Text>
+            <Text style={styles.outlineBtnText}>Mon compte paiement →</Text>
           )}
         </TouchableOpacity>
         <Text style={styles.transferNote}>Virements automatiques tous les 7 jours</Text>
@@ -568,38 +568,8 @@ export default function WalletScreen() {
     }
   };
 
-  const openStripeDashboard = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        Alert.alert('Erreur', 'Reconnecte-toi');
-        return;
-      }
-
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-dashboard-link`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
-          },
-          body: JSON.stringify({ access_token: session.access_token }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.url) {
-        window.open(data.url, '_blank');
-      } else {
-        Alert.alert('Erreur', data.error || 'URL manquante');
-      }
-    } catch (err: any) {
-      Alert.alert('Erreur', err.message);
-    }
+  const openAccountManagement = () => {
+    router.push('/wallet/manage');
   };
 
   const leftContent = (
@@ -609,7 +579,7 @@ export default function WalletScreen() {
         accountComplete={accountComplete}
         loading={accountComplete ? manageLoading : activateLoading}
         onActivate={activateStripeAccount}
-        onManage={openStripeDashboard}
+        onManage={openAccountManagement}
       />
       <NextTransferCard
         accountComplete={accountComplete}
