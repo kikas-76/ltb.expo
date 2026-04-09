@@ -143,6 +143,7 @@ function RootNavigator() {
         <Stack.Screen name="recent" />
         <Stack.Screen name="nearby" />
         <Stack.Screen name="wallet" />
+        <Stack.Screen name="wallet/onboarding" />
         <Stack.Screen name="help-center" />
         <Stack.Screen name="help/[category]" />
         <Stack.Screen name="legal" />
