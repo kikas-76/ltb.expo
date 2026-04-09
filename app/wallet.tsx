@@ -527,47 +527,44 @@ export default function WalletScreen() {
   );
 
   const activateStripeAccount = async () => {
-    setActivateLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
+    if (Platform.OS === 'web') {
+      router.push('/wallet/onboarding');
+    } else {
+      setActivateLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          Alert.alert('Erreur', 'Reconnecte-toi');
+          router.push('/login');
+          setActivateLoading(false);
+          return;
+        }
 
-      if (!session?.access_token) {
-        Alert.alert('Erreur', 'Reconnecte-toi');
-        router.push('/login');
-        setActivateLoading(false);
-        return;
-      }
+        const response = await fetch(
+          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-connect-account`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          }
+        );
 
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-connect-account`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
-          },
-          body: JSON.stringify({ access_token: session.access_token }),
-        },
-      );
+        const data = await response.json();
+        if (!data.url) throw new Error(data.error || 'URL manquante');
 
-      const responseText = await response.text();
-      const data = JSON.parse(responseText);
-      if (!data.url) throw new Error(data.error || 'URL manquante');
-
-      if (Platform.OS === 'web') {
-        window.location.href = data.url;
-      } else {
         const result = await WebBrowser.openAuthSessionAsync(data.url, 'louetonbien://wallet/success');
         if (result.type === 'success' || result.type === 'dismiss') {
           const freshToken = await getValidToken();
           if (freshToken) await checkAccountStatus(freshToken);
         }
+      } catch (err: any) {
+        Alert.alert('Erreur', err?.message ?? 'Une erreur est survenue');
+      } finally {
         setActivateLoading(false);
       }
-    } catch (err: any) {
-      Alert.alert('Erreur', err?.message ?? 'Une erreur est survenue');
-      setActivateLoading(false);
     }
   };
 

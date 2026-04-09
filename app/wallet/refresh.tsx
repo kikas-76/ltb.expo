@@ -54,42 +54,38 @@ export default function WalletRefreshScreen() {
   }, []);
 
   const resumeOnboarding = async () => {
-    if (!accessToken) {
-      Alert.alert('Erreur', 'Reconnecte-toi');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-connect-account`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
-          },
-          body: JSON.stringify({ access_token: accessToken }),
-        }
-      );
-
-      const data = await response.json();
-      console.log('create-connect-account:', data);
-
-      if (data.url) {
-        if (Platform.OS === 'web') {
+    if (Platform.OS === 'web') {
+      router.replace('/wallet/onboarding');
+    } else {
+      if (!accessToken) {
+        Alert.alert('Erreur', 'Reconnecte-toi');
+        return;
+      }
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-connect-account`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+            },
+            body: JSON.stringify({ access_token: accessToken }),
+          }
+        );
+        const data = await response.json();
+        if (data.url) {
           window.location.href = data.url;
         } else {
-          Alert.alert('Erreur', 'Redirection non supportée sur mobile');
+          Alert.alert('Erreur', data.error || 'URL manquante');
         }
-      } else {
-        Alert.alert('Erreur', data.error || 'URL manquante');
+      } catch (err: any) {
+        Alert.alert('Erreur', err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      Alert.alert('Erreur', err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
