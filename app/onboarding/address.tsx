@@ -16,6 +16,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   fetchPlaceSuggestions,
   fetchPlaceDetails,
@@ -94,6 +95,7 @@ function DynamicMap({ lat, lng }: { lat: number | null; lng: number | null }) {
 export default function OnboardingAddressScreen() {
   const params = useLocalSearchParams<{ isPro: string }>();
   const isPro = params.isPro === 'true';
+  const { refreshProfile } = useAuth();
 
   const [address, setAddress] = useState('');
   const [lat, setLat] = useState<number | null>(null);
@@ -216,6 +218,8 @@ export default function OnboardingAddressScreen() {
       setSubmitting(false);
       return;
     }
+
+    await refreshProfile();
 
     setSubmitting(false);
     if (isPro) {
