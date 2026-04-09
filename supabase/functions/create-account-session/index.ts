@@ -56,38 +56,8 @@ Deno.serve(async (req: Request) => {
     const locationData = profile?.location_data as Record<string, string> | null;
     const isPro = profile?.is_pro && profile?.business_name;
 
-    const buildAccountParams = () => {
-      if (isPro) {
-        return {
-          business_type: "company" as const,
-          company: {
-            name: profile!.business_name,
-            ...(phone ? { phone } : {}),
-            ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-          },
-          business_profile: {
-            ...(profile?.business_name ? { name: profile.business_name } : {}),
-            ...(profile?.bio ? { support_email: user.email } : {}),
-          },
-        };
-      }
-      return {
-        business_type: "individual" as const,
-        individual: {
-          ...(firstName ? { first_name: firstName } : {}),
-          ...(lastName ? { last_name: lastName } : {}),
-          email: user.email ?? "",
-          ...(phone ? { phone } : {}),
-          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-        },
-        business_profile: {
-          ...(profile?.bio ? { support_email: user.email } : {}),
-        },
-      };
-    };
-
     if (!accountId) {
-      const account = await stripe.accounts.create({
+      const createParams: Stripe.AccountCreateParams = {
         type: "express",
         email: user.email,
         country: "FR",
@@ -96,19 +66,47 @@ Deno.serve(async (req: Request) => {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
-        ...buildAccountParams(),
-      });
+      };
+
+      if (isPro) {
+        createParams.business_type = "company";
+        createParams.company = {
+          name: profile!.business_name,
+          ...(phone ? { phone } : {}),
+          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+        };
+        createParams.business_profile = {
+          ...(profile?.business_name ? { name: profile.business_name } : {}),
+          support_email: user.email,
+        };
+      } else {
+        createParams.business_type = "individual";
+        createParams.individual = {
+          ...(firstName ? { first_name: firstName } : {}),
+          ...(lastName ? { last_name: lastName } : {}),
+          email: user.email ?? "",
+          ...(phone ? { phone } : {}),
+          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+        };
+        createParams.business_profile = {
+          support_email: user.email,
+        };
+      }
+
+      const account = await stripe.accounts.create(createParams);
       accountId = account.id;
 
       await supabase
         .from("profiles")
         .update({ stripe_account_id: accountId })
         .eq("id", user.id);
-    } else {
-      try {
-        await stripe.accounts.update(accountId, buildAccountParams());
-      } catch (_) {
-      }
+    }
+
+    if (!accountId) {
+      return new Response(JSON.stringify({ error: "Impossible de créer le compte Stripe" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const accountSession = await stripe.accountSessions.create({
