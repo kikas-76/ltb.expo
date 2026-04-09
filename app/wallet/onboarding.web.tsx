@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
-import { Colors } from '@/constants/colors';
 import { loadConnectAndInitialize } from '@stripe/connect-js';
 import {
   ConnectComponentsProvider,
@@ -32,6 +31,7 @@ export default function WalletOnboardingScreen() {
 
         const instance = loadConnectAndInitialize({
           publishableKey,
+          locale: 'fr',
           fetchClientSecret: async () => {
             const response = await fetch(
               `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-account-session`,
@@ -52,14 +52,25 @@ export default function WalletOnboardingScreen() {
             overlays: 'dialog',
             variables: {
               colorPrimary: '#8E9878',
-              fontFamily: 'Inter, system-ui, sans-serif',
-              borderRadius: '12px',
               colorBackground: '#FFFFFF',
               colorText: '#2C2C2C',
               colorSecondaryText: '#6B6B6B',
-              colorBorder: '#D9D5C8',
-              spacingUnit: '10px',
+              colorBorder: '#E8E5D8',
+              colorDanger: '#C25450',
+              fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
               fontSizeBase: '15px',
+              fontSizeSm: '13px',
+              fontSizeLg: '17px',
+              borderRadius: '12px',
+              spacingUnit: '12px',
+              buttonPrimaryColorBackground: '#8E9878',
+              buttonPrimaryColorText: '#FFFFFF',
+              buttonPrimaryColorBorder: '#8E9878',
+              buttonSecondaryColorBackground: '#FFFFFF',
+              buttonSecondaryColorText: '#2C2C2C',
+              buttonSecondaryColorBorder: '#D9D5C8',
+              formBackgroundColor: '#FAFAF5',
+              formHighlightColorBorder: '#8E9878',
             },
           },
         });
@@ -128,14 +139,37 @@ export default function WalletOnboardingScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <View style={styles.stripeContainer}>
-        {stripeConnectInstance && (
-          <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
-            <ConnectAccountOnboarding
-              onExit={handleOnboardingExit}
-            />
-          </ConnectComponentsProvider>
-        )}
+      <View style={styles.scrollOuter}>
+        <View style={styles.contentWrapper}>
+          <View style={styles.infoCard}>
+            <View style={styles.infoIconWrap}>
+              <Ionicons name="shield-checkmark-outline" size={22} color="#8E9878" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoTitle}>Inscription sécurisée par Stripe</Text>
+              <Text style={styles.infoSubtitle}>
+                Tes données bancaires sont gérées par Stripe, leader mondial du paiement en ligne. LoueTonBien n'y a jamais accès.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.stripeCard}>
+            {stripeConnectInstance && (
+              <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
+                <ConnectAccountOnboarding
+                  onExit={handleOnboardingExit}
+                />
+              </ConnectComponentsProvider>
+            )}
+          </View>
+
+          <View style={styles.footerInfo}>
+            <Ionicons name="lock-closed-outline" size={14} color="#9B9B9B" />
+            <Text style={styles.footerText}>
+              Connexion chiffrée de bout en bout · Données hébergées en Europe
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -155,26 +189,91 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     borderBottomWidth: 0.5,
     borderBottomColor: '#E8E5D8',
+    backgroundColor: '#F5F0E8',
   },
   backBtn: {
     width: 36,
     height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#ECEEE6',
   },
   headerTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 17,
     color: '#1C1C18',
+    letterSpacing: -0.2,
   },
-  stripeContainer: {
+  scrollOuter: {
     flex: 1,
     ...(Platform.OS === 'web' ? { overflow: 'auto' as any } : {}),
+  },
+  contentWrapper: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    backgroundColor: '#ECEEE6',
+    borderRadius: 16,
     padding: 16,
+    marginBottom: 24,
+  },
+  infoIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  infoTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#2C2C2C',
+    marginBottom: 4,
+  },
+  infoSubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: '#6B6B6B',
+    lineHeight: 19,
+  },
+  stripeCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
+    } as any : {}),
+    borderWidth: 0.5,
+    borderColor: '#E8E5D8',
+    minHeight: 400,
+  },
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingVertical: 12,
+  },
+  footerText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#9B9B9B',
   },
   loadingText: {
     fontFamily: 'Inter-Regular',
@@ -198,7 +297,7 @@ const styles = StyleSheet.create({
   },
   retryBtn: {
     marginTop: 24,
-    backgroundColor: DARK_GREEN,
+    backgroundColor: '#1B4332',
     borderRadius: 999,
     paddingHorizontal: 32,
     height: 48,
