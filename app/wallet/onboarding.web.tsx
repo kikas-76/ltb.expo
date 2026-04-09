@@ -34,6 +34,8 @@ export default function WalletOnboardingScreen() {
           publishableKey,
           locale: 'fr',
           fetchClientSecret: async () => {
+            const { data: { session: freshSession } } = await supabase.auth.getSession();
+            if (!freshSession?.access_token) throw new Error('Session expirée');
             const response = await fetch(
               `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-account-session`,
               {
@@ -41,9 +43,9 @@ export default function WalletOnboardingScreen() {
                 headers: {
                   'Content-Type': 'application/json',
                   'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-                  'Authorization': `Bearer ${session.access_token}`,
+                  'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
                 },
-                body: JSON.stringify({}),
+                body: JSON.stringify({ access_token: freshSession.access_token }),
               }
             );
             const data = await response.json();
