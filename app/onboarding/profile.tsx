@@ -144,33 +144,45 @@ export default function OnboardingProfileScreen() {
 
     setSubmitting(true);
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: params.email,
-      password: params.password,
-      options: {
-        data: { username: cleanUsername },
-      },
-    });
-
-    if (signUpError || !data.user) {
-      setSubmitting(false);
-      setError(signUpError?.message ?? "Erreur lors de l'inscription.");
-      return;
-    }
+    let userId: string | null = null;
 
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: params.email,
       password: params.password,
     });
 
-    if (signInError || !signInData.user) {
-      setSubmitting(false);
-      setError('Compte créé mais connexion échouée. Veuillez vous connecter manuellement.');
-      return;
+    if (signInData?.user) {
+      userId = signInData.user.id;
+    } else {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: params.email,
+        password: params.password,
+        options: {
+          data: { username: cleanUsername },
+        },
+      });
+
+      if (signUpError || !data.user) {
+        setSubmitting(false);
+        setError(signUpError?.message ?? "Erreur lors de l'inscription.");
+        return;
+      }
+
+      const { data: newSignIn, error: newSignInError } = await supabase.auth.signInWithPassword({
+        email: params.email,
+        password: params.password,
+      });
+
+      if (newSignInError || !newSignIn.user) {
+        setSubmitting(false);
+        setError('Compte créé mais connexion échouée. Veuillez vous connecter manuellement.');
+        return;
+      }
+
+      userId = newSignIn.user.id;
     }
 
-    const userId = signInData.user.id;
-    const photoUrl = await uploadAvatar(userId);
+    const photoUrl = await uploadAvatar(userId!);
 
     const updates: Record<string, string | null> = {
       username: cleanUsername,
@@ -182,7 +194,7 @@ export default function OnboardingProfileScreen() {
     const { error: updateError } = await supabase
       .from('profiles')
       .update(updates)
-      .eq('id', userId);
+      .eq('id', userId!);
 
     if (updateError) {
       setSubmitting(false);
@@ -191,7 +203,7 @@ export default function OnboardingProfileScreen() {
     }
 
     setSubmitting(false);
-    router.replace({ pathname: '/onboarding/account-type', params: { userId } });
+    router.replace({ pathname: '/onboarding/account-type', params: { userId: userId! } });
   };
 
   return (
