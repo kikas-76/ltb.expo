@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Platform } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import ListingCard from './ListingCard';
@@ -43,6 +43,9 @@ export default function RecentlyViewedSection({ userLat, userLng, userId }: Prop
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [ids, setIds] = useState<string[]>([]);
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+  const isTablet = width >= 768 && width < 1024;
 
   useEffect(() => {
     const recent = getRecentIds();
@@ -82,6 +85,32 @@ export default function RecentlyViewedSection({ userLat, userLng, userId }: Prop
 
   if (!loading && listings.length === 0) return null;
 
+  const skeletons = [1, 2, 3];
+
+  if (isDesktop || isTablet) {
+    const cols = isDesktop ? 4 : 2;
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Récemment consultés</Text>
+        </View>
+        <View style={[styles.gridContainer, { paddingHorizontal: isDesktop ? 20 : 20 }]}>
+          {loading
+            ? skeletons.map((i) => (
+                <View key={i} style={[styles.gridCell, { width: `${100 / cols - 1}%` }]}>
+                  <SkeletonCard variant="grid" />
+                </View>
+              ))
+            : listings.map((item) => (
+                <View key={item.id} style={[styles.gridCell, { width: `${100 / cols - 1}%` }]}>
+                  <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
+                </View>
+              ))}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -91,7 +120,7 @@ export default function RecentlyViewedSection({ userLat, userLng, userId }: Prop
       {loading ? (
         <FlatList
           horizontal
-          data={[1, 2, 3]}
+          data={skeletons}
           keyExtractor={(i) => String(i)}
           renderItem={() => (
             <View style={styles.cardWrapper}>
@@ -114,6 +143,8 @@ export default function RecentlyViewedSection({ userLat, userLng, userId }: Prop
           )}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
+          snapToInterval={Math.round(width * 0.7) + 12}
+          decelerationRate="fast"
         />
       )}
     </View>
@@ -141,5 +172,13 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: 180,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  gridCell: {
+    minWidth: 0,
   },
 });

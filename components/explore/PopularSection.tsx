@@ -35,6 +35,7 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const isDesktop = width >= 1024;
+  const isTablet = width >= 768 && width < 1024;
   const cardWidth = isMobile
     ? Math.round(width * 0.7)
     : isDesktop
@@ -86,24 +87,52 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
 
   if (!loading && listings.length === 0) return null;
 
+  const skeletons = [1, 2, 3];
+
+  const SectionHeader = () => (
+    <TouchableOpacity
+      style={styles.sectionHeader}
+      activeOpacity={0.7}
+      onPress={() => router.push('/popular' as any)}
+    >
+      <View style={styles.titleRow}>
+        <Ionicons name="trending-up-outline" size={17} color={Colors.primaryDark} />
+        <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Les plus populaires</Text>
+      </View>
+      <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
+    </TouchableOpacity>
+  );
+
+  if (isDesktop || isTablet) {
+    const cols = isDesktop ? 4 : 2;
+    return (
+      <View style={styles.section}>
+        <SectionHeader />
+        <View style={[styles.gridContainer, { paddingHorizontal: 20 }]}>
+          {loading
+            ? skeletons.map((i) => (
+                <View key={i} style={[styles.gridCell, { width: `${100 / cols - 1}%` }]}>
+                  <SkeletonCard variant="grid" />
+                </View>
+              ))
+            : listings.map((item) => (
+                <View key={item.id} style={[styles.gridCell, { width: `${100 / cols - 1}%` }]}>
+                  <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
+                </View>
+              ))}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.section}>
-      <TouchableOpacity
-        style={styles.sectionHeader}
-        activeOpacity={0.7}
-        onPress={() => router.push('/popular' as any)}
-      >
-        <View style={styles.titleRow}>
-          <Ionicons name="trending-up-outline" size={17} color={Colors.primaryDark} />
-          <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Les plus populaires</Text>
-        </View>
-        <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
-      </TouchableOpacity>
+      <SectionHeader />
 
       {loading ? (
         <FlatList
           horizontal
-          data={[1, 2, 3]}
+          data={skeletons}
           keyExtractor={(i) => String(i)}
           renderItem={() => (
             <View style={[styles.cardWrapper, { width: cardWidth }]}>
@@ -169,4 +198,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardWrapper: {},
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  gridCell: {
+    minWidth: 0,
+  },
 });
