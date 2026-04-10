@@ -43,9 +43,19 @@ function RootNavigator() {
 
         const parsed = Linking.parse(url);
         const path = parsed.path ?? '';
-        const match = path.match(/^listing\/([^/]+)$/);
+        const match = path.match(/^listing\/([^/]+)$/) || path.match(/^\/listing\/([^/?#]+)/);
         if (match) {
           const listingId = match[1];
+          setPendingListingId(listingId);
+          if (session) {
+            router.push(`/listing/${listingId}` as any);
+          }
+          return;
+        }
+
+        const webMatch = url.match(/\/listing\/([^/?#]+)/);
+        if (webMatch) {
+          const listingId = webMatch[1];
           setPendingListingId(listingId);
           if (session) {
             router.push(`/listing/${listingId}` as any);

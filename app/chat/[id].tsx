@@ -105,7 +105,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
+
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [stripeReady, setStripeReady] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
@@ -562,14 +562,13 @@ export default function ChatScreen() {
   };
 
   const sendFromGallery = async () => {
-    setShowAttachMenu(false);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       setUploadError("Permission d'accès à la galerie refusée.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       quality: 0.85,
       allowsEditing: false,
       allowsMultipleSelection: true,
@@ -581,14 +580,13 @@ export default function ChatScreen() {
   };
 
   const sendFromCamera = async () => {
-    setShowAttachMenu(false);
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       setUploadError("Permission d'accès à la caméra refusée.");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       quality: 0.85,
       allowsEditing: false,
     });
@@ -597,7 +595,6 @@ export default function ChatScreen() {
   };
 
   const sendFromFiles = async () => {
-    setShowAttachMenu(false);
     const result = await DocumentPicker.getDocumentAsync({
       type: '*/*',
       copyToCacheDirectory: true,
@@ -1453,8 +1450,11 @@ export default function ChatScreen() {
           { paddingBottom: insets.bottom + 8, transform: [{ scale: inputScale }] },
         ]}
       >
-        <TouchableOpacity style={styles.attachBtn} onPress={() => setShowAttachMenu(true)} activeOpacity={0.7}>
-          <Ionicons name="add-outline" size={20} color={GREEN_DARK} />
+        <TouchableOpacity style={styles.attachBtn} onPress={sendFromGallery} activeOpacity={0.7}>
+          <Ionicons name="attach-outline" size={20} color={GREEN_DARK} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.attachBtn} onPress={sendFromCamera} activeOpacity={0.7}>
+          <Ionicons name="camera-outline" size={20} color={GREEN_DARK} />
         </TouchableOpacity>
         <TextInput
           style={styles.input}
@@ -1480,56 +1480,6 @@ export default function ChatScreen() {
           }
         </TouchableOpacity>
       </Animated.View>
-
-      {/* Attach menu modal */}
-      <Modal
-        visible={showAttachMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAttachMenu(false)}
-      >
-        <TouchableOpacity
-          style={styles.attachOverlay}
-          activeOpacity={1}
-          onPress={() => setShowAttachMenu(false)}
-        >
-          <View style={[styles.attachSheet, { paddingBottom: insets.bottom + 16 }]}>
-            <View style={styles.attachHandle} />
-            <Text style={styles.attachTitle}>Joindre un fichier</Text>
-            <TouchableOpacity style={styles.attachOption} onPress={sendFromCamera} activeOpacity={0.75}>
-              <View style={[styles.attachOptionIcon, { backgroundColor: '#E8F0E0' }]}>
-                <Ionicons name="camera-outline" size={22} color={GREEN_DARK} />
-              </View>
-              <View style={styles.attachOptionBody}>
-                <Text style={styles.attachOptionLabel}>Appareil photo</Text>
-                <Text style={styles.attachOptionSub}>Prendre une photo maintenant</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.attachOption} onPress={sendFromGallery} activeOpacity={0.75}>
-              <View style={[styles.attachOptionIcon, { backgroundColor: '#E8F0E0' }]}>
-                <Ionicons name="image-outline" size={22} color={GREEN_DARK} />
-              </View>
-              <View style={styles.attachOptionBody}>
-                <Text style={styles.attachOptionLabel}>Galerie photo</Text>
-                <Text style={styles.attachOptionSub}>Choisir depuis vos photos</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.attachOption} onPress={sendFromFiles} activeOpacity={0.75}>
-              <View style={[styles.attachOptionIcon, { backgroundColor: '#F0EBE0' }]}>
-                <Ionicons name="document-text-outline" size={22} color="#8B6A3A" />
-              </View>
-              <View style={styles.attachOptionBody}>
-                <Text style={styles.attachOptionLabel}>Fichiers</Text>
-                <Text style={styles.attachOptionSub}>Documents et autres fichiers</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.attachCancel} onPress={() => setShowAttachMenu(false)} activeOpacity={0.75}>
-              <Ionicons name="close-outline" size={16} color={Colors.textMuted} />
-              <Text style={styles.attachCancelText}>Annuler</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
 
       {/* Owner validation modal — shown when bookingStatus === 'pending_owner_validation' and user is owner */}
       <Modal
@@ -1980,82 +1930,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D4DAC4',
     flexShrink: 0,
-  },
-  attachOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  attachSheet: {
-    backgroundColor: CREAM,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 12,
-    paddingHorizontal: 20,
-    gap: 4,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12 },
-      android: { elevation: 12 },
-      web: { boxShadow: '0 -4px 20px rgba(0,0,0,0.1)' },
-    }),
-  },
-  attachHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#D4D0C4',
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  attachTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: '#1A1F17',
-    marginBottom: 10,
-    letterSpacing: -0.2,
-  },
-  attachOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderRadius: 14,
-  },
-  attachOptionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  attachOptionBody: { flex: 1 },
-  attachOptionLabel: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 15,
-    color: '#1A1F17',
-    marginBottom: 2,
-  },
-  attachOptionSub: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: Colors.textMuted,
-  },
-  attachCancel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 8,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#EAE6D8',
-  },
-  attachCancelText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 14,
-    color: Colors.textMuted,
   },
   actionBar: {
     backgroundColor: '#FFFDF7',
