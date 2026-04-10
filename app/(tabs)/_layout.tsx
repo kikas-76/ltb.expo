@@ -74,7 +74,7 @@ function SidebarItem({ icon, label, focused, onPress, showDot, collapsed, descri
   );
 }
 
-function DesktopSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+function DesktopSidebar({ collapsed, onToggle, hideToggle }: { collapsed: boolean; onToggle: () => void; hideToggle?: boolean }) {
   const { hasIncomingRequests } = useUnread();
   const pathname = usePathname();
 
@@ -157,17 +157,19 @@ function DesktopSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       </View>
 
       <View style={sidebarStyles.bottomArea}>
-        <TouchableOpacity
-          style={[sidebarStyles.collapseBtn, collapsed && sidebarStyles.collapseBtnCollapsed]}
-          onPress={onToggle}
-          activeOpacity={0.75}
-        >
-          {collapsed
-            ? <Ionicons name="chevron-forward-outline" size={16} color={Colors.textSecondary} />
-            : <Ionicons name="chevron-back-outline" size={16} color={Colors.textSecondary} />
-          }
-          {!collapsed && <Text style={sidebarStyles.collapseBtnText}>Réduire</Text>}
-        </TouchableOpacity>
+        {!hideToggle && (
+          <TouchableOpacity
+            style={[sidebarStyles.collapseBtn, collapsed && sidebarStyles.collapseBtnCollapsed]}
+            onPress={onToggle}
+            activeOpacity={0.75}
+          >
+            {collapsed
+              ? <Ionicons name="chevron-forward-outline" size={16} color={Colors.textSecondary} />
+              : <Ionicons name="chevron-back-outline" size={16} color={Colors.textSecondary} />
+            }
+            {!collapsed && <Text style={sidebarStyles.collapseBtnText}>Réduire</Text>}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -206,15 +208,16 @@ export default function TabLayout() {
     ? WEB_BOTTOM_PAD
     : Math.max(insets.bottom, 8);
   const { hasIncomingRequests } = useUnread();
-  const { isDesktop } = useResponsive();
+  const { isDesktop, isTabletOrDesktop, isTablet } = useResponsive();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  if (isDesktop && Platform.OS === 'web') {
+  if (isTabletOrDesktop && Platform.OS === 'web') {
     return (
       <View style={sidebarStyles.root}>
         <DesktopSidebar
-          collapsed={sidebarCollapsed}
+          collapsed={isTablet ? true : sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((v) => !v)}
+          hideToggle={isTablet}
         />
         <View style={sidebarStyles.content}>
           <Tabs

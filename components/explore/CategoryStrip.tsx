@@ -1,11 +1,10 @@
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 const H_PADDING = 16;
-const GAP = 8;
-const VISIBLE = 4.5;
+const GAP = 12;
 
 interface Category {
   id: string;
@@ -43,6 +42,10 @@ const DEFAULT_STYLE = { bg: '#E8E5D8', iconColor: '#7A7A6A', iconName: 'cube-out
 export default function CategoryStrip({ categories }: CategoryStripProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+  const isTablet = width >= 768 && width < 1024;
+
+  const VISIBLE = isDesktop ? 8.5 : isTablet ? 6.5 : 4.5;
   const chipSize = (width - H_PADDING * 2 - GAP * (Math.floor(VISIBLE) - 1)) / VISIBLE;
 
   return (
@@ -50,8 +53,9 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { gap: GAP }]}
         decelerationRate="fast"
+        {...(Platform.OS === 'web' ? { style: styles.scrollHideBar } : {})}
       >
         {categories.map((cat) => {
           const key = cat.value || '';
@@ -61,7 +65,7 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
           return (
             <TouchableOpacity
               key={cat.id}
-              style={[styles.chip, { backgroundColor: bg, width: chipSize }]}
+              style={[styles.chip, { backgroundColor: bg, width: chipSize, minWidth: isDesktop ? 80 : 64 }]}
               onPress={() =>
                 router.push({
                   pathname: '/category/[id]',
@@ -70,8 +74,8 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
               }
               activeOpacity={0.75}
             >
-              <Ionicons name={iconName as any} size={18} color={iconColor} />
-              <Text style={styles.label} numberOfLines={1}>
+              <Ionicons name={iconName as any} size={isDesktop ? 20 : 18} color={iconColor} />
+              <Text style={[styles.label, isDesktop && styles.labelDesktop]} numberOfLines={1}>
                 {cat.name}
               </Text>
             </TouchableOpacity>
@@ -89,7 +93,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: H_PADDING,
-    gap: GAP,
+  },
+  scrollHideBar: {
+    ...Platform.select({
+      web: { scrollbarWidth: 'none' } as any,
+    }),
   },
   chip: {
     alignItems: 'center',
@@ -106,5 +114,8 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: 'center',
     paddingHorizontal: 4,
+  },
+  labelDesktop: {
+    fontSize: 11,
   },
 });

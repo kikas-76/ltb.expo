@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ScrollView,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,13 +57,7 @@ export default function ExploreScreen() {
   const router = useRouter();
   const { profile, session, loading: authLoading } = useAuth();
   const { width } = useWindowDimensions();
-  const { isDesktop, isTablet, isTabletOrDesktop } = useResponsive();
-
-  const cardWidth = isDesktop
-    ? Math.min(width * 0.18, 240)
-    : isTablet
-    ? Math.min(width * 0.28, 220)
-    : Math.min(Math.max(width * 0.42, 148), 200);
+  const { isDesktop, isTablet, isTabletOrDesktop, isMobile } = useResponsive();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
@@ -117,31 +112,34 @@ export default function ExploreScreen() {
   const applyFilters = (items: Listing[]) =>
     items.filter((l) => l.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const nearbyListings = applyFilters(listings.slice(0, isDesktop ? 9 : 6));
-  const recentListings = applyFilters(listings.slice(0, isDesktop ? 9 : 6));
+  const nearbyListings = applyFilters(listings.slice(0, isDesktop ? 12 : 8));
+  const recentListings = applyFilters(listings.slice(0, isDesktop ? 12 : 8));
   const address = profile?.location_data?.address ?? null;
   const userLat = profile?.location_data?.lat ?? null;
   const userLng = profile?.location_data?.lng ?? null;
 
-  const maxW = isDesktop ? 1200 : isTablet ? 768 : undefined;
-  const hPad = isDesktop ? 48 : isTablet ? 32 : 0;
+  const hPad = isDesktop ? 48 : isTablet ? 32 : 16;
+  const maxW = isDesktop ? 1200 : isTablet ? 900 : undefined;
 
   const gridCols = isDesktop ? 4 : isTablet ? 3 : 2;
-  const gridGap = isDesktop ? 16 : isTablet ? 16 : 12;
-  const gridPad = isDesktop ? 0 : isTablet ? 0 : 16;
-  const availableWidth = isTabletOrDesktop
-    ? Math.min(width - hPad * 2, isDesktop ? 1200 : 768)
-    : width - gridPad * 2;
-  const gridItemWidth = Math.floor((availableWidth - gridGap * (gridCols - 1)) / gridCols);
+  const gridGap = isDesktop ? 16 : isTablet ? 14 : 10;
+  const contentWidth = isTabletOrDesktop
+    ? Math.min(width - hPad * 2, isDesktop ? 1200 : 900)
+    : width - hPad * 2;
+  const gridItemWidth = Math.floor((contentWidth - gridGap * (gridCols - 1)) / gridCols);
 
   if (authLoading) {
     return <View style={styles.loadingScreen} />;
   }
 
+  const innerStyle = isTabletOrDesktop
+    ? { maxWidth: maxW, width: '100%' as const, alignSelf: 'center' as const }
+    : undefined;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.topBar, isTabletOrDesktop && { paddingHorizontal: hPad }]}>
-        <View style={isTabletOrDesktop ? { maxWidth: maxW, width: '100%', alignSelf: 'center' } : undefined}>
+        <View style={innerStyle}>
           <HomeHeader
             username={profile?.username ?? null}
             photoUrl={profile?.photo_url ?? null}
@@ -171,7 +169,7 @@ export default function ExploreScreen() {
           />
         }
       >
-        <View style={isTabletOrDesktop ? { maxWidth: maxW, width: '100%', alignSelf: 'center' } : undefined}>
+        <View style={innerStyle}>
           <CategoryStrip categories={categories} />
           <LocationBanner address={address} />
 
@@ -182,68 +180,43 @@ export default function ExploreScreen() {
 
           <View style={styles.section}>
             <TouchableOpacity style={styles.sectionHeader} activeOpacity={0.7} onPress={() => router.push('/nearby')}>
-              <Text style={styles.sectionTitle}>Objets près de chez vous</Text>
+              <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
+                Objets près de chez vous
+              </Text>
               <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
             </TouchableOpacity>
 
             {loadingData ? (
-              isTabletOrDesktop ? (
-                <View style={[styles.grid, { gap: gridGap, paddingHorizontal: gridPad }]}>
-                  {[1, 2, 3].map((i) => (
-                    <View key={i} style={[styles.gridItem, { width: gridItemWidth }]}>
-                      <SkeletonCard variant="grid" />
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <FlatList
-                  horizontal
-                  data={[1, 2, 3]}
-                  keyExtractor={(i) => String(i)}
-                  renderItem={() => (
-                    <View style={styles.horizontalCardWrapper}>
-                      <SkeletonCard variant="horizontal" />
-                    </View>
-                  )}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalList}
-                  scrollEnabled={false}
-                />
-              )
+              <View style={[styles.grid, { gap: gridGap }]}>
+                {[1, 2, 3, 4].map((i) => (
+                  <View key={i} style={[styles.gridItem, { width: gridItemWidth }]}>
+                    <SkeletonCard variant="grid" />
+                  </View>
+                ))}
+              </View>
             ) : nearbyListings.length === 0 ? (
               <EmptyState />
-            ) : isTabletOrDesktop ? (
-              <View style={[styles.grid, { gap: gridGap, paddingHorizontal: gridPad }]}>
+            ) : (
+              <View style={[styles.grid, { gap: gridGap }]}>
                 {nearbyListings.map((item) => (
                   <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
                     <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
                   </View>
                 ))}
               </View>
-            ) : (
-              <FlatList
-                horizontal
-                data={nearbyListings}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <View style={{ width: cardWidth }}>
-                    <ListingCard listing={item} variant="horizontal" userLat={userLat} userLng={userLng} userId={session?.user.id} />
-                  </View>
-                )}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalList}
-              />
             )}
           </View>
 
           <View style={[styles.section, styles.sectionLast]}>
             <TouchableOpacity style={styles.sectionHeader} activeOpacity={0.7} onPress={() => router.push('/recent')}>
-              <Text style={styles.sectionTitle}>Annonces récentes</Text>
+              <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
+                Annonces récentes
+              </Text>
               <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
             </TouchableOpacity>
 
             {loadingData ? (
-              <View style={[styles.grid, { gap: gridGap, paddingHorizontal: gridPad }]}>
+              <View style={[styles.grid, { gap: gridGap }]}>
                 {[1, 2, 3, 4].map((i) => (
                   <View key={i} style={[styles.gridItem, { width: gridItemWidth }]}>
                     <SkeletonCard variant="grid" />
@@ -253,7 +226,7 @@ export default function ExploreScreen() {
             ) : recentListings.length === 0 ? (
               <EmptyState />
             ) : (
-              <View style={[styles.grid, { gap: gridGap, paddingHorizontal: gridPad }]}>
+              <View style={[styles.grid, { gap: gridGap }]}>
                 {recentListings.map((item) => (
                   <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
                     <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
@@ -279,15 +252,18 @@ const styles = StyleSheet.create({
   },
   topBar: {
     backgroundColor: Colors.background,
+    ...Platform.select({
+      web: { position: 'sticky' as any, top: 0, zIndex: 10 },
+    }),
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 40,
   },
   section: {
-    marginTop: 24,
+    marginTop: 28,
   },
   sectionLast: {
     marginBottom: 8,
@@ -304,16 +280,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: Colors.text,
   },
-  horizontalCardWrapper: {},
-  horizontalList: {
-    paddingHorizontal: 20,
-    gap: 12,
+  sectionTitleMobile: {
+    fontSize: 18,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 16,
-    gap: 12,
   },
   gridItem: {
     flexGrow: 0,

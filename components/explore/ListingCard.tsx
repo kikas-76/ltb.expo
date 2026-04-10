@@ -87,7 +87,13 @@ function FavoriteButton({ listingId, userId, listingName }: { listingId: string;
 export default function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: ListingCardProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const cardWidth = Math.min(Math.max(width * 0.42, 148), 200);
+  const isMobile = width < 768;
+  const cardWidth = isMobile
+    ? Math.round(width * 0.7)
+    : width < 1024
+    ? Math.min(width * 0.28, 220)
+    : Math.min(width * 0.18, 260);
+
   const photo = listing.photos_url?.[0];
   const ownerInitials = listing.owner?.username
     ? listing.owner.username.slice(0, 2).toUpperCase()
@@ -117,7 +123,7 @@ export default function ListingCard({ listing, variant = 'grid', userLat, userLn
       onPress={() => router.push(`/listing/${listing.id}` as any)}
       activeOpacity={0.88}
     >
-      <View style={[styles.imageContainer, variant === 'horizontal' && styles.imageContainerHorizontal]}>
+      <View style={styles.imageContainer}>
         {photo ? (
           <Image source={{ uri: photo }} style={styles.image} resizeMode="cover" />
         ) : (
@@ -176,17 +182,11 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
     }),
   },
-  cardHorizontal: {
-    width: 180,
-  },
-
   imageContainer: {
     width: '100%',
     aspectRatio: 4 / 3,
     position: 'relative',
-  },
-  imageContainerHorizontal: {
-    aspectRatio: 4 / 3,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
@@ -263,14 +263,14 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   ownerAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   ownerAvatarFallback: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: Colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   ownerName: {
     fontFamily: 'Inter-Regular',
-    fontSize: 11,
+    fontSize: 12,
     color: Colors.textMuted,
     flex: 1,
   },

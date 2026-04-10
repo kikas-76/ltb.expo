@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -32,6 +32,15 @@ interface Props {
 
 export default function PopularSection({ userLat, userLng, userId }: Props) {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const isDesktop = width >= 1024;
+  const cardWidth = isMobile
+    ? Math.round(width * 0.7)
+    : isDesktop
+    ? Math.min(width * 0.18, 260)
+    : Math.min(width * 0.28, 220);
+
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -86,7 +95,7 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
       >
         <View style={styles.titleRow}>
           <Ionicons name="trending-up-outline" size={17} color={Colors.primaryDark} />
-          <Text style={styles.sectionTitle}>Les plus populaires</Text>
+          <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Les plus populaires</Text>
         </View>
         <Ionicons name="chevron-forward-outline" size={18} color={Colors.primary} />
       </TouchableOpacity>
@@ -97,7 +106,7 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
           data={[1, 2, 3]}
           keyExtractor={(i) => String(i)}
           renderItem={() => (
-            <View style={styles.cardWrapper}>
+            <View style={[styles.cardWrapper, { width: cardWidth }]}>
               <SkeletonCard variant="horizontal" />
             </View>
           )}
@@ -111,7 +120,7 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
           data={listings}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.cardWrapper}>
+            <View style={[styles.cardWrapper, { width: cardWidth }]}>
               <ListingCard
                 listing={item}
                 variant="horizontal"
@@ -123,6 +132,8 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
           )}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
+          snapToInterval={cardWidth + 12}
+          decelerationRate="fast"
         />
       )}
     </View>
@@ -150,11 +161,12 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: Colors.text,
   },
+  sectionTitleMobile: {
+    fontSize: 18,
+  },
   listContent: {
     paddingHorizontal: 20,
     gap: 12,
   },
-  cardWrapper: {
-    width: 180,
-  },
+  cardWrapper: {},
 });
