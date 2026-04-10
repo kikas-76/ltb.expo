@@ -12,6 +12,7 @@ import {
   Platform,
   Modal,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -122,6 +123,8 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
   const isToggling = togglingId === item.id;
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
 
   useEffect(() => {
     Animated.sequence([
@@ -140,7 +143,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
     <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <TouchableOpacity activeOpacity={0.92} onPress={() => router.push(`/listing/${item.id}` as any)}>
         <View style={styles.cardInner}>
-          <View style={styles.cardImageWrap}>
+          <View style={[styles.cardImageWrap, isDesktop && desktopStyles.cardImageDesktop]}>
             {photo ? (
               <Image source={{ uri: photo }} style={styles.cardImage} resizeMode="cover" />
             ) : (
@@ -235,6 +238,8 @@ export default function MesAnnoncesScreen() {
   const [blockingError, setBlockingError] = useState<string | null>(null);
   const tabIndicator = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
 
   const hasActiveBooking = async (listingId: string): Promise<boolean> => {
     const { data } = await supabase
@@ -368,13 +373,13 @@ export default function MesAnnoncesScreen() {
   return (
     <View style={[styles.root, { backgroundColor: BG }]}>
       <ScrollView
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }, isDesktop && desktopStyles.listContentDesktop]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GREEN} />
         }
       >
-        <View style={[styles.pageHeader, { paddingTop: insets.top + 20 }]}>
+        <View style={[styles.pageHeader, { paddingTop: insets.top + 20 }, isDesktop && desktopStyles.pageHeaderDesktop]}>
           <View>
             <Text style={styles.pageTitle}>Mes annonces</Text>
             <Text style={styles.pageSubtitle}>Gérez vos objets en location</Text>
@@ -444,17 +449,18 @@ export default function MesAnnoncesScreen() {
         )}
 
         {displayed.length > 0 ? (
-          <View style={activeTab === 'inactive' && styles.inactiveSection}>
+          <View style={[activeTab === 'inactive' && styles.inactiveSection, isDesktop && desktopStyles.grid]}>
             {displayed.map((item, i) => (
-              <ListingCard
-                key={item.id}
-                item={item}
-                index={i}
-                onEdit={handleEdit}
-                onToggle={handleToggle}
-                onDelete={handleDeleteRequest}
-                togglingId={togglingId}
-              />
+              <View key={item.id} style={isDesktop ? desktopStyles.gridItem : undefined}>
+                <ListingCard
+                  item={item}
+                  index={i}
+                  onEdit={handleEdit}
+                  onToggle={handleToggle}
+                  onDelete={handleDeleteRequest}
+                  togglingId={togglingId}
+                />
+              </View>
             ))}
           </View>
         ) : (
@@ -1002,5 +1008,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
     color: '#fff',
+  },
+});
+
+const desktopStyles = StyleSheet.create({
+  listContentDesktop: {
+    maxWidth: 960,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 32,
+  },
+  pageHeaderDesktop: {
+    paddingHorizontal: 0,
+    marginBottom: 4,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  gridItem: {
+    flex: 1,
+    flexBasis: '48%',
+    minWidth: 0,
+  },
+  cardImageDesktop: {
+    width: 160,
+    height: 160,
   },
 });

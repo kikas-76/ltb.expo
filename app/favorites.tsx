@@ -175,7 +175,11 @@ export default function FavoritesScreen() {
           renderItem={renderItem}
           numColumns={numColumns}
           key={numColumns}
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: insets.bottom + 32 },
+            width >= 1024 && styles.listDesktop,
+          ]}
           columnWrapperStyle={styles.columnWrapper}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
@@ -247,6 +251,13 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: 14,
     paddingTop: 8,
+  },
+  listDesktop: {
+    paddingHorizontal: 40,
+    paddingTop: 16,
+    maxWidth: 1100,
+    alignSelf: 'center',
+    width: '100%',
   },
   columnWrapper: {
     gap: 12,

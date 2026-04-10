@@ -8,6 +8,7 @@ import {
   TextInput,
   Platform,
   Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +49,8 @@ function CategoryIcon({ iconName, size = 20 }: { iconName: string; size?: number
 
 export default function HelpCenterScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
   const [query, setQuery] = useState('');
 
   const searchResults = useMemo(() => {
@@ -80,18 +83,18 @@ export default function HelpCenterScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 56 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 56 }, isDesktop && styles.scrollDesktop]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.heroSection}>
+        <View style={[styles.heroSection, isDesktop && styles.heroSectionDesktop]}>
           <View style={styles.heroIcon}>
             <Ionicons name="help-circle-outline" size={28} color={GREEN} />
           </View>
           <Text style={styles.heroTitle}>Comment pouvons-nous{'\n'}vous aider ?</Text>
         </View>
 
-        <View style={styles.searchBox}>
+        <View style={[styles.searchBox, isDesktop && styles.searchBoxDesktop]}>
           <Ionicons name="search-outline" size={16} color="#A8A8A0" />
           <TextInput
             style={styles.searchInput}
@@ -139,9 +142,9 @@ export default function HelpCenterScreen() {
         ) : (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Catégories</Text>
-            <View style={styles.categoriesGrid}>
+            <View style={[styles.categoriesGrid, isDesktop && styles.categoriesGridDesktop]}>
               {helpData.map((cat) => (
-                <CategoryCard key={cat.id} category={cat} />
+                <CategoryCard key={cat.id} category={cat} isDesktop={isDesktop} />
               ))}
             </View>
           </View>
@@ -167,10 +170,10 @@ export default function HelpCenterScreen() {
   );
 }
 
-function CategoryCard({ category }: { category: HelpCategory }) {
+function CategoryCard({ category, isDesktop }: { category: HelpCategory; isDesktop?: boolean }) {
   return (
     <TouchableOpacity
-      style={styles.categoryCard}
+      style={[styles.categoryCard, isDesktop && styles.categoryCardDesktop]}
       activeOpacity={0.75}
       onPress={() => router.push(`/help/${category.id}` as any)}
     >
@@ -323,6 +326,32 @@ const styles = StyleSheet.create({
   },
   categoriesGrid: {
     gap: 10,
+  },
+  categoriesGridDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  categoryCardDesktop: {
+    flex: 1,
+    flexBasis: '47%',
+    minWidth: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  scrollDesktop: {
+    maxWidth: 720,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 40,
+  },
+  heroSectionDesktop: {
+    paddingVertical: 48,
+  },
+  searchBoxDesktop: {
+    height: 52,
+    borderRadius: 999,
+    paddingHorizontal: 20,
   },
   categoryCard: {
     backgroundColor: CARD,

@@ -7,6 +7,8 @@ import {
   ScrollView,
   Platform,
   LayoutAnimation,
+  Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -132,6 +134,8 @@ function LegalCard({ section }: { section: LegalSection }) {
 
 export default function LegalScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -143,14 +147,14 @@ export default function LegalScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }, isDesktop && styles.scrollDesktop]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
+        <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <View style={styles.heroIconWrap}>
             <Ionicons name="shield-outline" size={32} color={Colors.primaryDark} />
           </View>
-          <Text style={styles.heroTitle}>Transparence & conformité</Text>
+          <Text style={[styles.heroTitle, isDesktop && styles.heroTitleDesktop]}>Transparence & conformité</Text>
           <Text style={styles.heroSubtitle}>
             Consultez nos documents légaux. Appuyez sur chaque section pour en savoir plus.
           </Text>
@@ -165,7 +169,12 @@ export default function LegalScreen() {
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             Pour toute question relative à vos droits ou à nos pratiques légales, contactez-nous à{' '}
-            <Text style={styles.footerLink}>admin@louetonbien.fr</Text>
+            <Text
+              style={styles.footerLink}
+              onPress={() => Linking.openURL('mailto:admin@louetonbien.fr')}
+            >
+              admin@louetonbien.fr
+            </Text>
           </Text>
         </View>
       </ScrollView>
@@ -257,7 +266,23 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontFamily: 'Inter-SemiBold',
-    color: Colors.primaryDark,
+    color: '#2f3a2f',
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  scrollDesktop: {
+    maxWidth: 680,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 40,
+  },
+  heroDesktop: {
+    paddingVertical: 48,
+  },
+  heroTitleDesktop: {
+    fontSize: 28,
+    letterSpacing: -0.5,
   },
 });
 

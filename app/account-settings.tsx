@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,6 +55,8 @@ function SectionHeader({ onBack, title }: { onBack: () => void; title: string })
 export default function AccountSettingsScreen() {
   const { profile, user, refreshProfile } = useAuth();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
   const [section, setSection] = useState<Section>('menu');
 
   const [photoLoading, setPhotoLoading] = useState(false);
@@ -360,7 +363,7 @@ export default function AccountSettingsScreen() {
     return (
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <SectionHeader onBack={() => setSection('menu')} title="Photo de profil" />
-        <ScrollView contentContainerStyle={styles.sectionBody} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.sectionBody, isDesktop && deskStyles.centeredBody]} showsVerticalScrollIndicator={false}>
           <View style={styles.avatarCenter}>
             <View style={styles.avatarRingLarge}>
               {profile?.photo_url ? (
@@ -416,7 +419,7 @@ export default function AccountSettingsScreen() {
         <View style={{ paddingTop: insets.top }}>
           <SectionHeader onBack={() => setSection('menu')} title="Nom d'utilisateur" />
         </View>
-        <ScrollView contentContainerStyle={styles.sectionBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.sectionBody, isDesktop && deskStyles.centeredBody]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.fieldDescription}>
             Votre nom d'utilisateur est visible par les autres membres. 2 à 30 caractères, lettres, chiffres et _.
           </Text>
@@ -457,7 +460,7 @@ export default function AccountSettingsScreen() {
         <View style={{ paddingTop: insets.top }}>
           <SectionHeader onBack={() => setSection('menu')} title="Bio" />
         </View>
-        <ScrollView contentContainerStyle={styles.sectionBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.sectionBody, isDesktop && deskStyles.centeredBody]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.fieldDescription}>
             Présentez-vous en quelques mots. Votre bio est visible sur votre profil public (300 caractères max).
           </Text>
@@ -499,7 +502,7 @@ export default function AccountSettingsScreen() {
         <View style={{ paddingTop: insets.top }}>
           <SectionHeader onBack={() => setSection('menu')} title="Adresse email" />
         </View>
-        <ScrollView contentContainerStyle={styles.sectionBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.sectionBody, isDesktop && deskStyles.centeredBody]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.fieldDescription}>
             Un email de confirmation sera envoyé à la nouvelle adresse.
           </Text>
@@ -540,7 +543,7 @@ export default function AccountSettingsScreen() {
         <View style={{ paddingTop: insets.top }}>
           <SectionHeader onBack={() => setSection('menu')} title="Numéro de téléphone" />
         </View>
-        <ScrollView contentContainerStyle={styles.sectionBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.sectionBody, isDesktop && deskStyles.centeredBody]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.fieldDescription}>
             Votre numéro est utilisé pour faciliter les échanges. Il n'est pas visible publiquement.
           </Text>
@@ -580,7 +583,7 @@ export default function AccountSettingsScreen() {
         <View style={{ paddingTop: insets.top }}>
           <SectionHeader onBack={() => setSection('menu')} title="Mot de passe" />
         </View>
-        <ScrollView contentContainerStyle={styles.sectionBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.sectionBody, isDesktop && deskStyles.centeredBody]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.fieldDescription}>
             Choisissez un mot de passe fort d'au moins 8 caractères.
           </Text>
@@ -684,7 +687,7 @@ export default function AccountSettingsScreen() {
         <View style={{ paddingTop: insets.top }}>
           <SectionHeader onBack={() => setSection('menu')} title="Supprimer le compte" />
         </View>
-        <ScrollView contentContainerStyle={styles.sectionBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.sectionBody, isDesktop && deskStyles.centeredBody]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.deleteWarning}>
             <Ionicons name="alert-circle-outline" size={28} color={Colors.error} />
             <Text style={styles.deleteWarningTitle}>Action irréversible</Text>
@@ -736,7 +739,7 @@ export default function AccountSettingsScreen() {
         <Text style={styles.topHeaderTitle}>Paramètres du compte</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.menuScroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.menuScroll, isDesktop && deskStyles.menuScrollDesktop]} showsVerticalScrollIndicator={false}>
         <View style={styles.profileSummary}>
           <View style={styles.avatarRingSmall}>
             {profile?.photo_url ? (
@@ -1168,5 +1171,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
     color: Colors.white,
+  },
+});
+
+const deskStyles = StyleSheet.create({
+  centeredBody: {
+    maxWidth: 680,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 40,
+  },
+  menuScrollDesktop: {
+    maxWidth: 680,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 40,
   },
 });

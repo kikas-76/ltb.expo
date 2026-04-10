@@ -10,6 +10,7 @@ import {
   Platform,
   TextInput,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -18,7 +19,9 @@ import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import ProBadge from '@/components/ProBadge';
-import { useResponsive } from '@/hooks/useResponsive';
+
+const BEIGE = '#f5f2e8';
+const GREEN_DARK = '#2f3a2f';
 
 interface MenuRow {
   icon: React.ReactNode;
@@ -26,14 +29,20 @@ interface MenuRow {
   onPress: () => void;
 }
 
-function MenuSection({ rows }: { rows: MenuRow[] }) {
+function MenuSection({ rows, isDesktop }: { rows: MenuRow[]; isDesktop?: boolean }) {
   return (
-    <View style={menuStyles.card}>
+    <View style={[menuStyles.card, isDesktop && menuStyles.cardDesktop]}>
       {rows.map((row, i) => (
         <View key={row.label}>
-          <TouchableOpacity style={menuStyles.row} onPress={row.onPress} activeOpacity={0.7}>
-            <View style={menuStyles.iconWrap}>{row.icon}</View>
-            <Text style={menuStyles.label}>{row.label}</Text>
+          <TouchableOpacity
+            style={[menuStyles.row, isDesktop && menuStyles.rowDesktop]}
+            onPress={row.onPress}
+            activeOpacity={0.7}
+          >
+            <View style={[menuStyles.iconWrap, isDesktop && menuStyles.iconWrapDesktop]}>
+              {row.icon}
+            </View>
+            <Text style={[menuStyles.label, isDesktop && menuStyles.labelDesktop]}>{row.label}</Text>
             <Ionicons name="chevron-forward-outline" size={15} color={Colors.textMuted} />
           </TouchableOpacity>
           {i < rows.length - 1 && <View style={menuStyles.divider} />}
@@ -46,7 +55,8 @@ function MenuSection({ rows }: { rows: MenuRow[] }) {
 export default function ProfilScreen() {
   const { profile, user, refreshProfile, signOut } = useAuth();
   const insets = useSafeAreaInsets();
-  const { isDesktop } = useResponsive();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
 
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameValue, setUsernameValue] = useState('');
@@ -133,22 +143,22 @@ export default function ProfilScreen() {
 
   const accountRows: MenuRow[] = [
     {
-      icon: <Ionicons name="settings-outline" size={17} color={Colors.primaryDark} />,
+      icon: <Ionicons name="settings-outline" size={isDesktop ? 20 : 17} color={Colors.primaryDark} />,
       label: 'Paramètres du compte',
       onPress: () => router.push('/account-settings' as any),
     },
     {
-      icon: <Ionicons name="pricetag-outline" size={17} color={Colors.primaryDark} />,
+      icon: <Ionicons name="pricetag-outline" size={isDesktop ? 20 : 17} color={Colors.primaryDark} />,
       label: 'Mes annonces',
       onPress: () => router.push('/(tabs)/mes-annonces'),
     },
     {
-      icon: <Ionicons name="heart-outline" size={17} color={Colors.primaryDark} />,
+      icon: <Ionicons name="heart-outline" size={isDesktop ? 20 : 17} color={Colors.primaryDark} />,
       label: 'Mes favoris',
       onPress: () => router.push('/favorites' as any),
     },
     {
-      icon: <Ionicons name="wallet-outline" size={17} color={Colors.primaryDark} />,
+      icon: <Ionicons name="wallet-outline" size={isDesktop ? 20 : 17} color={Colors.primaryDark} />,
       label: 'Mon portefeuille',
       onPress: () => router.push('/wallet' as any),
     },
@@ -156,12 +166,12 @@ export default function ProfilScreen() {
 
   const supportRows: MenuRow[] = [
     {
-      icon: <Ionicons name="help-circle-outline" size={17} color={Colors.primaryDark} />,
+      icon: <Ionicons name="help-circle-outline" size={isDesktop ? 20 : 17} color={Colors.primaryDark} />,
       label: "Centre d'aide",
       onPress: () => router.push('/help-center' as any),
     },
     {
-      icon: <Ionicons name="shield-outline" size={17} color={Colors.primaryDark} />,
+      icon: <Ionicons name="shield-outline" size={isDesktop ? 20 : 17} color={Colors.primaryDark} />,
       label: 'Informations légales',
       onPress: () => router.push('/legal' as any),
     },
@@ -172,115 +182,106 @@ export default function ProfilScreen() {
     router.replace('/');
   };
 
-  const avatarSection = (
-    <View style={[styles.header, isDesktop && desktopStyles.headerDesktop]}>
-      <View style={[styles.avatarRing, isDesktop && desktopStyles.avatarRingDesktop]}>
-        {profile?.photo_url ? (
-          <Image source={{ uri: profile.photo_url }} style={styles.avatarImg} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person-outline" size={isDesktop ? 48 : 36} color={Colors.primaryDark} />
-          </View>
-        )}
-      </View>
-
-      {editingUsername ? (
-        <View style={styles.usernameEditRow}>
-          <Text style={styles.atSign}>@</Text>
-          <TextInput
-            ref={inputRef}
-            style={styles.usernameInput}
-            value={usernameValue}
-            onChangeText={setUsernameValue}
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={30}
-            returnKeyType="done"
-            onSubmitEditing={saveUsername}
-          />
-          {savingUsername ? (
-            <ActivityIndicator size="small" color={Colors.primaryDark} style={{ marginLeft: 6 }} />
-          ) : (
-            <>
-              <TouchableOpacity onPress={saveUsername} style={styles.iconBtn} activeOpacity={0.7}>
-                <Ionicons name="checkmark-outline" size={18} color={Colors.primaryDark} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={cancelEditingUsername} style={styles.iconBtn} activeOpacity={0.7}>
-                <Ionicons name="close-outline" size={18} color={Colors.textMuted} />
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      ) : (
-        <TouchableOpacity
-          style={styles.usernameRow}
-          onPress={startEditingUsername}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.displayName, isDesktop && { fontSize: 26 }]}>
-            @{profile?.username ?? 'utilisateur'}
-          </Text>
-          <Ionicons name="pencil-outline" size={14} color={Colors.textMuted} style={{ marginLeft: 6 }} />
-        </TouchableOpacity>
-      )}
-
-      {usernameError && (
-        <Text style={styles.usernameError}>{usernameError}</Text>
-      )}
-
-      {memberSince && (
-        <View style={styles.badgeRow}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>Membre depuis {memberSince}</Text>
-          </View>
-          {profile?.is_pro && <ProBadge />}
-        </View>
-      )}
-
-      {profileCity && (
-        <View style={styles.cityRow}>
-          <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
-          <Text style={styles.cityText}>{profileCity}</Text>
-        </View>
-      )}
-    </View>
-  );
-
   if (isDesktop && Platform.OS === 'web') {
     return (
-      <View style={[desktopStyles.root, { backgroundColor: Colors.background }]}>
-        <View style={desktopStyles.leftCol}>
-          <Animated.View style={[{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }, { flex: 1 }]}>
-            <ScrollView
-              contentContainerStyle={desktopStyles.leftScroll}
-              showsVerticalScrollIndicator={false}
-            >
-              {avatarSection}
+      <View style={desktopStyles.root}>
+        <Animated.View style={[desktopStyles.leftCol, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <View style={desktopStyles.avatarSection}>
+            <View style={desktopStyles.avatarRing}>
+              {profile?.photo_url ? (
+                <Image source={{ uri: profile.photo_url }} style={desktopStyles.avatarImg} />
+              ) : (
+                <View style={desktopStyles.avatarPlaceholder}>
+                  <Ionicons name="person-outline" size={42} color={Colors.primaryDark} />
+                </View>
+              )}
+            </View>
+
+            {editingUsername ? (
+              <View style={styles.usernameEditRow}>
+                <Text style={styles.atSign}>@</Text>
+                <TextInput
+                  ref={inputRef}
+                  style={[styles.usernameInput, { fontSize: 16 }]}
+                  value={usernameValue}
+                  onChangeText={setUsernameValue}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={30}
+                  returnKeyType="done"
+                  onSubmitEditing={saveUsername}
+                />
+                {savingUsername ? (
+                  <ActivityIndicator size="small" color={Colors.primaryDark} style={{ marginLeft: 6 }} />
+                ) : (
+                  <>
+                    <TouchableOpacity onPress={saveUsername} style={styles.iconBtn} activeOpacity={0.7}>
+                      <Ionicons name="checkmark-outline" size={18} color={Colors.primaryDark} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={cancelEditingUsername} style={styles.iconBtn} activeOpacity={0.7}>
+                      <Ionicons name="close-outline" size={18} color={Colors.textMuted} />
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            ) : (
               <TouchableOpacity
-                style={styles.signOutBtn}
-                onPress={handleSignOut}
-                activeOpacity={0.75}
+                style={desktopStyles.usernameRow}
+                onPress={startEditingUsername}
+                activeOpacity={0.7}
               >
-                <Ionicons name="log-out-outline" size={16} color={Colors.white} />
-                <Text style={styles.signOutText}>Déconnexion</Text>
+                <Text style={desktopStyles.username}>@{profile?.username ?? 'utilisateur'}</Text>
+                <Ionicons name="pencil-outline" size={13} color={Colors.textMuted} style={{ marginLeft: 6 }} />
               </TouchableOpacity>
-            </ScrollView>
-          </Animated.View>
-        </View>
-        <View style={desktopStyles.rightCol}>
-          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], flex: 1 }}>
-            <ScrollView
-              contentContainerStyle={desktopStyles.rightScroll}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              <Text style={desktopStyles.sectionTitle}>Votre compte</Text>
-              <MenuSection rows={accountRows} />
-              <Text style={desktopStyles.sectionTitle}>Aide</Text>
-              <MenuSection rows={supportRows} />
-            </ScrollView>
-          </Animated.View>
-        </View>
+            )}
+
+            {usernameError && (
+              <Text style={styles.usernameError}>{usernameError}</Text>
+            )}
+
+            {memberSince && (
+              <View style={desktopStyles.metaRow}>
+                <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
+                <Text style={desktopStyles.metaText}>Membre depuis {memberSince}</Text>
+              </View>
+            )}
+
+            {profileCity && (
+              <View style={desktopStyles.metaRow}>
+                <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
+                <Text style={desktopStyles.metaText}>{profileCity}</Text>
+              </View>
+            )}
+
+            {profile?.is_pro && (
+              <View style={{ marginTop: 10 }}>
+                <ProBadge />
+              </View>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={desktopStyles.signOutBtn}
+            onPress={handleSignOut}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="log-out-outline" size={16} color="#DC2626" />
+            <Text style={desktopStyles.signOutText}>Déconnexion</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View style={[desktopStyles.rightCol, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <ScrollView
+            contentContainerStyle={desktopStyles.rightScroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={desktopStyles.sectionLabel}>VOTRE COMPTE</Text>
+            <MenuSection rows={accountRows} isDesktop />
+            <Text style={[desktopStyles.sectionLabel, { marginTop: 24 }]}>AIDE</Text>
+            <MenuSection rows={supportRows} isDesktop />
+          </ScrollView>
+        </Animated.View>
       </View>
     );
   }
@@ -293,7 +294,76 @@ export default function ProfilScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-          {avatarSection}
+          <View style={styles.header}>
+            <View style={styles.avatarRing}>
+              {profile?.photo_url ? (
+                <Image source={{ uri: profile.photo_url }} style={styles.avatarImg} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="person-outline" size={36} color={Colors.primaryDark} />
+                </View>
+              )}
+            </View>
+
+            {editingUsername ? (
+              <View style={styles.usernameEditRow}>
+                <Text style={styles.atSign}>@</Text>
+                <TextInput
+                  ref={inputRef}
+                  style={styles.usernameInput}
+                  value={usernameValue}
+                  onChangeText={setUsernameValue}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={30}
+                  returnKeyType="done"
+                  onSubmitEditing={saveUsername}
+                />
+                {savingUsername ? (
+                  <ActivityIndicator size="small" color={Colors.primaryDark} style={{ marginLeft: 6 }} />
+                ) : (
+                  <>
+                    <TouchableOpacity onPress={saveUsername} style={styles.iconBtn} activeOpacity={0.7}>
+                      <Ionicons name="checkmark-outline" size={18} color={Colors.primaryDark} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={cancelEditingUsername} style={styles.iconBtn} activeOpacity={0.7}>
+                      <Ionicons name="close-outline" size={18} color={Colors.textMuted} />
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.usernameRow}
+                onPress={startEditingUsername}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.displayName}>@{profile?.username ?? 'utilisateur'}</Text>
+                <Ionicons name="pencil-outline" size={14} color={Colors.textMuted} style={{ marginLeft: 6 }} />
+              </TouchableOpacity>
+            )}
+
+            {usernameError && (
+              <Text style={styles.usernameError}>{usernameError}</Text>
+            )}
+
+            {memberSince && (
+              <View style={styles.badgeRow}>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>Membre depuis {memberSince}</Text>
+                </View>
+                {profile?.is_pro && <ProBadge />}
+              </View>
+            )}
+
+            {profileCity && (
+              <View style={styles.cityRow}>
+                <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
+                <Text style={styles.cityText}>{profileCity}</Text>
+              </View>
+            )}
+          </View>
+
           <Text style={styles.sectionLabel}>Votre compte</Text>
           <MenuSection rows={accountRows} />
           <Text style={styles.sectionLabel}>Aide</Text>
@@ -399,6 +469,9 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   badge: {
     backgroundColor: Colors.primaryLight + '60',
@@ -466,12 +539,31 @@ const menuStyles = StyleSheet.create({
       web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
     }),
   },
+  cardDesktop: {
+    borderRadius: 12,
+    marginBottom: 0,
+    ...Platform.select({
+      web: { boxShadow: 'none' },
+    }),
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 18,
     paddingVertical: 16,
     gap: 14,
+  },
+  rowDesktop: {
+    height: 56,
+    paddingHorizontal: 20,
+    paddingVertical: 0,
+    borderRadius: 12,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        transition: 'background-color 0.15s ease',
+      },
+    }),
   },
   iconWrap: {
     width: 32,
@@ -481,11 +573,20 @@ const menuStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconWrapDesktop: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+  },
   label: {
     flex: 1,
     fontFamily: 'Inter-Regular',
     fontSize: 15,
     color: Colors.text,
+  },
+  labelDesktop: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
   },
   divider: {
     height: 1,
@@ -498,17 +599,86 @@ const desktopStyles = StyleSheet.create({
   root: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: Colors.white,
   },
   leftCol: {
-    width: 300,
+    width: 320,
+    backgroundColor: BEIGE,
+    paddingHorizontal: 32,
+    paddingVertical: 40,
+    justifyContent: 'space-between',
     borderRightWidth: 1,
-    borderRightColor: Colors.borderLight,
-    backgroundColor: Colors.background,
+    borderRightColor: '#f0ede3',
   },
-  leftScroll: {
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 40,
+  avatarSection: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatarRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2.5,
+    borderColor: Colors.primary,
+    padding: 3,
+    marginBottom: 16,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 16px rgba(142,152,120,0.2)' },
+    }),
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 46,
+  },
+  avatarPlaceholder: {
+    flex: 1,
+    borderRadius: 46,
+    backgroundColor: Colors.primaryLight + '50',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  username: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: '#2f3a2f',
+    letterSpacing: -0.3,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+  },
+  metaText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  signOutBtn: {
+    borderWidth: 1.5,
+    borderColor: '#DC2626',
+    borderRadius: 999,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 'auto' as any,
+    ...Platform.select({
+      web: { cursor: 'pointer', transition: 'background-color 0.15s ease' },
+    }),
+  },
+  signOutText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#DC2626',
+    letterSpacing: 0.1,
   },
   rightCol: {
     flex: 1,
@@ -516,28 +686,16 @@ const desktopStyles = StyleSheet.create({
   },
   rightScroll: {
     paddingHorizontal: 48,
-    paddingTop: 48,
-    paddingBottom: 48,
-    maxWidth: 700,
+    paddingVertical: 40,
+    maxWidth: 680,
   },
-  headerDesktop: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  avatarRingDesktop: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    padding: 4,
-    marginBottom: 18,
-  },
-  sectionTitle: {
+  sectionLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 11,
     color: Colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
+    letterSpacing: 1.5,
+    marginBottom: 12,
     marginLeft: 4,
   },
 });
