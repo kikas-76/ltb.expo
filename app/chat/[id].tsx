@@ -31,6 +31,7 @@ const GREEN = '#B7BF9C';
 const GREEN_DARK = '#8E9878';
 const GREEN_LIGHT = '#ECEEE6';
 const CREAM = '#FFFDF7';
+const CHAT_MAX_WIDTH = 860;
 
 interface MessageItem {
   id: string;
@@ -96,6 +97,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
+  const isDesktop = width >= 1024 && Platform.OS === 'web';
   const listRef = useRef<FlatList>(null);
   const inputScale = useRef(new Animated.Value(1)).current;
 
@@ -952,7 +954,7 @@ export default function ChatScreen() {
           </View>
         )}
         <View style={[styles.msgRow, item.isOwn && styles.msgRowOwn]}>
-          <View style={[styles.bubble, item.isOwn ? styles.bubbleOwn : styles.bubbleOther, item.pending && styles.bubblePending]}>
+          <View style={[styles.bubble, item.isOwn ? styles.bubbleOwn : styles.bubbleOther, item.pending && styles.bubblePending, isDesktop && styles.bubbleDesktop]}>
             {item.imageUrl ? (
               <View>
                 <Image source={{ uri: item.imageUrl }} style={styles.bubbleImage} resizeMode="cover" />
@@ -1012,13 +1014,14 @@ export default function ChatScreen() {
   const days = meta ? getDayCount(meta.startDate, meta.endDate) : 0;
 
   return (
+    <View style={[styles.root, isDesktop && chatDesktopStyles.outerWrap]}>
     <KeyboardAvoidingView
-      style={styles.root}
+      style={[styles.root, isDesktop && chatDesktopStyles.innerWrap]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
       {/* Top bar */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.topBar, { paddingTop: isDesktop ? 20 : insets.top + 10 }]}>
         {/* Row 1 : back · [avatar + username centré] · spacer */}
         <View style={styles.topBarRow1}>
           <TouchableOpacity onPress={() => router.push('/(tabs)/reservations' as any)} style={styles.backBtn} activeOpacity={0.8}>
@@ -1493,7 +1496,7 @@ export default function ChatScreen() {
       <Animated.View
         style={[
           styles.inputBar,
-          { paddingBottom: insets.bottom + 8, transform: [{ scale: inputScale }] },
+          { paddingBottom: isDesktop ? 16 : insets.bottom + 8, transform: [{ scale: inputScale }] },
         ]}
       >
         <TouchableOpacity style={styles.attachBtn} onPress={sendFromGallery} activeOpacity={0.7}>
@@ -1585,8 +1588,28 @@ export default function ChatScreen() {
         </View>
       </Modal>
     </KeyboardAvoidingView>
+    </View>
   );
 }
+
+const chatDesktopStyles = StyleSheet.create({
+  outerWrap: {
+    backgroundColor: '#f0ede3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  innerWrap: {
+    width: '100%',
+    maxWidth: CHAT_MAX_WIDTH,
+    alignSelf: 'center',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 0 0 1px #e8e4d8, 0 8px 40px rgba(0,0,0,0.08)',
+      },
+    }),
+    backgroundColor: BG,
+  },
+});
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
@@ -2323,6 +2346,7 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   bubblePending: { opacity: 0.65 },
+  bubbleDesktop: { maxWidth: '65%' },
   bubbleImage: {
     width: 200,
     height: 160,

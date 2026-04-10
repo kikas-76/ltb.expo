@@ -706,21 +706,104 @@ export default function MessagesScreen() {
 
   if (isDesktop && Platform.OS === 'web') {
     return (
-      <View style={[desktopStyles.root, { backgroundColor: BG }]}>
+      <View style={desktopStyles.root}>
         <View style={desktopStyles.leftCol}>
           <View style={desktopStyles.leftHeader}>
-            <Text style={styles.headerTitle}>Messages</Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={desktopStyles.leftHeaderTitle}>Messages</Text>
+            <Text style={desktopStyles.leftHeaderSub}>
               {conversations.length > 0
-                ? `${conversations.length} conversation${conversations.length > 1 ? 's' : ''} en cours`
+                ? `${conversations.length} échange${conversations.length > 1 ? 's' : ''}`
                 : 'Retrouvez ici vos échanges'}
             </Text>
           </View>
+
+          <View style={desktopStyles.infoBannerDesktop}>
+            <View style={desktopStyles.infoBannerDesktopLeft}>
+              <View style={desktopStyles.infoBannerDesktopIcon}>
+                <Ionicons name="calendar-outline" size={16} color="#fff" />
+              </View>
+              <Text style={desktopStyles.infoBannerDesktopText}>Organisez vos locations</Text>
+            </View>
+            {conversations.length > 0 && (
+              <View style={desktopStyles.exchangesBadge}>
+                <Text style={desktopStyles.exchangesBadgeText}>
+                  {conversations.length} échange{conversations.length > 1 ? 's' : ''}
+                </Text>
+              </View>
+            )}
+          </View>
+
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[desktopStyles.listContent]}
+            contentContainerStyle={desktopStyles.listContent}
           >
-            {conversationList}
+            {loading ? (
+              <View style={desktopStyles.loadingWrap}>
+                <ActivityIndicator size="large" color={GREEN} />
+              </View>
+            ) : conversations.length === 0 ? (
+              <View style={desktopStyles.emptyLeft}>
+                <View style={desktopStyles.emptyLeftIcon}>
+                  <Ionicons name="chatbubble-outline" size={32} color={GREEN} />
+                </View>
+                <Text style={desktopStyles.emptyLeftTitle}>Aucun message</Text>
+                <Text style={desktopStyles.emptyLeftSub}>
+                  Vos échanges apparaîtront ici.
+                </Text>
+              </View>
+            ) : (
+              conversations.map((item, index) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    desktopStyles.convRow,
+                    selectedConvId === item.id && desktopStyles.convRowSelected,
+                    item.isIncomingRequest && desktopStyles.convRowIncoming,
+                  ]}
+                  activeOpacity={0.78}
+                  onPress={() => !item.listingUnavailable && handleConvPress(item.id)}
+                  onLongPress={
+                    (item.displayStatus === 'completed' || item.status === 'refused' || item.listingUnavailable)
+                      ? () => setDeleteModalId(item.id)
+                      : undefined
+                  }
+                  delayLongPress={500}
+                >
+                  <View style={desktopStyles.convRowImg}>
+                    {item.listingThumb ? (
+                      <Image source={{ uri: item.listingThumb }} style={desktopStyles.convRowImage} />
+                    ) : (
+                      <View style={desktopStyles.convRowImageFallback}>
+                        <Ionicons name="cube-outline" size={20} color={GREEN} />
+                      </View>
+                    )}
+                    {(item.unreadCount > 0 || item.hasUnreadDot) && (
+                      <View style={desktopStyles.unreadDot} />
+                    )}
+                  </View>
+                  <View style={desktopStyles.convRowBody}>
+                    <View style={desktopStyles.convRowTop}>
+                      <Text style={[desktopStyles.convRowTitle, (item.unreadCount > 0 || item.hasUnreadDot) && desktopStyles.convRowTitleUnread]} numberOfLines={1}>
+                        {item.listingTitle}
+                      </Text>
+                      <Text style={desktopStyles.convRowTime}>{item.lastMessageTime}</Text>
+                    </View>
+                    <Text style={desktopStyles.convRowUser} numberOfLines={1}>{item.otherUsername}</Text>
+                    <Text style={[desktopStyles.convRowLast, (item.unreadCount > 0 || item.hasUnreadDot) && desktopStyles.convRowLastUnread]} numberOfLines={1}>
+                      {item.lastMessage}
+                    </Text>
+                    <View style={desktopStyles.convRowFooter}>
+                      <BookingBadge status={item.displayStatus} />
+                      {item.unreadCount > 0 && (
+                        <View style={desktopStyles.unreadBadge}>
+                          <Text style={desktopStyles.unreadBadgeText}>{item.unreadCount}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
           </ScrollView>
         </View>
 
@@ -731,7 +814,7 @@ export default function MessagesScreen() {
             return (
               <ScrollView style={{ flex: 1 }} contentContainerStyle={desktopStyles.detailContent}>
                 {conv.listingThumb ? (
-                  <Image source={{ uri: conv.listingThumb }} style={desktopStyles.detailBanner} />
+                  <Image source={{ uri: conv.listingThumb }} style={desktopStyles.detailBanner} resizeMode="cover" />
                 ) : (
                   <View style={[desktopStyles.detailBanner, { backgroundColor: GREEN_LIGHT }]} />
                 )}
@@ -1444,30 +1527,230 @@ const desktopStyles = StyleSheet.create({
   root: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: '#FDFBF5',
   },
   leftCol: {
-    width: '38%',
-    maxWidth: 420,
+    width: 420,
+    flexShrink: 0,
     borderRightWidth: 1,
-    borderRightColor: '#E0DDD0',
+    borderRightColor: '#e8e4d8',
     backgroundColor: BG,
+    ...Platform.select({ web: { height: '100vh' as any, overflow: 'hidden' as any } }),
+    flexDirection: 'column',
   },
   leftHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 32,
+    paddingHorizontal: 24,
+    paddingTop: 28,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0DDD0',
+    borderBottomColor: '#e8e4d8',
+  },
+  leftHeaderTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 26,
+    color: '#1A1F17',
+    letterSpacing: -0.6,
+  },
+  leftHeaderSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.textMuted,
+    marginTop: 3,
+  },
+  infoBannerDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: GREEN_DARK,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  infoBannerDesktopLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  infoBannerDesktopIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoBannerDesktopText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: '#fff',
+  },
+  exchangesBadge: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  exchangesBadgeText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 11,
+    color: '#fff',
   },
   listContent: {
-    paddingHorizontal: 12,
-    paddingTop: 12,
+    paddingTop: 4,
     paddingBottom: 32,
-    gap: 10,
+  },
+  loadingWrap: {
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  emptyLeft: {
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 32,
+  },
+  emptyLeftIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: GREEN_LIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D4DAC4',
+    marginBottom: 16,
+  },
+  emptyLeftTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: '#1A1F17',
+    marginBottom: 6,
+  },
+  emptyLeftSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+  convRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0ede3',
+    backgroundColor: 'transparent',
+    ...Platform.select({ web: { cursor: 'pointer' as any } }),
+  },
+  convRowSelected: {
+    backgroundColor: '#eef2df',
+    borderBottomColor: '#d8e0c4',
+  },
+  convRowIncoming: {
+    backgroundColor: '#FFFBF3',
+    borderBottomColor: '#F0D898',
+  },
+  convRowImg: {
+    position: 'relative',
+    flexShrink: 0,
+  },
+  convRowImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8E4D6',
+  },
+  convRowImageFallback: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: GREEN_LIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D4DAC4',
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2f3a2f',
+    borderWidth: 2,
+    borderColor: BG,
+  },
+  convRowBody: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  convRowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  convRowTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#1A1F17',
+    flex: 1,
+    letterSpacing: -0.1,
+  },
+  convRowTitleUnread: {
+    fontFamily: 'Inter-Bold',
+  },
+  convRowTime: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: Colors.textMuted,
+    flexShrink: 0,
+  },
+  convRowUser: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: GREEN_DARK,
+  },
+  convRowLast: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  convRowLastUnread: {
+    color: '#3A3A3A',
+    fontFamily: 'Inter-Medium',
+  },
+  convRowFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  unreadBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#2f3a2f',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  unreadBadgeText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 10,
+    color: '#fff',
   },
   rightCol: {
     flex: 1,
     backgroundColor: '#FDFBF5',
+    ...Platform.select({ web: { height: '100vh' as any } }),
   },
   detailContent: {
     paddingBottom: 40,
@@ -1475,10 +1758,9 @@ const desktopStyles = StyleSheet.create({
   detailBanner: {
     width: '100%',
     height: 220,
-    resizeMode: 'cover',
   },
   detailBody: {
-    padding: 32,
+    padding: 28,
     gap: 16,
   },
   detailTitle: {
@@ -1498,8 +1780,8 @@ const desktopStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: GREEN_LIGHT,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#D4DAC4',
   },
@@ -1517,12 +1799,12 @@ const desktopStyles = StyleSheet.create({
   },
   detailPriceText: {
     fontFamily: 'Inter-Bold',
-    fontSize: 20,
+    fontSize: 22,
     color: '#1A1F17',
-    letterSpacing: -0.4,
+    letterSpacing: -0.5,
   },
   detailLastMsg: {
-    backgroundColor: '#FFF',
+    backgroundColor: CREAM,
     borderRadius: 14,
     padding: 16,
     gap: 6,
@@ -1556,12 +1838,12 @@ const desktopStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: GREEN_DARK,
-    borderRadius: 14,
-    paddingVertical: 16,
+    backgroundColor: '#2f3a2f',
+    borderRadius: 999,
+    height: 52,
     marginTop: 8,
     ...Platform.select({
-      web: { boxShadow: '0 4px 14px rgba(142,152,120,0.4)', cursor: 'pointer' },
+      web: { boxShadow: '0 4px 14px rgba(47,58,47,0.3)', cursor: 'pointer' as any },
     }),
   },
   openChatBtnText: {
