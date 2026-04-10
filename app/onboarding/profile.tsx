@@ -12,10 +12,11 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
 
@@ -55,10 +56,7 @@ function formatPhone(raw: string): string {
 
 
 export default function OnboardingProfileScreen() {
-  const params = useLocalSearchParams<{
-    email: string;
-    password: string;
-  }>();
+  const { user } = useAuth();
 
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
@@ -131,6 +129,11 @@ export default function OnboardingProfileScreen() {
       return;
     }
 
+    if (!user) {
+      setError("Session introuvable. Veuillez vous reconnecter.");
+      return;
+    }
+
     const { data: existingUser } = await supabase
       .from('profiles')
       .select('id')
@@ -144,49 +147,11 @@ export default function OnboardingProfileScreen() {
 
     setSubmitting(true);
 
-    let userId: string | null = null;
-
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: params.email,
-      password: params.password,
-    });
-
-    if (signInData?.user) {
-      userId = signInData.user.id;
-    } else {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: params.email,
-        password: params.password,
-        options: {
-          data: { username: cleanUsername },
-        },
-      });
-
-      if (signUpError || !data.user) {
-        setSubmitting(false);
-        setError(signUpError?.message ?? "Erreur lors de l'inscription.");
-        return;
-      }
-
-      const { data: newSignIn, error: newSignInError } = await supabase.auth.signInWithPassword({
-        email: params.email,
-        password: params.password,
-      });
-
-      if (newSignInError || !newSignIn.user) {
-        setSubmitting(false);
-        setError('Compte créé mais connexion échouée. Veuillez vous connecter manuellement.');
-        return;
-      }
-
-      userId = newSignIn.user.id;
-    }
-
-    const photoUrl = await uploadAvatar(userId!);
+    const photoUrl = await uploadAvatar(user.id);
 
     const updates: Record<string, string | null> = {
       username: cleanUsername,
-      email: params.email,
+      email: user.email ?? null,
       phone_number: phone.trim() || null,
       photo_url: photoUrl,
     };
@@ -194,7 +159,7 @@ export default function OnboardingProfileScreen() {
     const { error: updateError } = await supabase
       .from('profiles')
       .update(updates)
-      .eq('id', userId!);
+      .eq('id', user.id);
 
     if (updateError) {
       setSubmitting(false);
@@ -202,11 +167,11 @@ export default function OnboardingProfileScreen() {
       return;
     }
 
-    sendEmail(params.email, 'welcome', {
+    sendEmail(user.email ?? '', 'welcome', {
       first_name: cleanUsername,
     });
     setSubmitting(false);
-    router.replace({ pathname: '/onboarding/account-type', params: { userId: userId! } });
+    router.replace({ pathname: '/onboarding/account-type', params: { userId: user.id } });
   };
 
   return (

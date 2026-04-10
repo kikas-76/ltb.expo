@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import InfiniteIconStrip from '@/components/InfiniteIconStrip';
 import { Colors } from '@/constants/colors';
+import { supabase } from '@/lib/supabase';
 
 
 function Stepper({ active }: { active: number }) {
@@ -27,6 +28,13 @@ function Stepper({ active }: { active: number }) {
   );
 }
 
+function getRedirectUrl() {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return `${window.location.origin}/onboarding/profile`;
+  }
+  return 'louetonbien://onboarding/profile';
+}
+
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +44,7 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError(null);
     if (!email.trim()) { setError("L'email est requis."); return; }
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -44,7 +52,35 @@ export default function RegisterScreen() {
     if (password.length < 6) { setError('Le mot de passe doit contenir au moins 6 caractères.'); return; }
     if (password !== confirmPassword) { setError('Les mots de passe ne correspondent pas.'); return; }
 
-    router.push({ pathname: '/onboarding/profile', params: { email, password } });
+    setSubmitting(true);
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
+      options: {
+        emailRedirectTo: getRedirectUrl(),
+      },
+    });
+
+    setSubmitting(false);
+
+    if (signUpError) {
+      if (signUpError.message.toLowerCase().includes('already registered') || signUpError.message.toLowerCase().includes('user already')) {
+        setError('Un compte existe déjà avec cet email. Connecte-toi.');
+      } else {
+        setError(signUpError.message);
+      }
+      return;
+    }
+
+    if (data.user && !data.session) {
+      router.push({ pathname: '/verify-email', params: { email: email.trim().toLowerCase(), password } });
+      return;
+    }
+
+    if (data.session) {
+      router.replace('/onboarding/profile' as any);
+    }
   };
 
   return (
