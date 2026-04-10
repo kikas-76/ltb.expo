@@ -17,10 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 const SURFACE = '#FFFFFF';
-const BG = '#F5F2E3';
-const GREEN = '#B7BF9C';
-const GREEN_DARK = '#8E9878';
-const GREEN_LIGHT = '#ECEEE6';
 const TEXT = '#1C2018';
 const TEXT_SUB = '#6B6B6B';
 const BORDER = '#E2DED0';
@@ -129,14 +125,14 @@ export default function RequestMessageModal({
                 <Text style={styles.recapTitle} numberOfLines={2}>{listingTitle}</Text>
                 <View style={styles.recapMeta}>
                   <View style={styles.recapMetaItem}>
-                    <Ionicons name="calendar-outline" size={12} color={GREEN_DARK} />
+                    <Ionicons name="calendar-outline" size={12} color={Colors.primaryDark} />
                     <Text style={styles.recapMetaText}>
                       {formatShort(startDate)} — {formatShort(endDate)}
                     </Text>
                   </View>
                   <View style={styles.recapDot} />
                   <View style={styles.recapMetaItem}>
-                    <Ionicons name="time-outline" size={12} color={GREEN_DARK} />
+                    <Ionicons name="time-outline" size={12} color={Colors.primaryDark} />
                     <Text style={styles.recapMetaText}>{days} jour{days > 1 ? 's' : ''}</Text>
                   </View>
                 </View>
@@ -268,7 +264,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -285,7 +281,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     borderRadius: 20,
     padding: 14,
     borderWidth: 1,
@@ -306,7 +302,7 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 14,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
@@ -314,7 +310,7 @@ const styles = StyleSheet.create({
   recapImageFallbackText: {
     fontFamily: 'Inter-Bold',
     fontSize: 22,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   recapContent: {
     flex: 1,
@@ -354,7 +350,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 1,
     flexShrink: 0,
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -387,7 +383,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 100,
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -403,7 +399,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -415,7 +411,7 @@ const styles = StyleSheet.create({
   ownerName: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
 
   /* Message */
@@ -441,7 +437,7 @@ const styles = StyleSheet.create({
     color: '#C06828',
   },
   messageInput: {
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -455,7 +451,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   messageInputFocused: {
-    borderColor: GREEN_DARK,
+    borderColor: Colors.primaryDark,
     backgroundColor: '#FDFBF5',
   },
   messageHint: {
@@ -483,7 +479,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: BORDER,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   cancelBtnText: {
     fontFamily: 'Inter-SemiBold',
@@ -494,13 +490,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     borderRadius: 100,
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     ...Platform.select({
-      ios: { shadowColor: GREEN_DARK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 16px rgba(142,152,120,0.4)' },
     }),

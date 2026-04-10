@@ -17,11 +17,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN_DARK = '#2f3a2f';
-const GREEN_LIGHT = '#ECEEE6';
-const GREEN_MID = '#8E9878';
-const CREAM = '#FFFDF7';
 
 interface ListingData {
   id: string;
@@ -185,7 +180,7 @@ export default function DirectBookPage() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={GREEN_MID} />
+        <ActivityIndicator size="large" color={Colors.primaryDark} />
       </View>
     );
   }
@@ -193,7 +188,7 @@ export default function DirectBookPage() {
   if (!listing || !startDate || !endDate || days <= 0) {
     return (
       <View style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={48} color={GREEN_MID} />
+        <Ionicons name="alert-circle-outline" size={48} color={Colors.primaryDark} />
         <Text style={styles.errorTitle}>Lien invalide</Text>
         <Text style={styles.errorSub}>Ce lien de réservation est invalide ou a expiré.</Text>
         <TouchableOpacity style={styles.backHomeBtn} onPress={() => router.replace('/' as any)} activeOpacity={0.85}>
@@ -239,7 +234,7 @@ export default function DirectBookPage() {
 
       {depositAmount > 0 && (
         <View style={styles.depositRow}>
-          <Ionicons name="shield-checkmark-outline" size={14} color={GREEN_MID} />
+          <Ionicons name="shield-checkmark-outline" size={14} color={Colors.primaryDark} />
           <Text style={styles.depositText}>
             Caution : {depositAmount}€ bloquée, non débitée
           </Text>
@@ -317,13 +312,13 @@ export default function DirectBookPage() {
               {thumb ? (
                 <Image source={{ uri: thumb }} style={styles.heroImage} resizeMode="cover" />
               ) : (
-                <View style={[styles.heroImage, { backgroundColor: GREEN_LIGHT }]} />
+                <View style={[styles.heroImage, { backgroundColor: Colors.primarySurface }]} />
               )}
               <View style={styles.listingCard}>
                 <Text style={styles.listingName}>{listing.name}</Text>
                 {listing.category_name && (
                   <View style={styles.categoryChip}>
-                    <Ionicons name="pricetag-outline" size={11} color={GREEN_MID} />
+                    <Ionicons name="pricetag-outline" size={11} color={Colors.primaryDark} />
                     <Text style={styles.categoryChipText}>{listing.category_name}</Text>
                   </View>
                 )}
@@ -348,7 +343,7 @@ export default function DirectBookPage() {
                     <Text style={styles.dateBlockValue}>{formatDate(startDate)}</Text>
                   </View>
                   <View style={styles.dateArrow}>
-                    <Ionicons name="arrow-forward-outline" size={16} color={GREEN_MID} />
+                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.primaryDark} />
                   </View>
                   <View style={[styles.dateBlock, { alignItems: 'flex-end' }]}>
                     <Text style={styles.dateBlockLabel}>Fin</Text>
@@ -373,14 +368,14 @@ export default function DirectBookPage() {
             {thumb ? (
               <Image source={{ uri: thumb }} style={styles.heroImageMobile} resizeMode="cover" />
             ) : (
-              <View style={[styles.heroImageMobile, { backgroundColor: GREEN_LIGHT }]} />
+              <View style={[styles.heroImageMobile, { backgroundColor: Colors.primarySurface }]} />
             )}
 
             <View style={styles.mobileContent}>
               <Text style={styles.listingName}>{listing.name}</Text>
               {listing.category_name && (
                 <View style={styles.categoryChip}>
-                  <Ionicons name="pricetag-outline" size={11} color={GREEN_MID} />
+                  <Ionicons name="pricetag-outline" size={11} color={Colors.primaryDark} />
                   <Text style={styles.categoryChipText}>{listing.category_name}</Text>
                 </View>
               )}
@@ -405,7 +400,7 @@ export default function DirectBookPage() {
                   <Text style={styles.dateBlockValue}>{formatDate(startDate)}</Text>
                 </View>
                 <View style={styles.dateArrow}>
-                  <Ionicons name="arrow-forward-outline" size={16} color={GREEN_MID} />
+                  <Ionicons name="arrow-forward-outline" size={16} color={Colors.primaryDark} />
                 </View>
                 <View style={[styles.dateBlock, { alignItems: 'flex-end' }]}>
                   <Text style={styles.dateBlockLabel}>Fin</Text>
@@ -431,20 +426,20 @@ export default function DirectBookPage() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     padding: 32,
     gap: 12,
   },
   errorTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 20,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.4,
     textAlign: 'center',
   },
@@ -457,7 +452,7 @@ const styles = StyleSheet.create({
   },
   backHomeBtn: {
     marginTop: 8,
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 999,
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -473,7 +468,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: '#E8E4D8',
   },
@@ -486,7 +481,7 @@ const styles = StyleSheet.create({
   topBarTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.2,
     flex: 1,
     textAlign: 'center',
@@ -530,7 +525,7 @@ const styles = StyleSheet.create({
     height: 220,
   },
   listingCard: {
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 18,
     padding: 20,
     gap: 14,
@@ -548,7 +543,7 @@ const styles = StyleSheet.create({
   listingName: {
     fontFamily: 'Inter-Bold',
     fontSize: 22,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.5,
     lineHeight: 28,
   },
@@ -556,7 +551,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -567,7 +562,7 @@ const styles = StyleSheet.create({
   categoryChipText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    color: GREEN_MID,
+    color: Colors.primaryDark,
   },
   ownerRow: {
     flexDirection: 'row',
@@ -585,7 +580,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderWidth: 2,
     borderColor: '#D4DAC4',
     alignItems: 'center',
@@ -594,7 +589,7 @@ const styles = StyleSheet.create({
   ownerAvatarInitial: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
-    color: GREEN_MID,
+    color: Colors.primaryDark,
   },
   ownerByLabel: {
     fontFamily: 'Inter-Regular',
@@ -604,14 +599,14 @@ const styles = StyleSheet.create({
   ownerName: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.1,
   },
   datesCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
@@ -631,7 +626,7 @@ const styles = StyleSheet.create({
   dateBlockValue: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
-    color: '#1A1F17',
+    color: Colors.text,
     lineHeight: 18,
   },
   dateArrow: {
@@ -641,7 +636,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -656,7 +651,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   priceCard: {
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 18,
     padding: 20,
     gap: 10,
@@ -669,7 +664,7 @@ const styles = StyleSheet.create({
   priceSectionTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 15,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.2,
     marginBottom: 4,
   },
@@ -687,30 +682,30 @@ const styles = StyleSheet.create({
   priceValue: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
-    color: '#1A1F17',
+    color: Colors.text,
   },
   divider: {
     height: 1,
-    backgroundColor: '#EAE6D8',
+    backgroundColor: Colors.borderLight,
     marginVertical: 4,
   },
   totalLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
-    color: '#1A1F17',
+    color: Colors.text,
     flex: 1,
   },
   totalValue: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.3,
   },
   depositRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -721,7 +716,7 @@ const styles = StyleSheet.create({
   depositText: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
-    color: GREEN_MID,
+    color: Colors.primaryDark,
     flex: 1,
     lineHeight: 17,
   },
@@ -751,11 +746,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 999,
     height: 54,
     ...Platform.select({
-      ios: { shadowColor: GREEN_DARK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10 },
       android: { elevation: 6 },
       web: { boxShadow: '0 4px 16px rgba(47,58,47,0.4)', cursor: 'pointer' as any },
     }),
@@ -777,7 +772,7 @@ const styles = StyleSheet.create({
   loginLinkText: {
     fontFamily: 'Inter-Medium',
     fontSize: 13,
-    color: GREEN_MID,
+    color: Colors.primaryDark,
     textDecorationLine: 'underline',
   },
   secureNote: {

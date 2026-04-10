@@ -17,10 +17,6 @@ import { Colors } from '@/constants/colors';
 import { useResponsive } from '@/hooks/useResponsive';
 import { supabase } from '@/lib/supabase';
 
-const DARK_GREEN = Colors.primaryDark;
-const LIGHT_BEIGE = '#F5F0E8';
-const DARKER_BEIGE = '#EDE8DC';
-const SUCCESS_GREEN = Colors.primary;
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 
 interface Earnings {
@@ -103,7 +99,7 @@ function PaymentStatusCard({
       <View style={styles.card}>
         <View style={styles.statusRow}>
           <View style={styles.successIconWrap}>
-            <Ionicons name="checkmark-circle-outline" size={20} color={SUCCESS_GREEN} />
+            <Ionicons name="checkmark-circle-outline" size={20} color={Colors.primary} />
           </View>
           <View style={styles.statusTextWrap}>
             <Text style={styles.statusTitle}>Compte bancaire connecté</Text>
@@ -119,7 +115,7 @@ function PaymentStatusCard({
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={DARK_GREEN} size="small" />
+            <ActivityIndicator color={Colors.primaryDark} size="small" />
           ) : (
             <Text style={styles.outlineBtnText}>Mon compte paiement →</Text>
           )}
@@ -177,10 +173,10 @@ function NextTransferCard({
       {!accountComplete ? (
         <Text style={styles.emptySubtext}>Active ton compte pour recevoir tes virements</Text>
       ) : loading ? (
-        <ActivityIndicator color={DARK_GREEN} style={{ marginTop: 12 }} />
+        <ActivityIndicator color={Colors.primaryDark} style={{ marginTop: 12 }} />
       ) : (
         <View>
-          <Text style={[styles.nextTransferAmount, { color: SUCCESS_GREEN }]}>
+          <Text style={[styles.nextTransferAmount, { color: Colors.primary }]}>
             {formatEur(nextTransfer.amount)}
           </Text>
           <Text style={styles.emptySubtext}>
@@ -221,12 +217,12 @@ function TransactionItem({ item, last }: { item: Transaction; last: boolean }) {
           </Text>
           <Text style={styles.txDate}>{item.date}</Text>
           <View style={[styles.txBadge, { backgroundColor: isIncome ? '#DCFCE7' : '#F3F4F6' }]}>
-            <Text style={[styles.txBadgeText, { color: isIncome ? SUCCESS_GREEN : Colors.textSecondary }]}>
+            <Text style={[styles.txBadgeText, { color: isIncome ? Colors.primary : Colors.textSecondary }]}>
               {isIncome ? 'Revenu' : 'Location'}
             </Text>
           </View>
         </View>
-        <Text style={[styles.txAmount, { color: isIncome ? SUCCESS_GREEN : Colors.textSecondary }]}>
+        <Text style={[styles.txAmount, { color: isIncome ? Colors.primary : Colors.textSecondary }]}>
           {isIncome ? '+' : '-'}{Math.abs(item.amount).toFixed(2).replace('.', ',')} €
         </Text>
       </View>
@@ -265,7 +261,7 @@ function HistorySection({
       )}
       <View style={styles.card}>
         {loading ? (
-          <ActivityIndicator color={DARK_GREEN} style={{ paddingVertical: 24 }} />
+          <ActivityIndicator color={Colors.primaryDark} style={{ paddingVertical: 24 }} />
         ) : transactions.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="receipt-outline" size={36} color={Colors.textMuted} />
@@ -294,12 +290,12 @@ function InfoCard() {
   return (
     <View style={styles.infoCard}>
       <View style={styles.infoHeader}>
-        <Ionicons name="information-circle-outline" size={17} color={DARK_GREEN} />
+        <Ionicons name="information-circle-outline" size={17} color={Colors.primaryDark} />
         <Text style={styles.infoTitle}>Comment ça marche ?</Text>
       </View>
       {items.map((item) => (
         <View key={item} style={styles.infoRow}>
-          <Ionicons name="checkmark-outline" size={14} color={SUCCESS_GREEN} />
+          <Ionicons name="checkmark-outline" size={14} color={Colors.primary} />
           <Text style={styles.infoText}>{item}</Text>
         </View>
       ))}
@@ -651,14 +647,14 @@ export default function WalletScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: LIGHT_BEIGE,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: LIGHT_BEIGE,
+    backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
@@ -684,11 +680,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   balanceCard: {
-    backgroundColor: DARK_GREEN,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 16,
     padding: 24,
     ...Platform.select({
-      ios: { shadowColor: DARK_GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
       android: { elevation: 6 },
       web: { boxShadow: '0 4px 16px rgba(27,67,50,0.3)' },
     }),
@@ -778,7 +774,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   primaryBtn: {
-    backgroundColor: DARK_GREEN,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 999,
     height: 48,
     alignItems: 'center',
@@ -792,7 +788,7 @@ const styles = StyleSheet.create({
   },
   outlineBtn: {
     borderWidth: 1.5,
-    borderColor: DARK_GREEN,
+    borderColor: Colors.primaryDark,
     borderRadius: 999,
     height: 48,
     alignItems: 'center',
@@ -801,7 +797,7 @@ const styles = StyleSheet.create({
   outlineBtnText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
-    color: DARK_GREEN,
+    color: Colors.primaryDark,
     letterSpacing: 0.2,
   },
   transferNote: {
@@ -850,7 +846,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: SUCCESS_GREEN,
+    backgroundColor: Colors.primary,
     borderRadius: 999,
   },
   progressLabels: {
@@ -886,7 +882,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: SUCCESS_GREEN,
+    backgroundColor: Colors.primary,
   },
   historyTabSep: {
     width: 1,
@@ -946,7 +942,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.borderLight,
   },
   infoCard: {
-    backgroundColor: DARKER_BEIGE,
+    backgroundColor: Colors.background,
     borderRadius: 16,
     padding: 18,
   },

@@ -13,10 +13,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import helpData, { HelpQuestion } from '@/data/help-data';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#8E9878';
-const GREEN_LIGHT = '#D4DAC4';
 const GREEN_BG = '#EEF1E8';
 const CARD = '#FFFFFF';
 
@@ -66,7 +64,7 @@ function AccordionItem({ item, isLast }: { item: HelpQuestion; isLast: boolean }
           <Ionicons
             name="chevron-down-outline"
             size={15}
-            color={open ? GREEN : '#C0B8A8'}
+            color={open ? Colors.primaryDark : '#C0B8A8'}
             style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}
           />
         </View>
@@ -82,19 +80,19 @@ export default function HelpCategoryScreen() {
 
   const cat = helpData.find((c) => c.id === category);
   const ionIconName = cat ? (ICON_MAP[cat.icon] ?? 'help-circle-outline') : 'help-circle-outline';
-  const colors = cat ? (ICON_COLORS[cat.icon] ?? { bg: GREEN_BG, fg: GREEN }) : { bg: GREEN_BG, fg: GREEN };
+  const colors = cat ? (ICON_COLORS[cat.icon] ?? { bg: GREEN_BG, fg: Colors.primaryDark }) : { bg: GREEN_BG, fg: Colors.primaryDark };
 
   if (!cat) {
     return (
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back-outline" size={20} color="#1C1C18" />
+            <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Centre d'aide</Text>
         </View>
         <View style={styles.notFound}>
-          <Ionicons name="help-circle-outline" size={40} color={GREEN_LIGHT} />
+          <Ionicons name="help-circle-outline" size={40} color={Colors.primarySurface} />
           <Text style={styles.notFoundText}>Catégorie introuvable.</Text>
         </View>
       </View>
@@ -105,7 +103,7 @@ export default function HelpCategoryScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back-outline" size={20} color="#1C1C18" />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {cat.title}
@@ -142,7 +140,7 @@ export default function HelpCategoryScreen() {
 
         <View style={styles.contactCard}>
           <View style={styles.contactIconWrap}>
-            <Ionicons name="mail-outline" size={22} color={GREEN} />
+            <Ionicons name="mail-outline" size={22} color={Colors.primaryDark} />
           </View>
           <Text style={styles.contactTitle}>Vous n'avez pas trouvé votre réponse ?</Text>
           <Text style={styles.contactSubtitle}>Notre équipe répond généralement sous 24h ouvrées.</Text>
@@ -163,7 +161,7 @@ export default function HelpCategoryScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -173,7 +171,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.06)',
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   backBtn: {
     position: 'absolute',
@@ -188,7 +186,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.2,
     textAlign: 'center',
   },
@@ -213,14 +211,14 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 22,
-    color: '#1C1C18',
+    color: Colors.text,
     textAlign: 'center',
     letterSpacing: -0.5,
   },
   heroDesc: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#7A7A70',
+    color: Colors.textSecondary,
     textAlign: 'center',
   },
   heroBadge: {
@@ -229,13 +227,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: GREEN_LIGHT,
+    borderColor: Colors.primarySurface,
     marginTop: 4,
   },
   heroBadgeText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    color: GREEN,
+    color: Colors.primaryDark,
   },
   section: {
     gap: 12,
@@ -243,7 +241,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 11,
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     marginLeft: 2,
@@ -253,7 +251,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F0EBE0',
+    borderColor: Colors.borderLight,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10 },
       android: { elevation: 2 },
@@ -276,7 +274,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   accordionIndicatorActive: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primaryDark,
   },
   accordionContent: {
     flex: 1,
@@ -285,11 +283,11 @@ const styles = StyleSheet.create({
   accordionQuestion: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1C1C18',
+    color: Colors.text,
     lineHeight: 20,
   },
   accordionQuestionOpen: {
-    color: GREEN,
+    color: Colors.primaryDark,
   },
   accordionAnswer: {
     fontFamily: 'Inter-Regular',
@@ -301,7 +299,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: '#F5F0E8',
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -312,7 +310,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#F5F0E8',
+    backgroundColor: Colors.background,
     marginHorizontal: 16,
   },
   contactCard: {
@@ -322,7 +320,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: GREEN_LIGHT,
+    borderColor: Colors.primarySurface,
   },
   contactIconWrap: {
     width: 52,
@@ -333,12 +331,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: GREEN_LIGHT,
+    borderColor: Colors.primarySurface,
   },
   contactTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 15,
-    color: '#1C1C18',
+    color: Colors.text,
     textAlign: 'center',
     letterSpacing: -0.2,
   },
@@ -354,7 +352,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 999,
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -373,6 +371,6 @@ const styles = StyleSheet.create({
   notFoundText: {
     fontFamily: 'Inter-Regular',
     fontSize: 15,
-    color: '#A8A8A0',
+    color: Colors.textMuted,
   },
 });

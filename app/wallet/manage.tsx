@@ -44,7 +44,7 @@ interface Badge {
 function getPayoutBadge(status: string): Badge {
   switch (status) {
     case 'paid':
-      return { label: 'Viré', bg: '#ECEEE6', color: '#3B6D11' };
+      return { label: 'Viré', bg: Colors.primarySurface, color: '#3B6D11' };
     case 'pending':
       return { label: 'En transit', bg: '#FFF8E1', color: '#92400E' };
     case 'in_transit':
@@ -61,7 +61,7 @@ function getPayoutBadge(status: string): Badge {
 function getChargeBadge(status: string): Badge {
   switch (status) {
     case 'succeeded':
-      return { label: 'Reçu', bg: '#ECEEE6', color: '#3B6D11' };
+      return { label: 'Reçu', bg: Colors.primarySurface, color: '#3B6D11' };
     case 'pending':
       return { label: 'En attente', bg: '#FFF8E1', color: '#92400E' };
     case 'failed':
@@ -178,11 +178,11 @@ export default function WalletManageScreen() {
   const hasRequirements = account?.requirements?.currently_due?.length > 0;
 
   const accountBadge: Badge = isActive
-    ? { label: 'Actif', bg: '#ECEEE6', color: '#3B6D11' }
+    ? { label: 'Actif', bg: Colors.primarySurface, color: '#3B6D11' }
     : { label: 'Action requise', bg: '#FFF8E1', color: '#92400E' };
 
   const bankBadge: Badge = bankAccount?.status === 'verified' || bankAccount?.status === 'new'
-    ? { label: 'Vérifié', bg: '#ECEEE6', color: '#3B6D11' }
+    ? { label: 'Vérifié', bg: Colors.primarySurface, color: '#3B6D11' }
     : { label: 'En attente', bg: '#FFF8E1', color: '#92400E' };
 
   const stripeAvailable = balance?.available?.[0]?.amount ?? 0;
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
   },
   headerTitle: {
     fontFamily: 'Inter-SemiBold',
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

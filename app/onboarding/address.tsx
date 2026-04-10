@@ -23,11 +23,10 @@ import {
   reverseGeocode,
   PlaceSuggestion,
 } from '@/lib/googleMaps';
+import { Colors } from '@/constants/colors';
 
 const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY as string;
 
-const BG = '#F5F0E8';
-const GREEN = '#B7BF9C';
 
 function Stepper({ active }: { active: number }) {
   return (
@@ -85,7 +84,7 @@ function DynamicMap({ lat, lng }: { lat: number | null; lng: number | null }) {
         <WebView source={{ html: mapHtml }} style={styles.webview} scrollEnabled={false} pointerEvents="none" />
       )}
       <View style={styles.mapConfirmBadge}>
-        <Ionicons name="location-outline" size={13} color={GREEN} />
+        <Ionicons name="location-outline" size={13} color={Colors.primary} />
         <Text style={styles.mapConfirmText}>Position localisée</Text>
       </View>
     </View>
@@ -270,7 +269,7 @@ export default function OnboardingAddressScreen() {
           <View style={styles.inputWrapper}>
             {usingGPS ? (
               <View style={[styles.inputRow, styles.inputRowGPS]}>
-                <Ionicons name="navigate-outline" size={18} color={GREEN} style={styles.inputIcon} />
+                <Ionicons name="navigate-outline" size={18} color={Colors.primary} style={styles.inputIcon} />
                 <Text style={styles.gpsLabel}>Ma position actuelle</Text>
                 <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons name="close-outline" size={16} color="#A8A8A0" />
@@ -279,9 +278,9 @@ export default function OnboardingAddressScreen() {
             ) : (
               <View style={styles.inputRow}>
                 {geocoding ? (
-                  <ActivityIndicator size="small" color={GREEN} style={styles.inputIcon} />
+                  <ActivityIndicator size="small" color={Colors.primary} style={styles.inputIcon} />
                 ) : (
-                  <Ionicons name="location-outline" size={18} color={address ? GREEN : '#A8A8A0'} style={styles.inputIcon} />
+                  <Ionicons name="location-outline" size={18} color={address ? Colors.primary : Colors.textMuted} style={styles.inputIcon} />
                 )}
                 <TextInput
                   style={styles.inputFlex}
@@ -311,7 +310,7 @@ export default function OnboardingAddressScreen() {
                     onPress={() => handleSelectSuggestion(s)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="location-outline" size={14} color={GREEN} style={styles.suggestionIcon} />
+                    <Ionicons name="location-outline" size={14} color={Colors.primary} style={styles.suggestionIcon} />
                     <View style={styles.suggestionTextWrap}>
                       <Text style={styles.suggestionMainText} numberOfLines={1}>
                         {s.structured_formatting.main_text}
@@ -336,10 +335,10 @@ export default function OnboardingAddressScreen() {
               activeOpacity={0.82}
             >
               {geoLoading ? (
-                <ActivityIndicator color={GREEN} size="small" />
+                <ActivityIndicator color={Colors.primary} size="small" />
               ) : (
                 <>
-                  <Ionicons name="navigate-outline" size={17} color={GREEN} />
+                  <Ionicons name="navigate-outline" size={17} color={Colors.primary} />
                   <Text style={styles.btnOutlineText}>Utiliser ma position actuelle</Text>
                 </>
               )}
@@ -361,25 +360,25 @@ export default function OnboardingAddressScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: BG },
+  flex: { flex: 1, backgroundColor: Colors.background },
   scroll: { flexGrow: 1, paddingBottom: 48 },
   header: { alignItems: 'center', paddingTop: 60, paddingBottom: 8, gap: 20 },
   backBtn: { position: 'absolute', left: 20, top: 60, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   logo: { width: 200, height: 52 },
   stepper: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  stepDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#D5CEBC' },
-  stepDotActive: { width: 28, height: 10, borderRadius: 5, backgroundColor: GREEN },
+  stepDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.border },
+  stepDotActive: { width: 28, height: 10, borderRadius: 5, backgroundColor: Colors.primary },
   body: { paddingHorizontal: 24, paddingTop: 28, gap: 16, maxWidth: 390, width: '100%', alignSelf: 'center' },
-  title: { fontSize: 26, fontFamily: 'Inter-Bold', color: '#1C1C18', letterSpacing: -0.5, lineHeight: 32 },
-  subtitle: { fontSize: 15, fontFamily: 'Inter-Regular', color: '#7A7A70', marginTop: -4, lineHeight: 22 },
+  title: { fontSize: 26, fontFamily: 'Inter-Bold', color: Colors.text, letterSpacing: -0.5, lineHeight: 32 },
+  subtitle: { fontSize: 15, fontFamily: 'Inter-Regular', color: Colors.textSecondary, marginTop: -4, lineHeight: 22 },
   errorBox: { backgroundColor: '#FDECEA', borderRadius: 12, padding: 12 },
-  errorText: { color: '#C0392B', fontSize: 13, fontFamily: 'Inter-Regular', textAlign: 'center' },
+  errorText: { color: Colors.error, fontSize: 13, fontFamily: 'Inter-Regular', textAlign: 'center' },
   mapContainer: {
     height: 190,
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#D5CEBC',
+    borderColor: Colors.border,
     backgroundColor: '#E8E4DC',
   },
   webview: { flex: 1, backgroundColor: 'transparent' },
@@ -400,7 +399,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  mapConfirmText: { fontSize: 12, fontFamily: 'Inter-SemiBold', color: GREEN },
+  mapConfirmText: { fontSize: 12, fontFamily: 'Inter-SemiBold', color: Colors.primary },
   mapEmptyOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -412,7 +411,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -422,7 +421,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   mapPinShadow: { width: 16, height: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.12)', marginTop: 2 },
-  mapEmptyText: { fontSize: 12, fontFamily: 'Inter-Regular', color: '#7A7A70', marginTop: 4 },
+  mapEmptyText: { fontSize: 12, fontFamily: 'Inter-Regular', color: Colors.textSecondary, marginTop: 4 },
   inputWrapper: { position: 'relative', zIndex: 10 },
   inputRow: {
     flexDirection: 'row',
@@ -430,20 +429,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     height: 54,
     paddingHorizontal: 22,
     gap: 10,
   },
-  inputRowGPS: { borderColor: GREEN, backgroundColor: '#ECEEE6' },
-  gpsLabel: { flex: 1, fontSize: 16, fontFamily: 'Inter-SemiBold', color: GREEN },
+  inputRowGPS: { borderColor: Colors.primary, backgroundColor: Colors.primarySurface },
+  gpsLabel: { flex: 1, fontSize: 16, fontFamily: 'Inter-SemiBold', color: Colors.primary },
   inputIcon: { flexShrink: 0 },
-  inputFlex: { flex: 1, height: '100%', fontSize: 16, fontFamily: 'Inter-Regular', color: '#1C1C18' },
+  inputFlex: { flex: 1, height: '100%', fontSize: 16, fontFamily: 'Inter-Regular', color: Colors.text },
   suggestionsBox: {
     backgroundColor: '#fff',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     marginTop: 6,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -459,11 +458,11 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     gap: 10,
   },
-  suggestionItemBorder: { borderBottomWidth: 1, borderBottomColor: '#F0EBE0' },
+  suggestionItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
   suggestionIcon: { marginTop: 2, flexShrink: 0 },
   suggestionTextWrap: { flex: 1 },
-  suggestionMainText: { fontSize: 14, fontFamily: 'Inter-SemiBold', color: '#1C1C18', lineHeight: 20 },
-  suggestionSecondText: { fontSize: 12, fontFamily: 'Inter-Regular', color: '#7A7A70', lineHeight: 17, marginTop: 1 },
+  suggestionMainText: { fontSize: 14, fontFamily: 'Inter-SemiBold', color: Colors.text, lineHeight: 20 },
+  suggestionSecondText: { fontSize: 12, fontFamily: 'Inter-Regular', color: Colors.textSecondary, lineHeight: 17, marginTop: 1 },
   btnOutline: {
     height: 54,
     borderRadius: 999,
@@ -472,9 +471,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     borderWidth: 2,
-    borderColor: GREEN,
+    borderColor: Colors.primary,
   },
-  btnOutlineText: { color: GREEN, fontSize: 15, fontFamily: 'Inter-SemiBold', letterSpacing: 0.1 },
-  btnPrimary: { backgroundColor: GREEN, height: 54, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  btnOutlineText: { color: Colors.primary, fontSize: 15, fontFamily: 'Inter-SemiBold', letterSpacing: 0.1 },
+  btnPrimary: { backgroundColor: Colors.primary, height: 54, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   btnPrimaryText: { color: '#fff', fontSize: 16, fontFamily: 'Inter-SemiBold', letterSpacing: 0.2 },
 });

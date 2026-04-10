@@ -15,9 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 
-const BG = Colors.background;
-const GREEN = Colors.primary;
-const GREEN_DARK = Colors.primaryDark;
 
 interface ReportCategory {
   key: string;
@@ -283,7 +280,7 @@ export default function ReportScreen() {
       {step === 'done' && (
         <View style={styles.doneContainer}>
           <View style={styles.doneIconWrap}>
-            <Ionicons name="checkmark-circle-outline" size={56} color={GREEN} />
+            <Ionicons name="checkmark-circle-outline" size={56} color={Colors.primary} />
           </View>
           <Text style={styles.doneTitle}>Signalement envoyé</Text>
           <Text style={styles.doneSubtitle}>
@@ -303,7 +300,7 @@ export default function ReportScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: BG },
+  flex: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -311,7 +308,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 48,
     paddingBottom: 12,
     paddingHorizontal: 20,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
     position: 'relative',
@@ -362,7 +359,7 @@ const styles = StyleSheet.create({
   targetChipText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   pageSubtitle: {
     fontFamily: 'Inter-Regular',
@@ -501,7 +498,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: GREEN + '18',
+    backgroundColor: Colors.primary + '18',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -522,7 +519,7 @@ const styles = StyleSheet.create({
   },
   doneBtn: {
     marginTop: 16,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     height: 52,
     borderRadius: 999,
     paddingHorizontal: 48,

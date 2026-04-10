@@ -430,7 +430,7 @@ export default function ListingDetailScreen() {
                 <Ionicons
                   name={isFavorite ? 'heart' : 'heart-outline'}
                   size={18}
-                  color={isFavorite ? '#E05252' : Colors.text}
+                  color={isFavorite ? Colors.notification : Colors.text}
                 />
               </TouchableOpacity>
             )}
@@ -809,7 +809,7 @@ export default function ListingDetailScreen() {
               <Ionicons
                 name={isFavorite ? 'heart' : 'heart-outline'}
                 size={18}
-                color={isFavorite ? '#E05252' : Colors.text}
+                color={isFavorite ? Colors.notification : Colors.text}
               />
             </TouchableOpacity>
           )}

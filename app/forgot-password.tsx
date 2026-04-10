@@ -13,9 +13,8 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#B7BF9C';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -128,7 +127,7 @@ export default function ForgotPasswordScreen() {
           <View style={styles.titleRow}>
             <Animated.View style={[styles.iconWrap, { transform: [{ scale: iconPulse }] }]}>
               <View style={styles.iconCircle}>
-                <Ionicons name="mail-outline" size={22} color={GREEN} />
+                <Ionicons name="mail-outline" size={22} color={Colors.primary} />
               </View>
             </Animated.View>
             <Text style={styles.title}>Mot de passe oublié ?</Text>
@@ -166,7 +165,7 @@ export default function ForgotPasswordScreen() {
                 { opacity: successFade, transform: [{ scale: successScale }] },
               ]}
             >
-              <Ionicons name="checkmark-circle-outline" size={32} color={GREEN} />
+              <Ionicons name="checkmark-circle-outline" size={32} color={Colors.primary} />
               <Text style={styles.successTitle}>Email envoyé !</Text>
               <Text style={styles.successText}>
                 Si un compte existe avec{' '}
@@ -204,7 +203,7 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   container: {
     flex: 1,
@@ -221,7 +220,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -243,7 +242,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -251,14 +250,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.5,
     flex: 1,
   },
   subtitle: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
     lineHeight: 23,
   },
   errorBox: {
@@ -267,7 +266,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   errorText: {
-    color: '#C0392B',
+    color: Colors.error,
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
@@ -278,7 +277,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     height: 54,
     paddingHorizontal: 22,
   },
@@ -287,7 +286,7 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   bottomActions: {
     position: 'absolute',
@@ -297,7 +296,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   btn: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     height: 54,
     borderRadius: 999,
     alignItems: 'center',
@@ -313,7 +312,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     padding: 24,
     alignItems: 'center',
     gap: 12,
@@ -321,18 +320,18 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   successText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
   successEmail: {
     fontFamily: 'Inter-SemiBold',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   backToLogin: {
     alignItems: 'center',
@@ -341,10 +340,10 @@ const styles = StyleSheet.create({
   backToLoginText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
   },
   backToLoginBold: {
     fontFamily: 'Inter-SemiBold',
-    color: GREEN,
+    color: Colors.primary,
   },
 });

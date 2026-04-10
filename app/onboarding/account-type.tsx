@@ -14,9 +14,8 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#B7BF9C';
 
 function Stepper({ active }: { active: number }) {
   return (
@@ -159,7 +158,7 @@ export default function AccountTypeScreen() {
               activeOpacity={0.85}
             >
               <View style={[styles.typeIconCircle, accountType === 'particulier' && styles.typeIconCircleSelected]}>
-                <Ionicons name="person-outline" size={28} color={accountType === 'particulier' ? '#fff' : GREEN} />
+                <Ionicons name="person-outline" size={28} color={accountType === 'particulier' ? '#fff' : Colors.primary} />
               </View>
               <Text style={[styles.typeCardTitle, accountType === 'particulier' && styles.typeCardTitleSelected]}>
                 Particulier
@@ -168,7 +167,7 @@ export default function AccountTypeScreen() {
                 Je loue pour un usage personnel
               </Text>
               {accountType === 'particulier' && (
-                <Ionicons name="checkmark-circle-outline" size={18} color={GREEN} style={styles.checkIcon} />
+                <Ionicons name="checkmark-circle-outline" size={18} color={Colors.primary} style={styles.checkIcon} />
               )}
             </TouchableOpacity>
 
@@ -178,7 +177,7 @@ export default function AccountTypeScreen() {
               activeOpacity={0.85}
             >
               <View style={[styles.typeIconCircle, accountType === 'pro' && styles.typeIconCircleSelected]}>
-                <Ionicons name="business-outline" size={28} color={accountType === 'pro' ? '#fff' : GREEN} />
+                <Ionicons name="business-outline" size={28} color={accountType === 'pro' ? '#fff' : Colors.primary} />
               </View>
               <Text style={[styles.typeCardTitle, accountType === 'pro' && styles.typeCardTitleSelected]}>
                 Professionnel
@@ -187,7 +186,7 @@ export default function AccountTypeScreen() {
                 Je loue dans un cadre professionnel
               </Text>
               {accountType === 'pro' && (
-                <Ionicons name="checkmark-circle-outline" size={18} color={GREEN} style={styles.checkIcon} />
+                <Ionicons name="checkmark-circle-outline" size={18} color={Colors.primary} style={styles.checkIcon} />
               )}
             </TouchableOpacity>
           </View>
@@ -239,7 +238,7 @@ export default function AccountTypeScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   scroll: {
     flexGrow: 1,
@@ -273,12 +272,12 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#D5CEBC',
+    backgroundColor: Colors.border,
   },
   stepDotActive: {
     width: 28,
     borderRadius: 5,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
   },
   body: {
     paddingHorizontal: 24,
@@ -291,13 +290,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontFamily: 'Inter-Bold',
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
     marginTop: -8,
     lineHeight: 22,
   },
@@ -307,7 +306,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   errorText: {
-    color: '#C0392B',
+    color: Colors.error,
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
@@ -321,32 +320,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     padding: 18,
     alignItems: 'center',
     gap: 8,
     position: 'relative',
   },
   typeCardSelected: {
-    borderColor: GREEN,
+    borderColor: Colors.primary,
     backgroundColor: '#F2F5EC',
   },
   typeIconCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   typeIconCircleSelected: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
   },
   typeCardTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
-    color: '#1C1C18',
+    color: Colors.text,
     textAlign: 'center',
   },
   typeCardTitleSelected: {
@@ -355,7 +354,7 @@ const styles = StyleSheet.create({
   typeCardDesc: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 17,
   },
@@ -373,7 +372,7 @@ const styles = StyleSheet.create({
   sirenLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1C1C18',
+    color: Colors.text,
     marginLeft: 4,
   },
   sirenInputRow: {
@@ -382,7 +381,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: GREEN,
+    borderColor: Colors.primary,
     height: 54,
     paddingHorizontal: 22,
     gap: 10,
@@ -395,14 +394,14 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 18,
     fontFamily: 'Inter-Regular',
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: 2,
   },
   sirenCheckBadge: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -415,12 +414,12 @@ const styles = StyleSheet.create({
   sirenHint: {
     fontSize: 11,
     fontFamily: 'Inter-Regular',
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     lineHeight: 16,
     marginLeft: 4,
   },
   btn: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     height: 54,
     borderRadius: 999,
     alignItems: 'center',

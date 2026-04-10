@@ -26,11 +26,6 @@ import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const BG = '#F5F2E3';
-const GREEN = '#B7BF9C';
-const GREEN_DARK = '#8E9878';
-const GREEN_LIGHT = '#ECEEE6';
-const CREAM = '#FFFDF7';
 const CHAT_MAX_WIDTH = 860;
 
 interface MessageItem {
@@ -920,7 +915,7 @@ export default function ChatScreen() {
       return (
         <View style={styles.systemMsgWrap}>
           <View style={styles.systemMsg}>
-            <Ionicons name="calendar-outline" size={12} color={GREEN_DARK} />
+            <Ionicons name="calendar-outline" size={12} color={Colors.primaryDark} />
             <Text style={styles.systemMsgText}>{item.content}</Text>
           </View>
         </View>
@@ -968,9 +963,9 @@ export default function ChatScreen() {
               <View style={[styles.fileBubble, item.isOwn && styles.fileBubbleOwn]}>
                 <View style={[styles.fileIconWrap, item.isOwn && styles.fileIconWrapOwn]}>
                   {item.pending ? (
-                    <ActivityIndicator size="small" color={item.isOwn ? GREEN_DARK : GREEN_DARK} />
+                    <ActivityIndicator size="small" color={item.isOwn ? Colors.primaryDark : Colors.primaryDark} />
                   ) : (
-                    <Ionicons name="document-text-outline" size={20} color={item.isOwn ? '#fff' : GREEN_DARK} />
+                    <Ionicons name="document-text-outline" size={20} color={item.isOwn ? '#fff' : Colors.primaryDark} />
                   )}
                 </View>
                 <View style={styles.fileInfo}>
@@ -1006,7 +1001,7 @@ export default function ChatScreen() {
   if (loading) {
     return (
       <View style={[styles.root, styles.centered]}>
-        <ActivityIndicator size="large" color={GREEN} />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -1080,7 +1075,7 @@ export default function ChatScreen() {
               <Text style={styles.topBarListingTitle} numberOfLines={1}>{meta.listingTitle}</Text>
               <View style={styles.topBarListingRow}>
                 <View style={styles.topBarDateChip}>
-                  <Ionicons name="calendar-outline" size={10} color={GREEN_DARK} />
+                  <Ionicons name="calendar-outline" size={10} color={Colors.primaryDark} />
                   <Text style={styles.topBarDateText}>
                     {formatDateShort(meta.startDate)} → {formatDateShort(meta.endDate)}
                   </Text>
@@ -1187,7 +1182,7 @@ export default function ChatScreen() {
                     <Ionicons
                       name={handoverConfirmedOwner ? 'checkmark-circle' : 'ellipse-outline'}
                       size={16}
-                      color={handoverConfirmedOwner ? '#1B4332' : '#A0A0A0'}
+                      color={handoverConfirmedOwner ? Colors.primaryDark : '#A0A0A0'}
                     />
                     <Text style={[styles.confirmPeerName, handoverConfirmedOwner && styles.confirmPeerDone]}>
                       {meta.ownerUsername} (loueur)
@@ -1197,7 +1192,7 @@ export default function ChatScreen() {
                     <Ionicons
                       name={handoverConfirmedRenter ? 'checkmark-circle' : 'ellipse-outline'}
                       size={16}
-                      color={handoverConfirmedRenter ? '#1B4332' : '#A0A0A0'}
+                      color={handoverConfirmedRenter ? Colors.primaryDark : '#A0A0A0'}
                     />
                     <Text style={[styles.confirmPeerName, handoverConfirmedRenter && styles.confirmPeerDone]}>
                       {meta.requesterUsername} (locataire)
@@ -1432,7 +1427,7 @@ export default function ChatScreen() {
               </View>
               {meta.listingCity && (
                 <View style={styles.recapMeta}>
-                  <Ionicons name="location-outline" size={12} color={GREEN_DARK} />
+                  <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
                   <Text style={styles.recapMetaText}>{meta.listingCity}</Text>
                 </View>
               )}
@@ -1457,7 +1452,7 @@ export default function ChatScreen() {
                 </View>
                 {meta.listingCity && (
                   <View style={styles.recapCityChip}>
-                    <Ionicons name="location-outline" size={12} color={GREEN_DARK} />
+                    <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
                     <Text style={styles.recapCityText}>{meta.listingCity}</Text>
                   </View>
                 )}
@@ -1487,7 +1482,7 @@ export default function ChatScreen() {
       {/* Upload progress banner */}
       {uploading && (
         <View style={styles.uploadingBanner}>
-          <ActivityIndicator size="small" color={GREEN_DARK} />
+          <ActivityIndicator size="small" color={Colors.primaryDark} />
           <Text style={styles.uploadingBannerText}>Envoi en cours...</Text>
         </View>
       )}
@@ -1500,10 +1495,10 @@ export default function ChatScreen() {
         ]}
       >
         <TouchableOpacity style={styles.attachBtn} onPress={sendFromGallery} activeOpacity={0.7}>
-          <Ionicons name="attach-outline" size={20} color={GREEN_DARK} />
+          <Ionicons name="attach-outline" size={20} color={Colors.primaryDark} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.attachBtn} onPress={sendFromCamera} activeOpacity={0.7}>
-          <Ionicons name="camera-outline" size={20} color={GREEN_DARK} />
+          <Ionicons name="camera-outline" size={20} color={Colors.primaryDark} />
         </TouchableOpacity>
         <TextInput
           style={styles.input}
@@ -1607,21 +1602,21 @@ const chatDesktopStyles = StyleSheet.create({
         boxShadow: '0 0 0 1px #e8e4d8, 0 8px 40px rgba(0,0,0,0.08)',
       },
     }),
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
 });
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1, backgroundColor: Colors.background },
   centered: { alignItems: 'center', justifyContent: 'center' },
 
   topBar: {
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     flexDirection: 'column',
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#EAE6D8',
+    borderBottomColor: Colors.borderLight,
     gap: 10,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6 },
@@ -1638,7 +1633,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 14,
     padding: 8,
     borderWidth: 1,
@@ -1650,20 +1645,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     flexShrink: 0,
     borderWidth: 1,
-    borderColor: '#E0DDD0',
+    borderColor: Colors.border,
   },
   topBarListingImgFallback: {
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     flexShrink: 0,
   },
   topBarListingBody: { flex: 1, gap: 4 },
   topBarListingTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.1,
   },
   topBarListingRow: {
@@ -1680,10 +1675,10 @@ const styles = StyleSheet.create({
   topBarDateText: {
     fontFamily: 'Inter-Regular',
     fontSize: 11,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   topBarDaysChip: {
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 6,
     paddingHorizontal: 5,
     paddingVertical: 2,
@@ -1696,7 +1691,7 @@ const styles = StyleSheet.create({
   topBarPrice: {
     fontFamily: 'Inter-Bold',
     fontSize: 14,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.2,
   },
   backBtn: {
@@ -1715,7 +1710,7 @@ const styles = StyleSheet.create({
   topBarTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.3,
   },
   topBarSub: {
@@ -1729,16 +1724,16 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: GREEN,
+    borderColor: Colors.primary,
     flexShrink: 0,
   },
   topBarAvatarFallback: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderWidth: 2,
-    borderColor: GREEN,
+    borderColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -1746,7 +1741,7 @@ const styles = StyleSheet.create({
   topBarAvatarInitial: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
 
   recapCard: {
@@ -1756,8 +1751,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#EAE6D8',
-    backgroundColor: CREAM,
+    borderColor: Colors.borderLight,
+    backgroundColor: Colors.white,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10 },
       android: { elevation: 3 },
@@ -1771,7 +1766,7 @@ const styles = StyleSheet.create({
   recapBannerFallback: {
     width: '100%',
     height: 130,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
   },
   recapCardBody: {
     padding: 14,
@@ -1786,12 +1781,12 @@ const styles = StyleSheet.create({
   recapTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 15,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.2,
     flex: 1,
   },
   recapPriceTag: {
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1815,7 +1810,7 @@ const styles = StyleSheet.create({
   },
   recapDivider: {
     height: 1,
-    backgroundColor: '#EAE6D8',
+    backgroundColor: Colors.borderLight,
     marginVertical: 2,
   },
   recapDatesRow: {
@@ -1834,7 +1829,7 @@ const styles = StyleSheet.create({
   recapDateValue: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
-    color: '#1A1F17',
+    color: Colors.text,
   },
   recapDateArrow: {
     alignItems: 'center',
@@ -1854,7 +1849,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1868,7 +1863,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 5,
@@ -1878,7 +1873,7 @@ const styles = StyleSheet.create({
   recapCityText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 12,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
     letterSpacing: -0.1,
   },
 
@@ -1907,14 +1902,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderWidth: 1,
     borderColor: '#D4DAC4',
   },
-  systemMsgText: { fontFamily: 'Inter-SemiBold', fontSize: 12, color: GREEN_DARK },
+  systemMsgText: { fontFamily: 'Inter-SemiBold', fontSize: 12, color: Colors.primaryDark },
 
   msgRow: { marginVertical: 2, alignItems: 'flex-start' },
   msgRowOwn: { alignItems: 'flex-end' },
@@ -1934,7 +1929,7 @@ const styles = StyleSheet.create({
     }),
   },
   bubbleOwn: {
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     borderBottomRightRadius: 5,
   },
   bubbleText: { fontFamily: 'Inter-Regular', fontSize: 15, color: Colors.text, lineHeight: 22 },
@@ -1943,17 +1938,17 @@ const styles = StyleSheet.create({
   msgTimeOwn: { marginLeft: 0, marginRight: 4 },
 
   emptyChat: { alignItems: 'center', paddingTop: 60 },
-  emptyChatText: { fontFamily: 'Inter-SemiBold', fontSize: 15, color: '#1A1F17', marginBottom: 4 },
+  emptyChatText: { fontFamily: 'Inter-SemiBold', fontSize: 15, color: Colors.text, marginBottom: 4 },
   emptyChatSub: { fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textMuted },
 
   inputBar: {
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 14,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#EAE6D8',
+    borderTopColor: Colors.borderLight,
     gap: 10,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.05, shadowRadius: 8 },
@@ -1963,7 +1958,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -1978,11 +1973,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
-      ios: { shadowColor: GREEN_DARK, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.35, shadowRadius: 8 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.35, shadowRadius: 8 },
       android: { elevation: 4 },
       web: { boxShadow: '0 3px 10px rgba(142,152,120,0.4)' },
     }),
@@ -1993,7 +1988,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -2001,9 +1996,9 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   actionBar: {
-    backgroundColor: '#FFFDF7',
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#EAE6D8',
+    borderBottomColor: Colors.borderLight,
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 10,
@@ -2040,12 +2035,12 @@ const styles = StyleSheet.create({
   actionBtnRefuseText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#C0392B',
+    color: Colors.error,
   },
   actionBtnAccept: {
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     ...Platform.select({
-      ios: { shadowColor: GREEN_DARK, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
       android: { elevation: 3 },
       web: { boxShadow: '0 3px 10px rgba(142,152,120,0.35)' },
     }),
@@ -2062,8 +2057,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#EAE6D8',
-    backgroundColor: '#FFFDF7',
+    borderBottomColor: Colors.borderLight,
+    backgroundColor: Colors.white,
     gap: 10,
   },
   progressWrapper: {
@@ -2105,7 +2100,7 @@ const styles = StyleSheet.create({
   confirmCardPillTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
-    color: '#1B4332',
+    color: Colors.primaryDark,
   },
   confirmCardPillBadge: {
     flexDirection: 'row',
@@ -2122,7 +2117,7 @@ const styles = StyleSheet.create({
   confirmCardPillBadgeText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 10,
-    color: '#1B4332',
+    color: Colors.primaryDark,
   },
   confirmCardBody: {
     paddingBottom: 14,
@@ -2136,7 +2131,7 @@ const styles = StyleSheet.create({
   confirmCardTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 13,
-    color: '#1B4332',
+    color: Colors.primaryDark,
     letterSpacing: -0.1,
   },
   confirmCardSub: {
@@ -2160,7 +2155,7 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   confirmPeerDone: {
-    color: '#1B4332',
+    color: Colors.primaryDark,
     fontFamily: 'Inter-SemiBold',
   },
   confirmBtn: {
@@ -2170,9 +2165,9 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 44,
     borderRadius: 999,
-    backgroundColor: '#1B4332',
+    backgroundColor: Colors.primaryDark,
     ...Platform.select({
-      ios: { shadowColor: '#1B4332', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
       android: { elevation: 3 },
       web: { boxShadow: '0 3px 10px rgba(27,67,50,0.3)' },
     }),
@@ -2270,7 +2265,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E0DDD0',
+    backgroundColor: Colors.border,
     alignSelf: 'center',
     marginBottom: 6,
   },
@@ -2290,7 +2285,7 @@ const styles = StyleSheet.create({
   validationTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 20,
-    color: '#1A1A1A',
+    color: Colors.text,
     textAlign: 'center',
   },
   validationSub: {
@@ -2334,7 +2329,7 @@ const styles = StyleSheet.create({
   validationBtnDisputeText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#C0392B',
+    color: Colors.error,
   },
   validationBtnLater: {
     alignItems: 'center',
@@ -2390,7 +2385,7 @@ const styles = StyleSheet.create({
   fileName: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
-    color: '#1A1F17',
+    color: Colors.text,
     lineHeight: 18,
   },
   fileNameOwn: { color: '#fff' },
@@ -2415,13 +2410,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Inter-Regular',
     fontSize: 13,
-    color: '#E05252',
+    color: Colors.notification,
   },
   uploadingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderTopWidth: 1,
     borderTopColor: '#D4DAC4',
     paddingHorizontal: 16,
@@ -2430,14 +2425,14 @@ const styles = StyleSheet.create({
   uploadingBannerText: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   payBannerGreen: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    backgroundColor: '#1B4332',
+    backgroundColor: Colors.primaryDark,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -2462,7 +2457,7 @@ const styles = StyleSheet.create({
   payBannerGreenBtnText: {
     fontFamily: 'Inter-Bold',
     fontSize: 13,
-    color: '#1B4332',
+    color: Colors.primaryDark,
   },
   payBannerOrange: {
     flexDirection: 'row',

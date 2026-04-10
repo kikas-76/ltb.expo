@@ -21,11 +21,6 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { router, useFocusEffect } from 'expo-router';
 
-const BG = '#F5F2E3';
-const GREEN = '#B7BF9C';
-const GREEN_DARK = '#8E9878';
-const GREEN_LIGHT = '#ECEEE6';
-const CREAM = '#FFFDF7';
 
 function getReadIdsFromStorage(): Set<string> {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
@@ -251,7 +246,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
             <Image source={{ uri: item.listingThumb }} style={styles.listingImage} />
           ) : (
             <View style={styles.listingImageFallback}>
-              <Ionicons name="chatbubble-outline" size={22} color={GREEN} />
+              <Ionicons name="chatbubble-outline" size={22} color={Colors.primary} />
             </View>
           )}
           {item.isIncomingRequest && (
@@ -285,20 +280,20 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
             </Text>
             {item.listingCity && (
               <View style={styles.cityBadge}>
-                <Ionicons name="location-outline" size={9} color={GREEN_DARK} />
+                <Ionicons name="location-outline" size={9} color={Colors.primaryDark} />
                 <Text style={styles.cityBadgeText}>{item.listingCity}</Text>
               </View>
             )}
           </View>
 
           <View style={styles.datesRow}>
-            <Ionicons name="calendar-outline" size={10} color={GREEN_DARK} />
+            <Ionicons name="calendar-outline" size={10} color={Colors.primaryDark} />
             <Text style={styles.datesText}>
               {formatDateShort(item.startDate)} → {formatDateShort(item.endDate)}
             </Text>
             {item.totalPrice != null && (
               <View style={styles.totalPriceChip}>
-                <Ionicons name="cash-outline" size={9} color={GREEN_DARK} />
+                <Ionicons name="cash-outline" size={9} color={Colors.primaryDark} />
                 <Text style={styles.totalPriceText}>{item.totalPrice}</Text>
               </View>
             )}
@@ -333,7 +328,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
           <View style={styles.cardBottom}>
             <View style={styles.lastMessageRow}>
               {item.lastMessageIsOwn && (
-                <Ionicons name="checkmark-done-outline" size={12} color={GREEN_DARK} />
+                <Ionicons name="checkmark-done-outline" size={12} color={Colors.primaryDark} />
               )}
               <Text
                 style={[styles.lastMessage, isUnread && styles.lastMessageUnread]}
@@ -618,7 +613,7 @@ export default function MessagesScreen() {
       {!loading && conversations.length > 0 && (
         <View style={styles.statsRow}>
           <View style={styles.statChip}>
-            <Ionicons name="cube-outline" size={14} color={GREEN_DARK} />
+            <Ionicons name="cube-outline" size={14} color={Colors.primaryDark} />
             <Text style={styles.statChipText}>
               {conversations.length} échange{conversations.length > 1 ? 's' : ''}
             </Text>
@@ -628,12 +623,12 @@ export default function MessagesScreen() {
 
       {loading ? (
         <View style={styles.emptyState}>
-          <ActivityIndicator size="large" color={GREEN} />
+          <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       ) : conversations.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIconWrap}>
-            <Ionicons name="chatbubble-outline" size={36} color={GREEN} />
+            <Ionicons name="chatbubble-outline" size={36} color={Colors.primary} />
           </View>
           <Text style={styles.emptyTitle}>Aucun message</Text>
           <Text style={styles.emptySubtitle}>
@@ -739,12 +734,12 @@ export default function MessagesScreen() {
           >
             {loading ? (
               <View style={desktopStyles.loadingWrap}>
-                <ActivityIndicator size="large" color={GREEN} />
+                <ActivityIndicator size="large" color={Colors.primary} />
               </View>
             ) : conversations.length === 0 ? (
               <View style={desktopStyles.emptyLeft}>
                 <View style={desktopStyles.emptyLeftIcon}>
-                  <Ionicons name="chatbubble-outline" size={32} color={GREEN} />
+                  <Ionicons name="chatbubble-outline" size={32} color={Colors.primary} />
                 </View>
                 <Text style={desktopStyles.emptyLeftTitle}>Aucun message</Text>
                 <Text style={desktopStyles.emptyLeftSub}>
@@ -774,7 +769,7 @@ export default function MessagesScreen() {
                       <Image source={{ uri: item.listingThumb }} style={desktopStyles.convRowImage} />
                     ) : (
                       <View style={desktopStyles.convRowImageFallback}>
-                        <Ionicons name="cube-outline" size={20} color={GREEN} />
+                        <Ionicons name="cube-outline" size={20} color={Colors.primary} />
                       </View>
                     )}
                     {(item.unreadCount > 0 || item.hasUnreadDot) && (
@@ -816,14 +811,14 @@ export default function MessagesScreen() {
                 {conv.listingThumb ? (
                   <Image source={{ uri: conv.listingThumb }} style={desktopStyles.detailBanner} resizeMode="cover" />
                 ) : (
-                  <View style={[desktopStyles.detailBanner, { backgroundColor: GREEN_LIGHT }]} />
+                  <View style={[desktopStyles.detailBanner, { backgroundColor: Colors.primarySurface }]} />
                 )}
                 <View style={desktopStyles.detailBody}>
                   <Text style={desktopStyles.detailTitle}>{conv.listingTitle}</Text>
                   <Text style={desktopStyles.detailWith}>Avec {conv.otherUsername}</Text>
                   <BookingBadge status={conv.displayStatus} />
                   <View style={desktopStyles.detailDates}>
-                    <Ionicons name="calendar-outline" size={14} color={GREEN_DARK} />
+                    <Ionicons name="calendar-outline" size={14} color={Colors.primaryDark} />
                     <Text style={desktopStyles.detailDatesText}>
                       {new Date(conv.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                       {' → '}
@@ -832,7 +827,7 @@ export default function MessagesScreen() {
                   </View>
                   {conv.totalPrice != null && (
                     <View style={desktopStyles.detailPrice}>
-                      <Ionicons name="cash-outline" size={16} color={GREEN_DARK} />
+                      <Ionicons name="cash-outline" size={16} color={Colors.primaryDark} />
                       <Text style={desktopStyles.detailPriceText}>{conv.totalPrice} € total</Text>
                     </View>
                   )}
@@ -855,7 +850,7 @@ export default function MessagesScreen() {
           })() : (
             <View style={desktopStyles.emptyRight}>
               <View style={desktopStyles.emptyRightIcon}>
-                <Ionicons name="chatbubble-outline" size={40} color={GREEN} />
+                <Ionicons name="chatbubble-outline" size={40} color={Colors.primary} />
               </View>
               <Text style={desktopStyles.emptyRightTitle}>Sélectionnez une conversation</Text>
               <Text style={desktopStyles.emptyRightSub}>
@@ -870,7 +865,7 @@ export default function MessagesScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: BG }]}>
+    <View style={[styles.root, { backgroundColor: Colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <Text style={styles.headerTitle}>Messages</Text>
         <Text style={styles.headerSubtitle}>
@@ -894,14 +889,14 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
   headerTitle: {
     fontSize: 30,
     fontFamily: 'Inter-Bold',
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.7,
   },
   headerSubtitle: {
@@ -914,13 +909,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 18,
     padding: 16,
     marginBottom: 4,
     overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: GREEN_DARK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10 },
       android: { elevation: 4 },
       web: { boxShadow: `0 4px 14px rgba(142,152,120,0.35)` },
     }),
@@ -965,7 +960,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 100,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -975,7 +970,7 @@ const styles = StyleSheet.create({
   statChipText: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -985,12 +980,12 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 18,
     padding: 14,
     gap: 14,
     borderWidth: 1,
-    borderColor: '#EAE6D8',
+    borderColor: Colors.borderLight,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
       android: { elevation: 2 },
@@ -1044,7 +1039,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#E05252',
+    backgroundColor: Colors.notification,
     borderWidth: 2,
     borderColor: '#FFFBF3',
   },
@@ -1063,13 +1058,13 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
   },
   newRequestBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#E05252',
+    backgroundColor: Colors.notification,
     borderRadius: 6,
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -1094,7 +1089,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 14,
     flexShrink: 0,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1111,7 +1106,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontFamily: 'Inter-Bold',
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.2,
   },
   timeText: {
@@ -1120,7 +1115,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 1,
   },
-  timeTextUnread: { color: GREEN_DARK, fontFamily: 'Inter-SemiBold' },
+  timeTextUnread: { color: Colors.primaryDark, fontFamily: 'Inter-SemiBold' },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1130,13 +1125,13 @@ const styles = StyleSheet.create({
   ownerName: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   cityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 999,
@@ -1144,7 +1139,7 @@ const styles = StyleSheet.create({
   cityBadgeText: {
     fontSize: 10,
     fontFamily: 'Inter-Medium',
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   cardBottom: {
     flexDirection: 'row',
@@ -1166,7 +1161,7 @@ const styles = StyleSheet.create({
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
@@ -1210,7 +1205,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   statusPillTextAccepted: { color: '#2A7A3A' },
-  statusPillTextRefused: { color: '#C0392B' },
+  statusPillTextRefused: { color: Colors.error },
   statusPillTextPending: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 10,
@@ -1250,12 +1245,12 @@ const styles = StyleSheet.create({
   statusPillTextCompleted: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 10,
-    color: '#5A5A5A',
+    color: Colors.textSecondary,
   },
   statusSubtext: {
     fontFamily: 'Inter-Regular',
     fontSize: 11,
-    color: '#7A7A7A',
+    color: Colors.textSecondary,
     marginTop: 2,
     marginBottom: 2,
     lineHeight: 15,
@@ -1265,14 +1260,14 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#D4DAC4',
   },
-  emptyTitle: { fontSize: 18, fontFamily: 'Inter-Bold', color: '#1A1F17', marginBottom: 8 },
+  emptyTitle: { fontSize: 18, fontFamily: 'Inter-Bold', color: Colors.text, marginBottom: 8 },
   emptySubtitle: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
@@ -1304,7 +1299,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalSheet: {
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 24,
     padding: 24,
     width: '100%',
@@ -1331,7 +1326,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.3,
     textAlign: 'center',
   },
@@ -1347,7 +1342,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 50,
     borderRadius: 14,
-    backgroundColor: '#C0392B',
+    backgroundColor: Colors.error,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1370,7 +1365,7 @@ const styles = StyleSheet.create({
   modalBtnCancelText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
-    color: '#5A5A5A',
+    color: Colors.textSecondary,
   },
   payBannerOrange: {
     flexDirection: 'row',
@@ -1450,14 +1445,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    backgroundColor: '#1B4332',
+    backgroundColor: Colors.primaryDark,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
     marginTop: 4,
     marginBottom: 2,
     ...Platform.select({
-      ios: { shadowColor: '#1B4332', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 6 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 6 },
       android: { elevation: 3 },
       web: { boxShadow: '0 2px 8px rgba(27,67,50,0.3)' },
     }),
@@ -1502,14 +1497,14 @@ const styles = StyleSheet.create({
   datesText: {
     fontFamily: 'Inter-Regular',
     fontSize: 11,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
     flex: 1,
   },
   totalPriceChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -1519,7 +1514,7 @@ const styles = StyleSheet.create({
   totalPriceText: {
     fontFamily: 'Inter-Bold',
     fontSize: 10,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
 });
 
@@ -1534,7 +1529,7 @@ const desktopStyles = StyleSheet.create({
     flexShrink: 0,
     borderRightWidth: 1,
     borderRightColor: '#e8e4d8',
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     ...Platform.select({ web: { height: '100vh' as any, overflow: 'hidden' as any } }),
     flexDirection: 'column',
   },
@@ -1548,7 +1543,7 @@ const desktopStyles = StyleSheet.create({
   leftHeaderTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 26,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.6,
   },
   leftHeaderSub: {
@@ -1561,7 +1556,7 @@ const desktopStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -1615,7 +1610,7 @@ const desktopStyles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1625,7 +1620,7 @@ const desktopStyles = StyleSheet.create({
   emptyLeftTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
-    color: '#1A1F17',
+    color: Colors.text,
     marginBottom: 6,
   },
   emptyLeftSub: {
@@ -1669,7 +1664,7 @@ const desktopStyles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 12,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1684,7 +1679,7 @@ const desktopStyles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#2f3a2f',
     borderWidth: 2,
-    borderColor: BG,
+    borderColor: Colors.background,
   },
   convRowBody: {
     flex: 1,
@@ -1700,7 +1695,7 @@ const desktopStyles = StyleSheet.create({
   convRowTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1A1F17',
+    color: Colors.text,
     flex: 1,
     letterSpacing: -0.1,
   },
@@ -1716,7 +1711,7 @@ const desktopStyles = StyleSheet.create({
   convRowUser: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   convRowLast: {
     fontFamily: 'Inter-Regular',
@@ -1766,20 +1761,20 @@ const desktopStyles = StyleSheet.create({
   detailTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 22,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.4,
   },
   detailWith: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
     marginTop: -8,
   },
   detailDates: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
@@ -1788,7 +1783,7 @@ const desktopStyles = StyleSheet.create({
   detailDatesText: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
-    color: '#1A1F17',
+    color: Colors.text,
     flex: 1,
     lineHeight: 20,
   },
@@ -1800,16 +1795,16 @@ const desktopStyles = StyleSheet.create({
   detailPriceText: {
     fontFamily: 'Inter-Bold',
     fontSize: 22,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.5,
   },
   detailLastMsg: {
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 14,
     padding: 16,
     gap: 6,
     borderWidth: 1,
-    borderColor: '#EAE6D8',
+    borderColor: Colors.borderLight,
     ...Platform.select({
       web: { boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
     }),
@@ -1824,7 +1819,7 @@ const desktopStyles = StyleSheet.create({
   detailLastMsgText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#1A1F17',
+    color: Colors.text,
     lineHeight: 20,
   },
   detailLastMsgTime: {
@@ -1862,7 +1857,7 @@ const desktopStyles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1872,7 +1867,7 @@ const desktopStyles = StyleSheet.create({
   emptyRightTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.3,
     textAlign: 'center',
   },

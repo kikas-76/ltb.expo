@@ -14,9 +14,8 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#B7BF9C';
 
 const BUSINESS_TYPES = [
   { label: 'Magasin de location', icon: 'storefront-outline' },
@@ -196,8 +195,8 @@ export default function BusinessHoursScreen() {
               onPress={() => setShowTypeSelector(!showTypeSelector)}
               activeOpacity={0.85}
             >
-              <Ionicons name="briefcase-outline" size={18} color={businessType ? GREEN : '#A8A8A0'} />
-              <Text style={[styles.inputFlex, { color: businessType ? '#1C1C18' : '#A8A8A0', paddingVertical: 0, height: undefined }]}>
+              <Ionicons name="briefcase-outline" size={18} color={businessType ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.inputFlex, { color: businessType ? Colors.text : Colors.textMuted, paddingVertical: 0, height: undefined }]}>
                 {businessType ?? 'Sélectionner un type...'}
               </Text>
               <Ionicons name="chevron-down-outline" size={16} color="#A8A8A0" />
@@ -214,7 +213,7 @@ export default function BusinessHoursScreen() {
                       onPress={() => { setBusinessType(t.label); setShowTypeSelector(false); }}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name={t.icon as any} size={16} color={selected ? GREEN : '#7A7A70'} />
+                      <Ionicons name={t.icon as any} size={16} color={selected ? Colors.primary : Colors.textSecondary} />
                       <Text style={[styles.typeOptionText, selected && styles.typeOptionTextSelected]}>
                         {t.label}
                       </Text>
@@ -289,7 +288,7 @@ export default function BusinessHoursScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   scroll: {
     flexGrow: 1,
@@ -323,12 +322,12 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#D5CEBC',
+    backgroundColor: Colors.border,
   },
   stepDotActive: {
     width: 28,
     borderRadius: 5,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
   },
   body: {
     paddingHorizontal: 24,
@@ -341,13 +340,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontFamily: 'Inter-Bold',
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
     marginTop: -8,
     lineHeight: 22,
   },
@@ -357,7 +356,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   errorText: {
-    color: '#C0392B',
+    color: Colors.error,
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
@@ -368,7 +367,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1C1C18',
+    color: Colors.text,
     marginLeft: 2,
   },
   sectionLabelRow: {
@@ -382,26 +381,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     height: 54,
     paddingHorizontal: 22,
     gap: 10,
   },
   inputRowSelected: {
-    borderColor: GREEN,
+    borderColor: Colors.primary,
   },
   inputFlex: {
     flex: 1,
     height: '100%',
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   typeDropdown: {
     backgroundColor: '#fff',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -416,7 +415,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 13,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0EBE0',
+    borderBottomColor: Colors.borderLight,
   },
   typeOptionSelected: {
     backgroundColor: '#F2F5EC',
@@ -424,17 +423,17 @@ const styles = StyleSheet.create({
   typeOptionText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#1C1C18',
+    color: Colors.text,
   },
   typeOptionTextSelected: {
     fontFamily: 'Inter-SemiBold',
-    color: GREEN,
+    color: Colors.primary,
   },
   hoursCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     overflow: 'hidden',
   },
   dayRow: {
@@ -446,7 +445,7 @@ const styles = StyleSheet.create({
   },
   dayRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F0EBE0',
+    borderBottomColor: Colors.borderLight,
   },
   dayLabelWrap: {
     width: 76,
@@ -454,15 +453,15 @@ const styles = StyleSheet.create({
   dayLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
-    color: '#1C1C18',
+    color: Colors.text,
   },
   closedToggle: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
     borderWidth: 1,
-    borderColor: GREEN,
+    borderColor: Colors.primary,
   },
   closedToggleActive: {
     backgroundColor: '#F5EDE8',
@@ -471,10 +470,10 @@ const styles = StyleSheet.create({
   closedToggleText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 11,
-    color: GREEN,
+    color: Colors.primary,
   },
   closedToggleTextActive: {
-    color: '#C0392B',
+    color: Colors.error,
   },
   timeRange: {
     flex: 1,
@@ -484,25 +483,25 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   timeInput: {
-    backgroundColor: '#F5F0E8',
+    backgroundColor: Colors.background,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
     fontSize: 13,
     fontFamily: 'Inter-SemiBold',
-    color: '#1C1C18',
+    color: Colors.text,
     width: 56,
     textAlign: 'center',
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
   },
   timeSeparator: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#A8A8A0',
+    color: Colors.textMuted,
   },
   btn: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     height: 54,
     borderRadius: 999,
     alignItems: 'center',

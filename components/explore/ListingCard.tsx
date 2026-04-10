@@ -78,7 +78,7 @@ function FavoriteButton({ listingId, userId, listingName }: { listingId: string;
       <Ionicons
         name={isFavorite ? 'heart' : 'heart-outline'}
         size={14}
-        color={isFavorite ? '#E05252' : 'rgba(255,255,255,0.95)'}
+        color={isFavorite ? Colors.notification : 'rgba(255,255,255,0.95)'}
       />
     </TouchableOpacity>
   );

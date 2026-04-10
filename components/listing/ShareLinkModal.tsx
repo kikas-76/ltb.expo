@@ -12,11 +12,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
-const BG = '#F5F2E3';
-const GREEN = '#B7BF9C';
-const GREEN_DARK = '#8E9878';
-const GREEN_LIGHT = '#ECEEE6';
-const CREAM = '#FFFDF7';
 
 const MONTH_NAMES = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -133,11 +128,11 @@ function MiniCalendar({ startDate, endDate, onSelect, bookedRanges }: MiniCalend
     <View style={calStyles.wrap}>
       <View style={calStyles.nav}>
         <TouchableOpacity onPress={prevMonth} style={calStyles.navBtn} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={18} color={GREEN_DARK} />
+          <Ionicons name="chevron-back" size={18} color={Colors.primaryDark} />
         </TouchableOpacity>
         <Text style={calStyles.monthLabel}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
         <TouchableOpacity onPress={nextMonth} style={calStyles.navBtn} activeOpacity={0.7}>
-          <Ionicons name="chevron-forward" size={18} color={GREEN_DARK} />
+          <Ionicons name="chevron-forward" size={18} color={Colors.primaryDark} />
         </TouchableOpacity>
       </View>
 
@@ -192,22 +187,22 @@ function MiniCalendar({ startDate, endDate, onSelect, bookedRanges }: MiniCalend
 const calStyles = StyleSheet.create({
   wrap: { marginTop: 8 },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  navBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: GREEN_LIGHT, alignItems: 'center', justifyContent: 'center' },
-  monthLabel: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#1A1F17', letterSpacing: -0.2 },
+  navBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: Colors.primarySurface, alignItems: 'center', justifyContent: 'center' },
+  monthLabel: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.text, letterSpacing: -0.2 },
   dayLabels: { flexDirection: 'row', marginBottom: 4 },
   dayLabel: { flex: 1, textAlign: 'center', fontFamily: 'Inter-Medium', fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase' },
   row: { flexDirection: 'row', marginBottom: 2 },
   cell: { flex: 1, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
-  cellStart: { backgroundColor: GREEN_DARK },
-  cellEnd: { backgroundColor: GREEN_DARK },
+  cellStart: { backgroundColor: Colors.primaryDark },
+  cellEnd: { backgroundColor: Colors.primaryDark },
   cellInRange: { backgroundColor: '#D4DAC4' },
   cellDisabled: { opacity: 0.35 },
-  cellText: { fontFamily: 'Inter-Regular', fontSize: 13, color: '#1A1F17' },
+  cellText: { fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.text },
   cellTextSelected: { color: '#fff', fontFamily: 'Inter-Bold' },
-  cellTextInRange: { color: GREEN_DARK, fontFamily: 'Inter-Medium' },
+  cellTextInRange: { color: Colors.primaryDark, fontFamily: 'Inter-Medium' },
   cellTextDisabled: { color: Colors.textMuted },
   cellTextBooked: { textDecorationLine: 'line-through' },
-  bookedDot: { position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: 2, backgroundColor: '#E05252' },
+  bookedDot: { position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.notification },
 });
 
 export default function ShareLinkModal({ visible, onClose, listingId, listingName, pricePerDay, bookedRanges }: ShareLinkModalProps) {
@@ -293,7 +288,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.headerIcon}>
-                <Ionicons name="link-outline" size={18} color={GREEN_DARK} />
+                <Ionicons name="link-outline" size={18} color={Colors.primaryDark} />
               </View>
               <Text style={styles.title}>Lien de réservation directe</Text>
             </View>
@@ -338,7 +333,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
                   <Text style={styles.totalValue}>{totalWithFee}€</Text>
                 </View>
                 <View style={styles.ownerReceivesRow}>
-                  <Ionicons name="wallet-outline" size={13} color={GREEN_DARK} />
+                  <Ionicons name="wallet-outline" size={13} color={Colors.primaryDark} />
                   <Text style={styles.ownerReceivesText}>
                     Tu recevras environ {ownerReceives}€ (après 8% de commission)
                   </Text>
@@ -349,7 +344,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
             {link ? (
               <View style={styles.linkBox}>
                 <View style={styles.linkBoxHeader}>
-                  <Ionicons name="link" size={14} color={GREEN_DARK} />
+                  <Ionicons name="link" size={14} color={Colors.primaryDark} />
                   <Text style={styles.linkBoxLabel}>Lien généré</Text>
                 </View>
                 <Text style={styles.linkText} numberOfLines={3} selectable>{link}</Text>
@@ -360,7 +355,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
                   </TouchableOpacity>
                   {canShare && (
                     <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
-                      <Ionicons name="share-social-outline" size={16} color={GREEN_DARK} />
+                      <Ionicons name="share-social-outline" size={16} color={Colors.primaryDark} />
                       <Text style={styles.shareBtnText}>Partager</Text>
                     </TouchableOpacity>
                   )}
@@ -368,7 +363,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
               </View>
             ) : (
               <View style={styles.hintBox}>
-                <Ionicons name="calendar-outline" size={28} color={GREEN} />
+                <Ionicons name="calendar-outline" size={28} color={Colors.primary} />
                 <Text style={styles.hintText}>Sélectionne des dates pour générer le lien</Text>
               </View>
             )}
@@ -386,7 +381,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modal: {
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -423,7 +418,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -432,7 +427,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Inter-Bold',
     fontSize: 17,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.3,
     flex: 1,
   },
@@ -473,7 +468,7 @@ const styles = StyleSheet.create({
   priceValue: {
     fontFamily: 'Inter-Medium',
     fontSize: 13,
-    color: '#1A1F17',
+    color: Colors.text,
   },
   divider: {
     height: 1,
@@ -483,12 +478,12 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1A1F17',
+    color: Colors.text,
   },
   totalValue: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.2,
   },
   ownerReceivesRow: {
@@ -504,7 +499,7 @@ const styles = StyleSheet.create({
   ownerReceivesText: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
     flex: 1,
     lineHeight: 17,
   },
@@ -525,7 +520,7 @@ const styles = StyleSheet.create({
   linkBoxLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 11,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
@@ -545,7 +540,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    backgroundColor: GREEN_DARK,
+    backgroundColor: Colors.primaryDark,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 999,
@@ -568,7 +563,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
     borderWidth: 1.5,
-    borderColor: GREEN_DARK,
+    borderColor: Colors.primaryDark,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
@@ -577,7 +572,7 @@ const styles = StyleSheet.create({
   shareBtnText: {
     fontFamily: 'Inter-Medium',
     fontSize: 13,
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   hintBox: {
     alignItems: 'center',

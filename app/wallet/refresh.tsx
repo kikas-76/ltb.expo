@@ -12,9 +12,8 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/colors';
 
-const DARK_GREEN = '#1B4332';
-const LIGHT_BEIGE = '#F5F0E8';
 const ORANGE = '#D97706';
 
 export default function WalletRefreshScreen() {
@@ -107,7 +106,7 @@ export default function WalletRefreshScreen() {
   if (checking) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={DARK_GREEN} />
+        <ActivityIndicator size="large" color={Colors.primaryDark} />
       </View>
     );
   }
@@ -200,7 +199,7 @@ function StepBadge({ status }: { status: 'done' | 'active' | 'pending' }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: LIGHT_BEIGE,
+    backgroundColor: Colors.background,
   },
   content: {
     flex: 1,
@@ -214,7 +213,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Inter-Bold',
     fontSize: 24,
-    color: '#1A1A1A',
+    color: Colors.text,
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -261,7 +260,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   stepDotDone: {
-    backgroundColor: DARK_GREEN,
+    backgroundColor: Colors.primaryDark,
   },
   stepDotActive: {
     backgroundColor: ORANGE,
@@ -280,7 +279,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1A1A1A',
+    color: Colors.text,
   },
   stepLabelMuted: {
     color: '#9B9B9B',
@@ -289,7 +288,7 @@ const styles = StyleSheet.create({
   badgeDone: {
     fontFamily: 'Inter-Bold',
     fontSize: 14,
-    color: DARK_GREEN,
+    color: Colors.primaryDark,
   },
   badgeActive: {
     fontFamily: 'Inter-Regular',
@@ -302,13 +301,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryBtn: {
-    backgroundColor: DARK_GREEN,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 999,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
-      ios: { shadowColor: DARK_GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 16px rgba(27,67,50,0.3)' },
     }),

@@ -20,11 +20,6 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const BG = '#F5F2E3';
-const GREEN = '#B7BF9C';
-const GREEN_DARK = '#8E9878';
-const GREEN_LIGHT = '#ECEEE6';
-const CREAM = '#FFFDF7';
 
 interface Listing {
   id: string;
@@ -148,7 +143,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
               <Image source={{ uri: photo }} style={styles.cardImage} resizeMode="cover" />
             ) : (
               <View style={styles.cardImagePlaceholder}>
-                <Ionicons name="megaphone-outline" size={24} color={GREEN} />
+                <Ionicons name="megaphone-outline" size={24} color={Colors.primary} />
               </View>
             )}
             <View style={[styles.statusPill, item.is_active ? styles.statusPillActive : styles.statusPillInactive]}>
@@ -167,7 +162,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
             <View style={styles.cardMeta}>
               {item.category_name && (
                 <View style={styles.metaTag}>
-                  <Ionicons name="pricetag-outline" size={10} color={GREEN_DARK} />
+                  <Ionicons name="pricetag-outline" size={10} color={Colors.primaryDark} />
                   <Text style={styles.metaTagText}>{item.category_name}</Text>
                 </View>
               )}
@@ -191,7 +186,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
                   activeOpacity={0.75}
                   onPress={() => onEdit(item.id)}
                 >
-                  <Ionicons name="pencil-outline" size={14} color={GREEN_DARK} />
+                  <Ionicons name="pencil-outline" size={14} color={Colors.primaryDark} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -205,7 +200,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
                   ) : item.is_active ? (
                     <Ionicons name="eye-off-outline" size={14} color={Colors.textMuted} />
                   ) : (
-                    <Ionicons name="eye-outline" size={14} color={GREEN_DARK} />
+                    <Ionicons name="eye-outline" size={14} color={Colors.primaryDark} />
                   )}
                 </TouchableOpacity>
 
@@ -364,19 +359,19 @@ export default function MesAnnoncesScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.centered, { backgroundColor: BG }]}>
-        <ActivityIndicator size="large" color={GREEN} />
+      <View style={[styles.centered, { backgroundColor: Colors.background }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: BG }]}>
+    <View style={[styles.root, { backgroundColor: Colors.background }]}>
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }, isDesktop && desktopStyles.listContentDesktop]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GREEN} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
         }
       >
         <View style={[styles.pageHeader, { paddingTop: insets.top + 20 }, isDesktop && desktopStyles.pageHeaderDesktop]}>
@@ -414,7 +409,7 @@ export default function MesAnnoncesScreen() {
               <Ionicons
                 name="trending-up-outline"
                 size={14}
-                color={activeTab === 'active' ? GREEN_DARK : Colors.textMuted}
+                color={activeTab === 'active' ? Colors.primaryDark : Colors.textMuted}
               />
               <Text style={[styles.tabBtnText, activeTab === 'active' && styles.tabBtnTextActive]}>
                 Actives
@@ -467,7 +462,7 @@ export default function MesAnnoncesScreen() {
           <View style={styles.tabEmptyState}>
             {activeTab === 'active' ? (
               <>
-                <Ionicons name="trending-up-outline" size={32} color={GREEN} />
+                <Ionicons name="trending-up-outline" size={32} color={Colors.primary} />
                 <Text style={styles.tabEmptyTitle}>Aucune annonce active</Text>
                 <Text style={styles.tabEmptySubtitle}>
                   Activez une annonce existante ou créez-en une nouvelle.
@@ -488,7 +483,7 @@ export default function MesAnnoncesScreen() {
         {listings.length === 0 && (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap}>
-              <Ionicons name="megaphone-outline" size={36} color={GREEN} />
+              <Ionicons name="megaphone-outline" size={36} color={Colors.primary} />
             </View>
             <Text style={styles.emptyTitle}>Aucune annonce</Text>
             <Text style={styles.emptySubtitle}>
@@ -556,7 +551,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 28,
     fontFamily: 'Inter-Bold',
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.6,
   },
   pageSubtitle: {
@@ -569,12 +564,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 100,
     ...Platform.select({
-      ios: { shadowColor: GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      ios: { shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 12px rgba(183,191,156,0.4)' },
     }),
@@ -589,11 +584,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
     marginBottom: 20,
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#EAE6D8',
+    borderColor: Colors.borderLight,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
       android: { elevation: 2 },
@@ -608,7 +603,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontFamily: 'Inter-Bold',
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.5,
   },
   statLabel: {
@@ -625,11 +620,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 14,
     padding: 4,
     borderWidth: 1,
-    borderColor: '#EAE6D8',
+    borderColor: Colors.borderLight,
     gap: 4,
   },
   tabBtn: {
@@ -643,9 +638,9 @@ const styles = StyleSheet.create({
     borderRadius: 11,
   },
   tabBtnActive: {
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     ...Platform.select({
-      ios: { shadowColor: GREEN, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4 },
+      ios: { shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4 },
       android: { elevation: 2 },
       web: { boxShadow: '0 2px 6px rgba(183,191,156,0.2)' },
     }),
@@ -659,7 +654,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   tabBtnTextActive: {
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   tabBtnTextInactive: {
     color: Colors.textSecondary,
@@ -674,7 +669,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   tabBadgeActive: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
   },
   tabBadgeInactive: {
     backgroundColor: '#D8D4C8',
@@ -702,7 +697,7 @@ const styles = StyleSheet.create({
   tabEmptyTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
-    color: '#1A1F17',
+    color: Colors.text,
     textAlign: 'center',
   },
   tabEmptySubtitle: {
@@ -716,11 +711,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   card: {
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#EAE6D8',
+    borderColor: Colors.borderLight,
     overflow: 'hidden',
     ...Platform.select({
       ios: { shadowColor: '#8E9878', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.09, shadowRadius: 12 },
@@ -744,7 +739,7 @@ const styles = StyleSheet.create({
   cardImagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -799,7 +794,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
-    color: '#1A1F17',
+    color: Colors.text,
     lineHeight: 20,
   },
   cardMeta: {
@@ -811,7 +806,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     alignSelf: 'flex-start',
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 100,
@@ -819,7 +814,7 @@ const styles = StyleSheet.create({
   metaTagText: {
     fontSize: 11,
     fontFamily: 'Inter-Medium',
-    color: GREEN_DARK,
+    color: Colors.primaryDark,
   },
   metaRow: {
     flexDirection: 'row',
@@ -841,7 +836,7 @@ const styles = StyleSheet.create({
   cardPrice: {
     fontSize: 16,
     fontFamily: 'Inter-Bold',
-    color: '#1A1F17',
+    color: Colors.text,
   },
   cardPriceUnit: {
     fontSize: 11,
@@ -856,7 +851,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 9,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -878,7 +873,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -888,7 +883,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: '#1A1F17',
+    color: Colors.text,
     marginBottom: 8,
   },
   emptySubtitle: {
@@ -903,12 +898,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 100,
     ...Platform.select({
-      ios: { shadowColor: GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10 },
+      ios: { shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 12px rgba(183,191,156,0.4)' },
     }),
@@ -926,14 +921,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   modalCard: {
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 24,
     padding: 28,
     width: '100%',
     maxWidth: 380,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#EAE6D8',
+    borderColor: Colors.borderLight,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.18, shadowRadius: 32 },
       android: { elevation: 16 },
@@ -952,7 +947,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: '#1A1F17',
+    color: Colors.text,
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -966,7 +961,7 @@ const styles = StyleSheet.create({
   },
   modalBold: {
     fontFamily: 'Inter-SemiBold',
-    color: '#1A1F17',
+    color: Colors.text,
   },
   modalActions: {
     flexDirection: 'row',
@@ -984,7 +979,7 @@ const styles = StyleSheet.create({
   modalCancelText: {
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
-    color: '#1A1F17',
+    color: Colors.text,
   },
   modalDeleteBtn: {
     flex: 1,

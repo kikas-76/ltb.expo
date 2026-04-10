@@ -12,13 +12,9 @@ import {
 import { router } from 'expo-router';
 import { useDeepLink } from '@/contexts/DeepLinkContext';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#B7BF9C';
-const GREEN_MID = '#B7BF9C';
-const GREEN_LIGHT = '#ECEEE6';
 const GREEN_PALE = '#F4F5EF';
-const CREAM = '#FBF8F2';
 const { width } = Dimensions.get('window');
 
 const STEPS = [
@@ -199,7 +195,7 @@ export default function OnboardingWelcomeScreen() {
                     { transform: [{ scale: stepAnims[i].iconScale }] },
                   ]}
                 >
-                  <Ionicons name={step.icon as any} size={22} color={GREEN} />
+                  <Ionicons name={step.icon as any} size={22} color={Colors.primary} />
                   <View style={styles.stepNumBadge}>
                     <Text style={styles.stepNum}>{step.num}</Text>
                   </View>
@@ -249,7 +245,7 @@ export default function OnboardingWelcomeScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   scroll: {
     flexGrow: 1,
@@ -258,7 +254,7 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     width: '100%',
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     paddingTop: 72,
     paddingBottom: 52,
@@ -291,7 +287,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -302,7 +298,7 @@ const styles = StyleSheet.create({
   },
   checkMark: {
     fontSize: 30,
-    color: GREEN,
+    color: Colors.primary,
     fontWeight: '800',
     lineHeight: 36,
   },
@@ -324,7 +320,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontFamily: 'Inter-Bold',
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.8,
   },
   subtitleWrap: {
@@ -334,7 +330,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 3,
-    backgroundColor: GREEN_MID,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 2,
   },
   subtitle: {
@@ -356,12 +352,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: GREEN_MID,
+    backgroundColor: Colors.primaryDark,
   },
   sectionTitle: {
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: 0.2,
   },
   stepsList: {
@@ -372,7 +368,7 @@ const styles = StyleSheet.create({
   stepCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: CREAM,
+    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 16,
     gap: 14,
@@ -388,7 +384,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -401,7 +397,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -417,7 +413,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 14.5,
     fontFamily: 'Inter-SemiBold',
-    color: '#1A1F17',
+    color: Colors.text,
     marginBottom: 3,
   },
   stepDesc: {
@@ -437,21 +433,21 @@ const styles = StyleSheet.create({
   },
   stepArrowText: {
     fontSize: 18,
-    color: GREEN,
+    color: Colors.primary,
     lineHeight: 22,
   },
   btnWrap: {
     width: '100%',
   },
   btn: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     height: 58,
     borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    shadowColor: GREEN,
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 14,

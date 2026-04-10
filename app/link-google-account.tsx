@@ -14,9 +14,8 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#B7BF9C';
 
 export default function LinkGoogleAccountScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -83,7 +82,7 @@ export default function LinkGoogleAccountScreen() {
 
         <View style={styles.body}>
           <View style={styles.iconWrap}>
-            <Ionicons name="link-outline" size={32} color={GREEN} />
+            <Ionicons name="link-outline" size={32} color={Colors.primary} />
           </View>
 
           <Text style={styles.title}>Lier votre compte Google</Text>
@@ -163,7 +162,7 @@ export default function LinkGoogleAccountScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   scroll: {
     flexGrow: 1,
@@ -190,7 +189,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -199,20 +198,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontFamily: 'Inter-Bold',
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.5,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
     lineHeight: 22,
     textAlign: 'center',
   },
   emailHighlight: {
     fontFamily: 'Inter-SemiBold',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   errorBox: {
     backgroundColor: '#FDECEA',
@@ -220,18 +219,18 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   errorText: {
-    color: '#C0392B',
+    color: Colors.error,
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
   },
   successBox: {
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
     borderRadius: 12,
     padding: 16,
   },
   successText: {
-    color: GREEN,
+    color: Colors.primary,
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     textAlign: 'center',
@@ -240,21 +239,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     padding: 14,
     gap: 2,
   },
   emailDisplayLabel: {
     fontSize: 11,
     fontFamily: 'Inter-Regular',
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   emailDisplayValue: {
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   inputRow: {
     flexDirection: 'row',
@@ -262,7 +261,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     height: 54,
     paddingHorizontal: 22,
   },
@@ -271,10 +270,10 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   btn: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     height: 54,
     borderRadius: 999,
     alignItems: 'center',
@@ -294,6 +293,6 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 13,
     fontFamily: 'Inter-Regular',
-    color: '#A8A8A0',
+    color: Colors.textMuted,
   },
 });

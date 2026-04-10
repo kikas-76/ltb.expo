@@ -92,7 +92,7 @@ export default function RequestSentOverlay({ visible }: Props) {
 
   if (!visible) return null;
 
-  const particleColors = [Colors.primary, Colors.primaryDark, '#D4DAC4', '#8E9878', '#B7BF9C', '#ECEEE6'];
+  const particleColors = [Colors.primary, Colors.primaryDark, '#D4DAC4', '#8E9878', '#B7BF9C', Colors.primarySurface];
 
   return (
     <Animated.View style={[styles.overlay, { opacity: bgOpacity }]}>

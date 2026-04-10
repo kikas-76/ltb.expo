@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/colors';
 
 interface BadgeConfig {
   label: string;
@@ -15,7 +16,7 @@ export function getBookingBadge(status: string): BadgeConfig {
     case 'accepted':
       return { label: 'Acceptée', backgroundColor: '#D4EDDA', textColor: '#155724', iconName: 'checkmark-circle-outline' };
     case 'active':
-      return { label: 'Prêt pour la remise', backgroundColor: '#1B4332', textColor: '#FFFFFF', iconName: 'hand-left-outline' };
+      return { label: 'Prêt pour la remise', backgroundColor: Colors.primaryDark, textColor: '#FFFFFF', iconName: 'hand-left-outline' };
     case 'in_progress':
       return { label: 'En cours', backgroundColor: '#0369A1', textColor: '#FFFFFF', iconName: 'play-circle-outline' };
     case 'pending_return':
@@ -142,13 +143,13 @@ const progressStyles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#E0DDD0',
+    backgroundColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
   },
   dotDone: {
-    backgroundColor: '#1B4332',
+    backgroundColor: Colors.primaryDark,
   },
   dotActive: {
     backgroundColor: '#0369A1',
@@ -170,7 +171,7 @@ const progressStyles = StyleSheet.create({
     textAlign: 'center',
   },
   stepLabelDone: {
-    color: '#1B4332',
+    color: Colors.primaryDark,
     fontFamily: 'Inter-SemiBold',
   },
   stepLabelActive: {
@@ -183,10 +184,10 @@ const progressStyles = StyleSheet.create({
     left: '50%',
     right: '-50%',
     height: 2,
-    backgroundColor: '#E0DDD0',
+    backgroundColor: Colors.border,
     zIndex: 0,
   },
   lineDone: {
-    backgroundColor: '#1B4332',
+    backgroundColor: Colors.primaryDark,
   },
 });

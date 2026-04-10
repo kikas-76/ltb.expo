@@ -11,9 +11,8 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/colors';
 
-const DARK_GREEN = '#1B4332';
-const LIGHT_BEIGE = '#F5F0E8';
 
 export default function WalletSuccessScreen() {
   const insets = useSafeAreaInsets();
@@ -74,7 +73,7 @@ export default function WalletSuccessScreen() {
           {benefits.map((benefit) => (
             <View key={benefit} style={styles.benefitRow}>
               <View style={styles.checkDot}>
-                <Ionicons name="checkmark-outline" size={12} color={DARK_GREEN} />
+                <Ionicons name="checkmark-outline" size={12} color={Colors.primaryDark} />
               </View>
               <Text style={styles.benefitText}>{benefit}</Text>
             </View>
@@ -98,7 +97,7 @@ export default function WalletSuccessScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: LIGHT_BEIGE,
+    backgroundColor: Colors.background,
   },
   content: {
     flex: 1,
@@ -111,12 +110,12 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: DARK_GREEN,
+    backgroundColor: Colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
     ...Platform.select({
-      ios: { shadowColor: DARK_GREEN, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16 },
       android: { elevation: 8 },
       web: { boxShadow: '0 6px 24px rgba(27,67,50,0.35)' },
     }),
@@ -124,7 +123,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Inter-Bold',
     fontSize: 24,
-    color: '#1A1A1A',
+    color: Colors.text,
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -176,13 +175,13 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   primaryBtn: {
-    backgroundColor: DARK_GREEN,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 999,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
-      ios: { shadowColor: DARK_GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 16px rgba(27,67,50,0.3)' },
     }),

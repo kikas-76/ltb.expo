@@ -9,8 +9,8 @@ import {
   ConnectComponentsProvider,
   ConnectAccountOnboarding,
 } from '@stripe/react-connect-js';
+import { Colors } from '@/constants/colors';
 
-const DARK_GREEN = '#1B4332';
 
 export default function WalletOnboardingScreen() {
   const insets = useSafeAreaInsets();
@@ -118,7 +118,7 @@ export default function WalletOnboardingScreen() {
   if (loading) {
     return (
       <View style={[styles.root, styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={DARK_GREEN} />
+        <ActivityIndicator size="large" color={Colors.primaryDark} />
         <Text style={styles.loadingText}>Chargement de l'inscription Stripe...</Text>
       </View>
     );
@@ -158,7 +158,7 @@ export default function WalletOnboardingScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalIconWrap}>
-              <Ionicons name="time-outline" size={28} color={DARK_GREEN} />
+              <Ionicons name="time-outline" size={28} color={Colors.primaryDark} />
             </View>
             <Text style={styles.modalTitle}>Reprendre plus tard ?</Text>
             <Text style={styles.modalText}>
@@ -230,7 +230,7 @@ export default function WalletOnboardingScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F5F0E8',
+    backgroundColor: Colors.background,
   },
   center: {
     alignItems: 'center',
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 0.5,
     borderBottomColor: '#E8E5D8',
-    backgroundColor: '#F5F0E8',
+    backgroundColor: Colors.background,
   },
   backBtn: {
     width: 36,
@@ -253,12 +253,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
   },
   headerTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 17,
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.2,
   },
   scrollOuter: {
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 14,
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 20,
-    color: '#1C1C18',
+    color: Colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   },
   retryBtn: {
     marginTop: 24,
-    backgroundColor: '#1B4332',
+    backgroundColor: Colors.primaryDark,
     borderRadius: 999,
     paddingHorizontal: 32,
     height: 48,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 20,
-    color: '#1C1C18',
+    color: Colors.text,
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 48,
     borderRadius: 999,
-    backgroundColor: DARK_GREEN,
+    backgroundColor: Colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -427,6 +427,6 @@ const styles = StyleSheet.create({
   modalBtnPrimaryText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
-    color: '#1C1C18',
+    color: Colors.text,
   },
 });

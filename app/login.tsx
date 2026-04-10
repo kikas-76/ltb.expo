@@ -17,9 +17,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDeepLink } from '@/contexts/DeepLinkContext';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#B7BF9C';
 
 export default function LoginScreen() {
   const { signIn, profile, profileLoading, session } = useAuth();
@@ -222,7 +221,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   scroll: {
     flexGrow: 1,
@@ -248,13 +247,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontFamily: 'Inter-Bold',
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
     marginTop: -4,
     lineHeight: 22,
   },
@@ -264,7 +263,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   errorText: {
-    color: '#C0392B',
+    color: Colors.error,
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
@@ -275,7 +274,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     height: 54,
     paddingHorizontal: 22,
   },
@@ -284,14 +283,14 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   inputFlex: {
     flex: 1,
     height: '100%',
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   forgotLink: {
     alignSelf: 'flex-end',
@@ -300,10 +299,10 @@ const styles = StyleSheet.create({
   forgotText: {
     fontSize: 13,
     fontFamily: 'Inter-Regular',
-    color: GREEN,
+    color: Colors.primary,
   },
   btn: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     height: 54,
     borderRadius: 999,
     alignItems: 'center',
@@ -324,10 +323,10 @@ const styles = StyleSheet.create({
   registerLinkText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
   },
   registerLinkBold: {
     fontFamily: 'Inter-SemiBold',
-    color: GREEN,
+    color: Colors.primary,
   },
 });

@@ -16,9 +16,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#B7BF9C';
 
 function Stepper({ active }: { active: number }) {
   return (
@@ -250,7 +249,7 @@ export default function OnboardingProfileScreen() {
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
               ) : (
-                <Ionicons name="camera-outline" size={30} color={GREEN} />
+                <Ionicons name="camera-outline" size={30} color={Colors.primary} />
               )}
             </TouchableOpacity>
             <Text style={styles.avatarLabel}>
@@ -330,7 +329,7 @@ export default function OnboardingProfileScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   scroll: {
     flexGrow: 1,
@@ -364,12 +363,12 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#D5CEBC',
+    backgroundColor: Colors.border,
   },
   stepDotActive: {
     width: 28,
     borderRadius: 5,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
   },
   body: {
     paddingHorizontal: 24,
@@ -382,13 +381,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontFamily: 'Inter-Bold',
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
     marginTop: -4,
     lineHeight: 22,
   },
@@ -398,7 +397,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   errorText: {
-    color: '#C0392B',
+    color: Colors.error,
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
@@ -413,11 +412,11 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 2,
-    borderColor: GREEN,
+    borderColor: Colors.primary,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ECEEE6',
+    backgroundColor: Colors.primarySurface,
     overflow: 'hidden',
   },
   avatarImage: {
@@ -428,16 +427,16 @@ const styles = StyleSheet.create({
   avatarLabel: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#7A7A70',
+    color: Colors.textSecondary,
   },
   avatarLabelGreen: {
-    color: GREEN,
+    color: Colors.primary,
     fontFamily: 'Inter-Medium',
   },
   changePhotoText: {
     fontSize: 13,
     fontFamily: 'Inter-Regular',
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     textDecorationLine: 'underline',
   },
   inputRow: {
@@ -446,7 +445,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: Colors.border,
     height: 54,
     paddingHorizontal: 22,
     gap: 10,
@@ -459,7 +458,7 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#1C1C18',
+    color: Colors.text,
   },
   inputRowUsername: {
     borderColor: '#B7BF9C',
@@ -481,7 +480,7 @@ const styles = StyleSheet.create({
   usernameHint: {
     fontSize: 11,
     fontFamily: 'Inter-Regular',
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     marginTop: 6,
     marginLeft: 4,
     lineHeight: 16,
@@ -489,13 +488,13 @@ const styles = StyleSheet.create({
   optionalNote: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
     marginTop: -4,
   },
   btn: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primary,
     height: 54,
     borderRadius: 999,
     alignItems: 'center',

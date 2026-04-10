@@ -1,23 +1,23 @@
 import { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/colors';
 
 const ICONS = [
-  { iconName: 'construct-outline', color: '#B7BF9C', bg: '#ECEEE6' },
-  { iconName: 'camera-outline', color: '#C4A882', bg: '#F5EFE6' },
-  { iconName: 'bicycle-outline', color: '#B7BF9C', bg: '#ECEEE6' },
-  { iconName: 'home-outline', color: '#C4A882', bg: '#F5EFE6' },
-  { iconName: 'volume-medium-outline', color: '#B7BF9C', bg: '#ECEEE6' },
-  { iconName: 'water-outline', color: '#C4A882', bg: '#F5EFE6' },
-  { iconName: 'shirt-outline', color: '#B7BF9C', bg: '#ECEEE6' },
-  { iconName: 'construct-outline', color: '#C4A882', bg: '#F5EFE6' },
-  { iconName: 'musical-notes-outline', color: '#B7BF9C', bg: '#ECEEE6' },
-  { iconName: 'umbrella-outline', color: '#C4A882', bg: '#F5EFE6' },
-  { iconName: 'barbell-outline', color: '#B7BF9C', bg: '#ECEEE6' },
-  { iconName: 'cube-outline', color: '#C4A882', bg: '#F5EFE6' },
+  { iconName: 'construct-outline', color: '#B7BF9C', bg: Colors.primarySurface },
+  { iconName: 'camera-outline', color: '#C4A882', bg: Colors.background },
+  { iconName: 'bicycle-outline', color: '#B7BF9C', bg: Colors.primarySurface },
+  { iconName: 'home-outline', color: '#C4A882', bg: Colors.background },
+  { iconName: 'volume-medium-outline', color: '#B7BF9C', bg: Colors.primarySurface },
+  { iconName: 'water-outline', color: '#C4A882', bg: Colors.background },
+  { iconName: 'shirt-outline', color: '#B7BF9C', bg: Colors.primarySurface },
+  { iconName: 'construct-outline', color: '#C4A882', bg: Colors.background },
+  { iconName: 'musical-notes-outline', color: '#B7BF9C', bg: Colors.primarySurface },
+  { iconName: 'umbrella-outline', color: '#C4A882', bg: Colors.background },
+  { iconName: 'barbell-outline', color: '#B7BF9C', bg: Colors.primarySurface },
+  { iconName: 'cube-outline', color: '#C4A882', bg: Colors.background },
 ];
 
-const BG = '#F5F0E8';
 const VERTICAL_PADDING = 12;
 const ITEM_SIZE = 52;
 const ITEM_GAP = 10;
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   wrapper: {
     height: ITEM_SIZE + VERTICAL_PADDING * 2,
     overflow: 'hidden',
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   strip: {
     flexDirection: 'row',

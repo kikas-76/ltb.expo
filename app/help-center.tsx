@@ -14,10 +14,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import helpData, { HelpCategory } from '@/data/help-data';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#8E9878';
-const GREEN_LIGHT = '#D4DAC4';
 const GREEN_BG = '#EEF1E8';
 const CARD = '#FFFFFF';
 
@@ -39,7 +37,7 @@ const ICON_COLORS: Record<string, { bg: string; fg: string }> = {
 
 function CategoryIcon({ iconName, size = 20 }: { iconName: string; size?: number }) {
   const ionName = ICON_MAP[iconName] ?? 'help-circle-outline';
-  const colors = ICON_COLORS[iconName] ?? { bg: GREEN_BG, fg: GREEN };
+  const colors = ICON_COLORS[iconName] ?? { bg: GREEN_BG, fg: Colors.primaryDark };
   return (
     <View style={[styles.iconWrap, { backgroundColor: colors.bg }]}>
       <Ionicons name={ionName as any} size={size} color={colors.fg} />
@@ -77,7 +75,7 @@ export default function HelpCenterScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back-outline" size={20} color="#1C1C18" />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Centre d'aide</Text>
       </View>
@@ -89,17 +87,17 @@ export default function HelpCenterScreen() {
       >
         <View style={[styles.heroSection, isDesktop && styles.heroSectionDesktop]}>
           <View style={styles.heroIcon}>
-            <Ionicons name="help-circle-outline" size={28} color={GREEN} />
+            <Ionicons name="help-circle-outline" size={28} color={Colors.primaryDark} />
           </View>
           <Text style={styles.heroTitle}>Comment pouvons-nous{'\n'}vous aider ?</Text>
         </View>
 
         <View style={[styles.searchBox, isDesktop && styles.searchBoxDesktop]}>
-          <Ionicons name="search-outline" size={16} color="#A8A8A0" />
+          <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="Rechercher une question..."
-            placeholderTextColor="#A8A8A0"
+            placeholderTextColor={Colors.textMuted}
             value={query}
             onChangeText={setQuery}
             returnKeyType="search"
@@ -108,7 +106,7 @@ export default function HelpCenterScreen() {
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')} hitSlop={8}>
               <View style={styles.clearBtn}>
-                <Ionicons name="close-outline" size={11} color="#7A7A70" />
+                <Ionicons name="close-outline" size={11} color={Colors.textSecondary} />
               </View>
             </TouchableOpacity>
           )}
@@ -123,7 +121,7 @@ export default function HelpCenterScreen() {
             </Text>
             {searchResults.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Ionicons name="search-outline" size={32} color={GREEN_LIGHT} />
+                <Ionicons name="search-outline" size={32} color={Colors.primarySurface} />
                 <Text style={styles.emptyTitle}>Aucun résultat trouvé</Text>
                 <Text style={styles.emptyText}>Essayez d'autres mots-clés ou contactez notre support.</Text>
               </View>
@@ -152,7 +150,7 @@ export default function HelpCenterScreen() {
 
         <View style={styles.contactCard}>
           <View style={styles.contactIconWrap}>
-            <Ionicons name="mail-outline" size={22} color={GREEN} />
+            <Ionicons name="mail-outline" size={22} color={Colors.primaryDark} />
           </View>
           <Text style={styles.contactTitle}>Vous n'avez pas trouvé votre réponse ?</Text>
           <Text style={styles.contactSubtitle}>Notre équipe répond généralement sous 24h ouvrées.</Text>
@@ -214,7 +212,7 @@ function SearchResultRow({
         <Ionicons
           name="chevron-forward-outline"
           size={15}
-          color={open ? GREEN : '#C0B8A8'}
+          color={open ? Colors.primaryDark : '#C0B8A8'}
           style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}
         />
       </TouchableOpacity>
@@ -226,7 +224,7 @@ function SearchResultRow({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -236,7 +234,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.06)',
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   backBtn: {
     position: 'absolute',
@@ -251,7 +249,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.2,
   },
   scroll: {
@@ -272,12 +270,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: GREEN_LIGHT,
+    borderColor: Colors.primarySurface,
   },
   heroTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 22,
-    color: '#1C1C18',
+    color: Colors.text,
     textAlign: 'center',
     letterSpacing: -0.5,
     lineHeight: 30,
@@ -302,7 +300,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Inter-Regular',
     fontSize: 15,
-    color: '#1C1C18',
+    color: Colors.text,
     height: '100%',
   },
   clearBtn: {
@@ -319,7 +317,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 11,
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     marginLeft: 2,
@@ -362,7 +360,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     borderWidth: 1,
-    borderColor: '#F0EBE0',
+    borderColor: Colors.borderLight,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6 },
       android: { elevation: 1 },
@@ -384,14 +382,14 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1C1C18',
+    color: Colors.text,
     letterSpacing: -0.2,
     lineHeight: 19,
   },
   categoryDesc: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     lineHeight: 16,
   },
   categoryMeta: {
@@ -406,7 +404,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#F5F0E8',
+    backgroundColor: Colors.background,
     marginHorizontal: 16,
   },
   card: {
@@ -414,7 +412,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F0EBE0',
+    borderColor: Colors.borderLight,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
       android: { elevation: 2 },
@@ -435,20 +433,20 @@ const styles = StyleSheet.create({
   searchResultCategory: {
     fontFamily: 'Inter-Medium',
     fontSize: 11,
-    color: GREEN,
+    color: Colors.primaryDark,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   searchResultQuestion: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1C1C18',
+    color: Colors.text,
     lineHeight: 20,
   },
   searchResultAnswer: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
-    color: '#7A7A70',
+    color: Colors.textSecondary,
     lineHeight: 20,
     marginTop: 6,
   },
@@ -459,17 +457,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: '#F0EBE0',
+    borderColor: Colors.borderLight,
   },
   emptyTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
-    color: '#1C1C18',
+    color: Colors.text,
   },
   emptyText: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
-    color: '#A8A8A0',
+    color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -480,7 +478,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: GREEN_LIGHT,
+    borderColor: Colors.primarySurface,
   },
   contactIconWrap: {
     width: 52,
@@ -491,12 +489,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: GREEN_LIGHT,
+    borderColor: Colors.primarySurface,
   },
   contactTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 15,
-    color: '#1C1C18',
+    color: Colors.text,
     textAlign: 'center',
     letterSpacing: -0.2,
   },
@@ -512,7 +510,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primaryDark,
     borderRadius: 999,
     paddingHorizontal: 24,
     paddingVertical: 12,

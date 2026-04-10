@@ -15,11 +15,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#1B4332';
-const GREEN_LIGHT = '#ECEEE6';
-const GREEN_MID = '#8E9878';
 
 interface BookingData {
   id: string;
@@ -201,7 +198,7 @@ export default function PaymentScreen() {
     return (
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={GREEN} />
+          <ActivityIndicator size="large" color={Colors.primaryDark} />
         </View>
       </View>
     );
@@ -237,7 +234,7 @@ export default function PaymentScreen() {
           <Ionicons name="arrow-back-outline" size={20} color="#1A1F17" />
         </TouchableOpacity>
         <View style={styles.headerTitleRow}>
-          <Ionicons name="lock-closed-outline" size={16} color={GREEN} />
+          <Ionicons name="lock-closed-outline" size={16} color={Colors.primaryDark} />
           <Text style={styles.headerTitle}>Paiement sécurisé</Text>
         </View>
         <View style={styles.headerRight} />
@@ -270,7 +267,7 @@ export default function PaymentScreen() {
             </View>
 
             <View style={styles.datesRow}>
-              <Ionicons name="calendar-outline" size={14} color={GREEN_MID} />
+              <Ionicons name="calendar-outline" size={14} color={Colors.primaryDark} />
               <Text style={styles.datesText}>
                 Du {formatDate(booking.start_date)} au {formatDate(booking.end_date)}
               </Text>
@@ -318,7 +315,7 @@ export default function PaymentScreen() {
                   style={{ height: 56, marginVertical: 8 }}
                   cardStyle={{
                     backgroundColor: '#FFFFFF',
-                    textColor: '#1B4332',
+                    textColor: Colors.primaryDark,
                     borderRadius: 12,
                     borderWidth: 1,
                     borderColor: '#E5E7EB',
@@ -327,7 +324,7 @@ export default function PaymentScreen() {
                 />
               ) : null}
               <View style={styles.securityRow}>
-                <Ionicons name="shield-checkmark-outline" size={13} color={GREEN_MID} />
+                <Ionicons name="shield-checkmark-outline" size={13} color={Colors.primaryDark} />
                 <Text style={styles.securityText}>
                   Paiement sécurisé par Stripe. Données jamais stockées sur nos serveurs.
                 </Text>
@@ -340,8 +337,8 @@ export default function PaymentScreen() {
           <View style={styles.section}>
             <View style={styles.card}>
               <View style={styles.securityRow}>
-                <Ionicons name="shield-checkmark-outline" size={14} color={GREEN} />
-                <Text style={[styles.securityText, { color: '#1A1F17', fontSize: 14 }]}>
+                <Ionicons name="shield-checkmark-outline" size={14} color={Colors.primaryDark} />
+                <Text style={[styles.securityText, { color: Colors.text, fontSize: 14 }]}>
                   Vous allez être redirigé vers la page de paiement sécurisée Stripe.
                 </Text>
               </View>
@@ -377,7 +374,7 @@ export default function PaymentScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -387,14 +384,14 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: 'Inter-Regular',
     fontSize: 15,
-    color: '#5A5A5A',
+    color: Colors.textSecondary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: '#E8E4D8',
   },
@@ -402,7 +399,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#FFFDF7',
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -418,7 +415,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.2,
   },
   headerRight: {
@@ -438,7 +435,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'Inter-Bold',
     fontSize: 13,
-    color: '#5A5A5A',
+    color: Colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     paddingHorizontal: 2,
@@ -449,7 +446,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 10,
     borderWidth: 1,
-    borderColor: '#EAE6D8',
+    borderColor: Colors.borderLight,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10 },
       android: { elevation: 2 },
@@ -467,11 +464,11 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#EAE6D8',
+    borderColor: Colors.borderLight,
     flexShrink: 0,
   },
   listingThumbFallback: {
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
   },
   listingInfo: {
     flex: 1,
@@ -480,20 +477,20 @@ const styles = StyleSheet.create({
   listingName: {
     fontFamily: 'Inter-Bold',
     fontSize: 15,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.2,
     lineHeight: 22,
   },
   ownerName: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
-    color: GREEN_MID,
+    color: Colors.primaryDark,
   },
   datesRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -503,7 +500,7 @@ const styles = StyleSheet.create({
   datesText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    color: '#1A1F17',
+    color: Colors.text,
     flex: 1,
   },
   separator: {
@@ -519,22 +516,22 @@ const styles = StyleSheet.create({
   priceLabel: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#1A1F17',
+    color: Colors.text,
   },
   priceValue: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1A1F17',
+    color: Colors.text,
   },
   priceLabelMuted: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
-    color: '#7A7A7A',
+    color: Colors.textSecondary,
   },
   priceValueMuted: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
-    color: '#7A7A7A',
+    color: Colors.textSecondary,
   },
   depositLabelRow: {
     flexDirection: 'row',
@@ -554,18 +551,18 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontFamily: 'Inter-Bold',
     fontSize: 15,
-    color: GREEN,
+    color: Colors.primaryDark,
   },
   totalValue: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: GREEN,
+    color: Colors.primaryDark,
     letterSpacing: -0.3,
   },
   depositNote: {
     fontFamily: 'Inter-Regular',
     fontSize: 11,
-    color: '#7A7A7A',
+    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: 4,
@@ -575,7 +572,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
@@ -585,7 +582,7 @@ const styles = StyleSheet.create({
   webCardNoticeText: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
-    color: '#5A5A5A',
+    color: Colors.textSecondary,
     flex: 1,
     lineHeight: 19,
   },
@@ -599,7 +596,7 @@ const styles = StyleSheet.create({
   securityText: {
     fontFamily: 'Inter-Regular',
     fontSize: 11,
-    color: '#7A7A7A',
+    color: Colors.textSecondary,
     textAlign: 'center',
     flex: 1,
     lineHeight: 16,
@@ -607,7 +604,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     borderTopWidth: 1,
     borderTopColor: '#E8E4D8',
     ...Platform.select({
@@ -619,13 +616,13 @@ const styles = StyleSheet.create({
   payBtn: {
     height: 56,
     borderRadius: 999,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
     ...Platform.select({
-      ios: { shadowColor: GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 16px rgba(27,67,50,0.35)' },
     }),

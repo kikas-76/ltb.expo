@@ -21,7 +21,6 @@ import { supabase } from '@/lib/supabase';
 import ProBadge from '@/components/ProBadge';
 
 const BEIGE = '#f5f2e8';
-const GREEN_DARK = '#2f3a2f';
 
 interface MenuRow {
   icon: React.ReactNode;

@@ -17,11 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const BG = '#F5F2E3';
-const RED = '#C0392B';
-const RED_LIGHT = '#FDF2F2';
-const RED_BORDER = '#F5C6CB';
+import { Colors } from '@/constants/colors';
 
 export default function DisputePage() {
   const { booking_id, conversation_id } = useLocalSearchParams<{ booking_id: string; conversation_id: string }>();
@@ -176,7 +172,7 @@ export default function DisputePage() {
         </View>
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
-            <Ionicons name="shield-checkmark" size={40} color={RED} />
+            <Ionicons name="shield-checkmark" size={40} color={Colors.error} />
           </View>
           <Text style={styles.successTitle}>Litige ouvert</Text>
           <Text style={styles.successSub}>
@@ -217,7 +213,7 @@ export default function DisputePage() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.alertBanner}>
-          <Ionicons name="warning-outline" size={18} color={RED} />
+          <Ionicons name="warning-outline" size={18} color={Colors.error} />
           <Text style={styles.alertText}>
             En ouvrant un litige, la caution restera bloquée jusqu'à résolution par notre équipe.
           </Text>
@@ -246,7 +242,7 @@ export default function DisputePage() {
                 style={styles.photoRemoveBtn}
                 onPress={() => removePhoto(idx)}
               >
-                <Ionicons name="close-circle" size={20} color={RED} />
+                <Ionicons name="close-circle" size={20} color={Colors.error} />
               </TouchableOpacity>
             </View>
           ))}
@@ -257,10 +253,10 @@ export default function DisputePage() {
             disabled={uploading}
           >
             {uploading ? (
-              <ActivityIndicator size="small" color={RED} />
+              <ActivityIndicator size="small" color={Colors.error} />
             ) : (
               <>
-                <Ionicons name="camera-outline" size={24} color={RED} />
+                <Ionicons name="camera-outline" size={24} color={Colors.error} />
                 <Text style={styles.addPhotoText}>Ajouter</Text>
               </>
             )}
@@ -269,7 +265,7 @@ export default function DisputePage() {
 
         {error && (
           <View style={styles.errorRow}>
-            <Ionicons name="alert-circle-outline" size={15} color={RED} />
+            <Ionicons name="alert-circle-outline" size={15} color={Colors.error} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
@@ -297,7 +293,7 @@ export default function DisputePage() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -307,7 +303,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E8E4D4',
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
   },
   backBtn: {
     width: 36,
@@ -320,7 +316,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
-    color: '#1A1A1A',
+    color: Colors.text,
   },
   scroll: {
     flex: 1,
@@ -333,9 +329,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: RED_LIGHT,
+    backgroundColor: Colors.errorLight,
     borderWidth: 1,
-    borderColor: RED_BORDER,
+    borderColor: Colors.border,
     borderRadius: 12,
     padding: 14,
   },
@@ -349,7 +345,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#1A1A1A',
+    color: Colors.text,
     marginTop: 4,
   },
   sectionHint: {
@@ -362,11 +358,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E0DDD0',
+    borderColor: Colors.border,
     padding: 14,
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#1A1A1A',
+    color: Colors.text,
     minHeight: 120,
     lineHeight: 20,
   },
@@ -400,17 +396,17 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: RED_BORDER,
+    borderColor: Colors.border,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: RED_LIGHT,
+    backgroundColor: Colors.errorLight,
     gap: 4,
   },
   addPhotoText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 11,
-    color: RED,
+    color: Colors.error,
   },
   errorRow: {
     flexDirection: 'row',
@@ -420,14 +416,14 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: 'Inter-Regular',
     fontSize: 13,
-    color: RED,
+    color: Colors.error,
   },
   submitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: RED,
+    backgroundColor: Colors.error,
     borderRadius: 14,
     paddingVertical: 16,
     marginTop: 8,
@@ -448,9 +444,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: RED_LIGHT,
+    backgroundColor: Colors.errorLight,
     borderWidth: 1,
-    borderColor: RED_BORDER,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -458,7 +454,7 @@ const styles = StyleSheet.create({
   successTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 22,
-    color: '#1A1A1A',
+    color: Colors.text,
     textAlign: 'center',
   },
   successSub: {
@@ -469,7 +465,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   successBtn: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: Colors.text,
     borderRadius: 14,
     paddingHorizontal: 28,
     paddingVertical: 14,

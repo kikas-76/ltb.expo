@@ -11,10 +11,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { Colors } from '@/constants/colors';
 
-const BG = '#F5F0E8';
-const GREEN = '#1B4332';
-const GREEN_LIGHT = '#ECEEE6';
 
 export default function PaymentSuccessScreen() {
   const { booking_id, session_id } = useLocalSearchParams<{ booking_id: string; session_id: string }>();
@@ -62,7 +60,7 @@ export default function PaymentSuccessScreen() {
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.content}>
         <Animated.View style={[styles.iconWrap, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
-          <Ionicons name="checkmark-circle-outline" size={64} color={GREEN} />
+          <Ionicons name="checkmark-circle-outline" size={64} color={Colors.primaryDark} />
         </Animated.View>
 
         <Animated.View style={[styles.textBlock, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -105,7 +103,7 @@ export default function PaymentSuccessScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: Colors.background,
     paddingHorizontal: 24,
     justifyContent: 'space-between',
   },
@@ -119,13 +117,13 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: GREEN_LIGHT,
+    backgroundColor: Colors.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#C8D8C2',
     ...Platform.select({
-      ios: { shadowColor: GREEN, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 20 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 20 },
       android: { elevation: 6 },
       web: { boxShadow: '0 8px 32px rgba(27,67,50,0.2)' },
     }),
@@ -138,14 +136,14 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Inter-Bold',
     fontSize: 28,
-    color: '#1A1F17',
+    color: Colors.text,
     letterSpacing: -0.6,
     textAlign: 'center',
   },
   subtitle: {
     fontFamily: 'Inter-Regular',
     fontSize: 15,
-    color: '#5A5A5A',
+    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 23,
   },
@@ -170,13 +168,13 @@ const styles = StyleSheet.create({
   primaryBtn: {
     height: 56,
     borderRadius: 999,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.primaryDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
     ...Platform.select({
-      ios: { shadowColor: GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12 },
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 16px rgba(27,67,50,0.35)' },
     }),
@@ -190,7 +188,7 @@ const styles = StyleSheet.create({
   secondaryBtn: {
     height: 48,
     borderRadius: 999,
-    backgroundColor: '#FFFDF7',
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -199,6 +197,6 @@ const styles = StyleSheet.create({
   secondaryBtnText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
-    color: '#5A5A5A',
+    color: Colors.textSecondary,
   },
 });
