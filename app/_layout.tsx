@@ -99,20 +99,30 @@ function RootNavigator() {
       const inPayment = segments[0] === 'payment';
       const inPaymentSuccess = segments[0] === 'payment-success';
       const inDispute = segments[0] === 'dispute';
+      const inBook = segments[0] === 'book';
 
       const inLogin = segments[0] === 'login';
       const inRegister = segments[0] === 'register';
 
       if (!session && inAuthGroup) {
         router.replace('/');
+      } else if (!session && !inAuthGroup && !inLogin && !inRegister && !inLegal && !inBook && segments[0] !== undefined && segments[0] !== '+not-found') {
       } else if (session && !inOnboarding && !inLogin && !inRegister && segments[0] !== undefined) {
         if (!profile?.username) {
           router.replace('/onboarding/profile' as any);
-        } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inRecent && !inNearby && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess && !inDispute) {
+        } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inRecent && !inNearby && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess && !inDispute && !inBook) {
           if (pendingListingId) {
             const id = pendingListingId;
             setPendingListingId(null);
             router.replace(`/listing/${id}` as any);
+          } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
+            const pendingUrl = window.sessionStorage.getItem('pending_book_url');
+            if (pendingUrl) {
+              window.sessionStorage.removeItem('pending_book_url');
+              router.replace(pendingUrl as any);
+              return;
+            }
+            router.replace('/(tabs)');
           } else {
             router.replace('/(tabs)');
           }
@@ -162,6 +172,7 @@ function RootNavigator() {
         <Stack.Screen name="payment/[booking_id]" />
         <Stack.Screen name="payment-success" />
         <Stack.Screen name="dispute/[booking_id]" />
+        <Stack.Screen name="book/[id]" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="dark" />

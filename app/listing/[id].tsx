@@ -29,6 +29,7 @@ import RequestSentOverlay from '@/components/listing/RequestSentOverlay';
 import RequestMessageModal from '@/components/listing/RequestMessageModal';
 import ProBadge from '@/components/ProBadge';
 import ApproximateLocationMap from '@/components/listing/ApproximateLocationMap';
+import ShareLinkModal from '@/components/listing/ShareLinkModal';
 
 const RECENTLY_VIEWED_KEY = 'ltb_recently_viewed';
 const MAX_RECENTLY_VIEWED = 5;
@@ -158,6 +159,7 @@ export default function ListingDetailScreen() {
   const [existingConvId, setExistingConvId] = useState<string | null>(null);
   const [bookedRanges, setBookedRanges] = useState<{ start: Date; end: Date }[]>([]);
   const [cityName, setCityName] = useState<string | null>(null);
+  const [shareLinkVisible, setShareLinkVisible] = useState(false);
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -744,6 +746,14 @@ export default function ListingDetailScreen() {
                       <Text style={styles.ownerModifyBtnText}>Modifier l'annonce</Text>
                     </TouchableOpacity>
                   </View>
+                  <TouchableOpacity
+                    style={styles.shareLinkBtn}
+                    activeOpacity={0.85}
+                    onPress={() => setShareLinkVisible(true)}
+                  >
+                    <Ionicons name="link-outline" size={16} color={Colors.primaryDark} />
+                    <Text style={styles.shareLinkBtnText}>Générer un lien de réservation</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </ScrollView>
@@ -1297,6 +1307,14 @@ export default function ListingDetailScreen() {
                   <Text style={styles.ownerModifyBtnText}>Modifier l'annonce</Text>
                 </TouchableOpacity>
               </View>
+              <TouchableOpacity
+                style={styles.shareLinkBtn}
+                activeOpacity={0.85}
+                onPress={() => setShareLinkVisible(true)}
+              >
+                <Ionicons name="link-outline" size={16} color={Colors.primaryDark} />
+                <Text style={styles.shareLinkBtnText}>Générer un lien de réservation</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -1372,6 +1390,17 @@ export default function ListingDetailScreen() {
       )}
 
       <RequestSentOverlay visible={requestSent} />
+
+      {listing && (
+        <ShareLinkModal
+          visible={shareLinkVisible}
+          onClose={() => setShareLinkVisible(false)}
+          listingId={listing.id}
+          listingName={listing.name}
+          pricePerDay={listing.price}
+          bookedRanges={bookedRanges}
+        />
+      )}
     </View>
   );
 }
@@ -2062,6 +2091,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
     color: Colors.white,
+  },
+  shareLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EEF2DF',
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
+  },
+  shareLinkBtnText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: Colors.primaryDark,
+    flex: 1,
   },
   deleteConfirmRow: {
     flex: 1,
