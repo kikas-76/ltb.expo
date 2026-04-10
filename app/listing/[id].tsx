@@ -787,6 +787,16 @@ export default function ListingDetailScreen() {
           />
         )}
         <RequestSentOverlay visible={requestSent} />
+        {listing && (
+          <ShareLinkModal
+            visible={shareLinkVisible}
+            onClose={() => setShareLinkVisible(false)}
+            listingId={listing.id}
+            listingName={listing.name}
+            pricePerDay={listing.price}
+            bookedRanges={bookedRanges}
+          />
+        )}
       </View>
     );
   }
