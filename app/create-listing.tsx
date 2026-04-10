@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -94,6 +95,8 @@ interface PhotoItem {
 export default function CreateListingScreen() {
   const { editId } = useLocalSearchParams<{ editId?: string }>();
   const isEditMode = !!editId;
+  const { width: screenWidth } = useWindowDimensions();
+  const isDesktop = screenWidth >= 1024;
 
   const [step, setStep] = useState<Step>('DETAILS');
   const [error, setError] = useState<string | null>(null);
@@ -390,26 +393,31 @@ export default function CreateListingScreen() {
       <View style={[styles.container, isPricingStep && styles.containerPricing]}>
         {/* Header */}
         <View style={[styles.header, isPricingStep && styles.headerPricing]}>
-          <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.stepLabel, isPricingStep && styles.stepLabelPricing]}>
-            {STEP_LABELS[step]}
-          </Text>
-          <View style={styles.headerSpacer} />
+          <View style={isDesktop ? styles.desktopHeaderInner : styles.headerInner}>
+            <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
+              <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.stepLabel, isPricingStep && styles.stepLabelPricing]}>
+              {STEP_LABELS[step]}
+            </Text>
+            <View style={styles.headerSpacer} />
+          </View>
         </View>
 
         {/* Progress bar */}
         <View style={[styles.progressTrack, isPricingStep && styles.progressTrackPricing]}>
-          <View style={[styles.progressFill, isPricingStep && styles.progressFillPricing, { width: `${progress * 100}%` }]} />
+          <View style={isDesktop ? styles.desktopProgressInner : styles.progressInner}>
+            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+          </View>
         </View>
 
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={[styles.scrollContent, isPricingStep && styles.scrollContentPricing]}
+          contentContainerStyle={[styles.scrollContent, isPricingStep && styles.scrollContentPricing, isDesktop && styles.scrollContentDesktop]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={isDesktop ? styles.desktopInner : undefined}>
           <Text style={[styles.stepTitle, isPricingStep && styles.stepTitlePricing]}>
             {STEP_TITLES[step]}
           </Text>
@@ -429,7 +437,7 @@ export default function CreateListingScreen() {
               <View style={styles.fieldWrap}>
                 <Text style={styles.fieldLabel}>Nom de l'objet</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isDesktop && styles.inputDesktop]}
                   placeholder="Ex: Perceuse Bosch professionnelle"
                   placeholderTextColor={Colors.textMuted}
                   value={name}
@@ -441,13 +449,13 @@ export default function CreateListingScreen() {
               <View style={styles.fieldWrap}>
                 <Text style={styles.fieldLabel}>Description</Text>
                 <TextInput
-                  style={styles.textarea}
+                  style={[styles.textarea, isDesktop && styles.textareaDesktop]}
                   placeholder="Décrivez votre objet : état, utilisation, accessoires inclus..."
                   placeholderTextColor={Colors.textMuted}
                   value={description}
                   onChangeText={setDescription}
                   multiline
-                  numberOfLines={5}
+                  numberOfLines={isDesktop ? 7 : 5}
                   textAlignVertical="top"
                   maxLength={500}
                 />
@@ -471,14 +479,14 @@ export default function CreateListingScreen() {
                 </View>
               ) : (
                 <>
-                  <View style={styles.categoryGrid}>
+                  <View style={[styles.categoryGrid, isDesktop && styles.categoryGridDesktop]}>
                     {categories.map((cat) => {
                       const isSelected = selectedCategory?.id === cat.id;
                       const cs = CATEGORY_ICONS[cat.value] ?? DEFAULT_CAT_ICON;
                       return (
                         <TouchableOpacity
                           key={cat.id}
-                          style={[styles.categoryCard, isSelected && styles.categoryCardSelected]}
+                          style={[styles.categoryCard, isDesktop && styles.categoryCardDesktop, isSelected && styles.categoryCardSelected]}
                           onPress={() => handleSelectCategory(cat)}
                           activeOpacity={0.75}
                         >
@@ -537,7 +545,7 @@ export default function CreateListingScreen() {
           {/* STEP 3 — PHOTOS */}
           {step === 'PHOTOS' && (
             <View style={styles.formSection}>
-              <TouchableOpacity style={styles.photoDropZone} onPress={handlePickPhoto} activeOpacity={0.8}>
+              <TouchableOpacity style={[styles.photoDropZone, isDesktop && styles.photoDropZoneDesktop]} onPress={handlePickPhoto} activeOpacity={0.8}>
                 <View style={styles.photoDropIcon}>
                   <Ionicons name="image-outline" size={28} color={Colors.textMuted} />
                 </View>
@@ -563,9 +571,9 @@ export default function CreateListingScreen() {
                       <Text style={styles.photoCountPillText}>{photos.length}/10</Text>
                     </View>
                   </View>
-                  <View style={styles.photoGrid}>
+                  <View style={[styles.photoGrid, isDesktop && styles.photoGridDesktop]}>
                     {photos.map((photo, index) => (
-                      <View key={index} style={[styles.photoCell, index === 0 && styles.photoCellMain]}>
+                      <View key={index} style={[styles.photoCell, isDesktop && styles.photoCellDesktop, index === 0 && styles.photoCellMain, index === 0 && isDesktop && styles.photoCellMainDesktop]}>
                         <Image source={{ uri: photo.uri }} style={styles.photoImage} resizeMode="cover" />
                         {index === 0 && (
                           <View style={styles.photoPrimaryBadge}>
@@ -582,7 +590,7 @@ export default function CreateListingScreen() {
                       </View>
                     ))}
                     {photos.length < 10 && (
-                      <TouchableOpacity style={styles.photoAddCell} onPress={handlePickPhoto} activeOpacity={0.7}>
+                      <TouchableOpacity style={[styles.photoAddCell, isDesktop && styles.photoCellDesktop]} onPress={handlePickPhoto} activeOpacity={0.7}>
                         <Ionicons name="add-outline" size={22} color={Colors.primary} />
                         <Text style={styles.photoAddText}>Ajouter</Text>
                       </TouchableOpacity>
@@ -598,36 +606,42 @@ export default function CreateListingScreen() {
             <View style={styles.formSection}>
               {/* Price inputs card */}
               <View style={styles.pricingCard}>
-                <Text style={styles.pricingFieldLabel}>Tarif affiché par jour</Text>
-                <View style={styles.pricingInputRow}>
-                  <TextInput
-                    style={styles.pricingInput}
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                    value={price}
-                    onChangeText={(v) => setPrice(v.replace(',', '.'))}
-                    keyboardType="decimal-pad"
-                  />
-                  <View style={styles.pricingEuroWrap}>
-                    <Text style={styles.pricingEuroText}>€</Text>
+                <View style={isDesktop ? styles.pricingTwoColRow : undefined}>
+                  <View style={isDesktop ? styles.pricingTwoColField : undefined}>
+                    <Text style={styles.pricingFieldLabel}>Tarif affiché par jour</Text>
+                    <View style={styles.pricingInputRow}>
+                      <TextInput
+                        style={styles.pricingInput}
+                        placeholder="0.00"
+                        placeholderTextColor={Colors.textMuted}
+                        value={price}
+                        onChangeText={(v) => setPrice(v.replace(',', '.'))}
+                        keyboardType="decimal-pad"
+                      />
+                      <View style={styles.pricingEuroWrap}>
+                        <Text style={styles.pricingEuroText}>€</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.pricingHint}>Ce prix inclut notre commission de 8%</Text>
                   </View>
-                </View>
-                <Text style={styles.pricingHint}>Ce prix inclut notre commission de 8%</Text>
 
-                <View style={styles.pricingDivider} />
+                  {!isDesktop && <View style={styles.pricingDivider} />}
 
-                <Text style={styles.pricingFieldLabel}>Caution (optionnel)</Text>
-                <View style={styles.pricingInputRow}>
-                  <TextInput
-                    style={styles.pricingInput}
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                    value={deposit}
-                    onChangeText={(v) => setDeposit(v.replace(',', '.'))}
-                    keyboardType="decimal-pad"
-                  />
-                  <View style={styles.pricingEuroWrap}>
-                    <Text style={styles.pricingEuroText}>€</Text>
+                  <View style={isDesktop ? styles.pricingTwoColField : undefined}>
+                    <Text style={styles.pricingFieldLabel}>Caution (optionnel)</Text>
+                    <View style={styles.pricingInputRow}>
+                      <TextInput
+                        style={styles.pricingInput}
+                        placeholder="0.00"
+                        placeholderTextColor={Colors.textMuted}
+                        value={deposit}
+                        onChangeText={(v) => setDeposit(v.replace(',', '.'))}
+                        keyboardType="decimal-pad"
+                      />
+                      <View style={styles.pricingEuroWrap}>
+                        <Text style={styles.pricingEuroText}>€</Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
 
@@ -704,7 +718,7 @@ export default function CreateListingScreen() {
                     {photos.length > 0 && (
                       <Image
                         source={{ uri: photos[0].uri }}
-                        style={styles.previewPhoto}
+                        style={[styles.previewPhoto, isDesktop && styles.previewPhotoDesktop]}
                         resizeMode="cover"
                       />
                     )}
@@ -753,10 +767,12 @@ export default function CreateListingScreen() {
               )}
             </View>
           )}
+          </View>
         </ScrollView>
 
         {/* Footer */}
-        <View style={[styles.footer, isPricingStep && styles.footerPricing]}>
+        <View style={[styles.footer, isPricingStep && styles.footerPricing, isDesktop && styles.footerDesktop]}>
+          <View style={isDesktop ? styles.desktopInner : undefined}>
           {step !== 'PRICING' ? (
             <TouchableOpacity
               style={[styles.primaryBtn, !canAdvance() && styles.primaryBtnDisabled]}
@@ -785,6 +801,7 @@ export default function CreateListingScreen() {
           <Text style={[styles.footerHint, isPricingStep && styles.footerHintPricing]}>
             {getFooterHint(step)}
           </Text>
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -831,8 +848,6 @@ const styles = StyleSheet.create({
 
   /* Header */
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'ios' ? 56 : 40,
     paddingBottom: 12,
@@ -840,6 +855,18 @@ const styles = StyleSheet.create({
   },
   headerPricing: {
     backgroundColor: Colors.background,
+  },
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  desktopHeaderInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 680,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 0,
   },
   backBtn: {
     width: 36,
@@ -864,23 +891,42 @@ const styles = StyleSheet.create({
 
   /* Progress */
   progressTrack: {
-    height: 6,
-    backgroundColor: Colors.borderLight,
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: '#e0e0d0',
+    borderRadius: 999,
     marginHorizontal: 16,
     marginBottom: 24,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   progressTrackPricing: {
-    backgroundColor: Colors.borderLight,
+    backgroundColor: '#e0e0d0',
+  },
+  progressInner: {
+    flex: 1,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: '#e0e0d0',
+    overflow: 'hidden',
+  },
+  desktopProgressInner: {
+    maxWidth: 680,
+    alignSelf: 'center',
+    width: '100%',
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: '#e0e0d0',
+    overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: Colors.primary,
-    borderRadius: 3,
+    backgroundColor: '#2f3a2f',
+    borderRadius: 999,
+    ...Platform.select({
+      web: { transition: 'width 0.35s ease' },
+    }),
   },
   progressFillPricing: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#2f3a2f',
   },
 
   /* Scroll */
@@ -1617,5 +1663,83 @@ const styles = StyleSheet.create({
   },
   footerHintPricing: {
     color: Colors.textMuted,
+  },
+
+  /* ─── DESKTOP LAYOUT ─── */
+  desktopInner: {
+    maxWidth: 680,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  scrollContentDesktop: {
+    paddingHorizontal: 40,
+    paddingTop: 8,
+  },
+  footerDesktop: {
+    paddingHorizontal: 40,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+
+  /* Desktop header input Step 1 */
+  inputDesktop: {
+    height: 52,
+    borderRadius: 12,
+  },
+  textareaDesktop: {
+    minHeight: 160,
+    ...Platform.select({
+      web: { resize: 'vertical' as any },
+    }),
+  },
+
+  /* Desktop Category Grid — 3 columns */
+  categoryGridDesktop: {
+    gap: 12,
+  },
+  categoryCardDesktop: {
+    width: '31%',
+    minHeight: 120,
+    paddingVertical: 18,
+  },
+
+  /* Desktop Photos */
+  photoDropZoneDesktop: {
+    height: 220,
+    borderWidth: 2,
+    borderColor: '#ccd5ae',
+    borderRadius: 16,
+    paddingVertical: 0,
+  },
+  photoGridDesktop: {
+    gap: 10,
+  },
+  photoCellDesktop: {
+    width: '31%',
+    aspectRatio: 1,
+    height: undefined,
+  },
+  photoCellMainDesktop: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    height: undefined,
+  },
+
+  /* Desktop Pricing — 2 col inputs */
+  pricingTwoColRow: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'flex-start',
+  },
+  pricingTwoColField: {
+    flex: 1,
+    gap: 6,
+  },
+
+  /* Desktop Preview — 16:9 photo */
+  previewPhotoDesktop: {
+    aspectRatio: 16 / 9,
+    height: undefined,
+    width: '100%',
   },
 });
