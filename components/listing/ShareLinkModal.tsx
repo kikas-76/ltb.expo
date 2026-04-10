@@ -8,10 +8,10 @@ import {
   Platform,
   Share,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
-
 
 const MONTH_NAMES = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -54,36 +54,36 @@ function toISO(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+function buildCalendarDays(year: number, month: number): (Date | null)[] {
+  const firstDay = new Date(year, month, 1);
+  let startDow = firstDay.getDay();
+  if (startDow === 0) startDow = 7;
+  startDow -= 1;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
 interface MiniCalendarProps {
   startDate: Date | null;
   endDate: Date | null;
   onSelect: (start: Date | null, end: Date | null) => void;
   bookedRanges: { start: Date; end: Date }[];
+  cellSize: number;
 }
 
-function MiniCalendar({ startDate, endDate, onSelect, bookedRanges }: MiniCalendarProps) {
+function MiniCalendar({ startDate, endDate, onSelect, bookedRanges, cellSize }: MiniCalendarProps) {
   const today = stripTime(new Date());
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selecting, setSelecting] = useState<'start' | 'end'>('start');
 
-  const firstDay = new Date(viewYear, viewMonth, 1);
-  const lastDay = new Date(viewYear, viewMonth + 1, 0);
-
-  let startDow = firstDay.getDay();
-  if (startDow === 0) startDow = 7;
-  const leadingBlanks = startDow - 1;
-  const totalDays = lastDay.getDate();
-
-  const cells: (Date | null)[] = [
-    ...Array(leadingBlanks).fill(null),
-    ...Array.from({ length: totalDays }, (_, i) => new Date(viewYear, viewMonth, i + 1)),
-  ];
-
-  const rows: (Date | null)[][] = [];
-  for (let i = 0; i < cells.length; i += 7) {
-    rows.push(cells.slice(i, i + 7));
-  }
+  const isPrevDisabled =
+    viewYear < today.getFullYear() ||
+    (viewYear === today.getFullYear() && viewMonth <= today.getMonth());
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
@@ -127,99 +127,229 @@ function MiniCalendar({ startDate, endDate, onSelect, bookedRanges }: MiniCalend
     }
   };
 
+  const calendarDays = buildCalendarDays(viewYear, viewMonth);
+
   return (
-    <View style={calStyles.wrap}>
+    <View>
       <View style={calStyles.nav}>
-        <TouchableOpacity onPress={prevMonth} style={calStyles.navBtn} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={18} color={Colors.primaryDark} />
+        <TouchableOpacity
+          onPress={prevMonth}
+          disabled={isPrevDisabled}
+          style={[calStyles.navBtn, isPrevDisabled && calStyles.navBtnDisabled]}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back-outline" size={18} color={isPrevDisabled ? Colors.borderLight : Colors.text} />
         </TouchableOpacity>
         <Text style={calStyles.monthLabel}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
         <TouchableOpacity onPress={nextMonth} style={calStyles.navBtn} activeOpacity={0.7}>
-          <Ionicons name="chevron-forward" size={18} color={Colors.primaryDark} />
+          <Ionicons name="chevron-forward-outline" size={18} color={Colors.text} />
         </TouchableOpacity>
       </View>
 
-      <View style={calStyles.dayLabels}>
-        {DAY_LABELS.map(l => <Text key={l} style={calStyles.dayLabel}>{l}</Text>)}
+      <View style={calStyles.dayLabelsRow}>
+        {DAY_LABELS.map(l => (
+          <View key={l} style={[calStyles.dayLabelCell, { width: cellSize }]}>
+            <Text style={calStyles.dayLabelText}>{l}</Text>
+          </View>
+        ))}
       </View>
 
-      {rows.map((row, ri) => (
-        <View key={ri} style={calStyles.row}>
-          {row.map((day, di) => {
-            if (!day) return <View key={di} style={calStyles.cell} />;
-            const stripped = stripTime(day);
-            const isPast = stripped < today;
-            const isBooked = isDateBooked(stripped, bookedRanges);
-            const isStart = startDate && isSameDay(stripped, startDate);
-            const isEnd = endDate && isSameDay(stripped, endDate);
-            const inRange = isInRange(stripped, startDate, endDate);
-            const disabled = isPast || isBooked;
-            return (
-              <TouchableOpacity
-                key={di}
-                style={[
-                  calStyles.cell,
-                  isStart && calStyles.cellStart,
-                  isEnd && calStyles.cellEnd,
-                  inRange && calStyles.cellInRange,
-                  disabled && calStyles.cellDisabled,
-                ]}
-                onPress={() => !disabled && handleDayPress(day)}
-                activeOpacity={disabled ? 1 : 0.7}
-                disabled={disabled}
-              >
+      <View style={calStyles.daysGrid}>
+        {calendarDays.map((day, idx) => {
+          if (!day) return <View key={`e-${idx}`} style={{ width: cellSize, height: cellSize }} />;
+          const stripped = stripTime(day);
+          const isPast = stripped < today;
+          const isBooked = !isPast && isDateBooked(stripped, bookedRanges);
+          const isDisabled = isPast || isBooked;
+          const isToday = isSameDay(stripped, today);
+          const isStart = startDate ? isSameDay(stripped, startDate) : false;
+          const isEnd = endDate ? isSameDay(stripped, endDate) : false;
+          const inRange = startDate && endDate && stripped > stripTime(startDate) && stripped < stripTime(endDate);
+          const isSelected = isStart || isEnd;
+          const innerSize = cellSize - 6;
+
+          return (
+            <TouchableOpacity
+              key={idx}
+              style={{ width: cellSize, height: cellSize, alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+              onPress={() => !isDisabled && handleDayPress(day)}
+              disabled={isDisabled}
+              activeOpacity={0.6}
+            >
+              {inRange && !isBooked && (
+                <View style={[calStyles.rangeBg, { top: 3, bottom: 3, left: 0, right: 0 }]} />
+              )}
+              {isStart && endDate && !isBooked && (
+                <View style={[calStyles.rangeBg, calStyles.rangeBgHalfRight, { top: 3, bottom: 3 }]} />
+              )}
+              {isEnd && !isBooked && (
+                <View style={[calStyles.rangeBg, calStyles.rangeBgHalfLeft, { top: 3, bottom: 3 }]} />
+              )}
+              <View style={[
+                calStyles.dayInner,
+                { width: innerSize, height: innerSize, borderRadius: innerSize / 2 },
+                isSelected && !isBooked && calStyles.daySelected,
+                isToday && !isSelected && !isBooked && calStyles.dayToday,
+                isBooked && calStyles.dayBooked,
+              ]}>
                 <Text style={[
-                  calStyles.cellText,
-                  (isStart || isEnd) && calStyles.cellTextSelected,
-                  inRange && calStyles.cellTextInRange,
-                  disabled && calStyles.cellTextDisabled,
-                  isBooked && calStyles.cellTextBooked,
+                  calStyles.dayText,
+                  isPast && calStyles.dayTextDisabled,
+                  isBooked && calStyles.dayTextBooked,
+                  isSelected && !isBooked && calStyles.dayTextSelected,
+                  inRange && !isBooked && calStyles.dayTextRange,
+                  isToday && !isSelected && !isBooked && calStyles.dayTextToday,
                 ]}>
                   {day.getDate()}
                 </Text>
-                {isBooked && <View style={calStyles.bookedDot} />}
-              </TouchableOpacity>
-            );
-          })}
+                {isBooked && (
+                  <View style={calStyles.bookedStrikeWrap} pointerEvents="none">
+                    <View style={calStyles.bookedStrike} />
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {bookedRanges.length > 0 && (
+        <View style={calStyles.legendRow}>
+          <View style={calStyles.legendDot} />
+          <Text style={calStyles.legendText}>Dates indisponibles</Text>
         </View>
-      ))}
+      )}
     </View>
   );
 }
 
 const calStyles = StyleSheet.create({
-  wrap: { marginTop: 8 },
-  nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  navBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: Colors.primarySurface, alignItems: 'center', justifyContent: 'center' },
-  monthLabel: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.text, letterSpacing: -0.2 },
-  dayLabels: { flexDirection: 'row', marginBottom: 4 },
-  dayLabel: { flex: 1, textAlign: 'center', fontFamily: 'Inter-Medium', fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase' },
-  row: { flexDirection: 'row', marginBottom: 2 },
-  cell: { flex: 1, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
-  cellStart: { backgroundColor: Colors.primaryDark },
-  cellEnd: { backgroundColor: Colors.primaryDark },
-  cellInRange: { backgroundColor: '#D4DAC4' },
-  cellDisabled: { opacity: 0.35 },
-  cellText: { fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.text },
-  cellTextSelected: { color: '#fff', fontFamily: 'Inter-Bold' },
-  cellTextInRange: { color: Colors.primaryDark, fontFamily: 'Inter-Medium' },
-  cellTextDisabled: { color: Colors.textMuted },
-  cellTextBooked: { textDecorationLine: 'line-through' },
-  bookedDot: { position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.notification },
+  nav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  navBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  navBtnDisabled: { opacity: 0.35 },
+  monthLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
+    color: Colors.text,
+    letterSpacing: -0.2,
+  },
+  dayLabelsRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+  },
+  dayLabelCell: {
+    alignItems: 'center',
+  },
+  dayLabelText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 11,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+  },
+  daysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  dayInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  daySelected: { backgroundColor: Colors.primary },
+  dayToday: { borderWidth: 1.5, borderColor: Colors.primary },
+  dayBooked: { backgroundColor: Colors.borderLight },
+  dayText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: Colors.text,
+  },
+  dayTextDisabled: { color: Colors.borderLight },
+  dayTextSelected: { color: '#fff', fontFamily: 'Inter-Bold' },
+  dayTextRange: { color: Colors.primaryDark, fontFamily: 'Inter-SemiBold' },
+  dayTextToday: { color: Colors.primary, fontFamily: 'Inter-Bold' },
+  dayTextBooked: { color: Colors.textMuted, opacity: 0.6 },
+  rangeBg: {
+    position: 'absolute',
+    backgroundColor: Colors.primaryLight + '70',
+    zIndex: 1,
+  },
+  rangeBgHalfRight: {
+    left: '50%',
+  },
+  rangeBgHalfLeft: {
+    right: '50%',
+  },
+  bookedStrikeWrap: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookedStrike: {
+    position: 'absolute',
+    height: 1.5,
+    width: '70%',
+    backgroundColor: Colors.textMuted,
+    opacity: 0.45,
+    transform: [{ rotate: '-35deg' }],
+    borderRadius: 2,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  legendDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: Colors.borderLight,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  legendText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
 });
 
 export default function ShareLinkModal({ visible, onClose, listingId, listingName, pricePerDay, bookedRanges }: ShareLinkModalProps) {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(Dimensions.get('window').width);
+
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', ({ window }) => setWindowWidth(window.width));
+    return () => sub?.remove();
+  }, []);
+
+  const isDesktop = windowWidth >= 768;
+  const calendarWidth = isDesktop ? Math.min(windowWidth * 0.42, 420) : windowWidth - 40;
+  const cellSize = Math.floor(calendarWidth / 7);
 
   const days = startDate && endDate
     ? Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000) + 1
     : 0;
 
-  useEffect(() => {
-    setCopied(false);
-  }, [startDate, endDate]);
+  useEffect(() => { setCopied(false); }, [startDate, endDate]);
 
   useEffect(() => {
     if (!visible) {
@@ -282,98 +412,202 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
 
   const canShare = Platform.OS === 'web' && typeof (navigator as any)?.share !== 'undefined';
 
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modal}>
-          <View style={styles.handle} />
+  const modalContent = (
+    <View style={[styles.modal, isDesktop && styles.modalDesktop]}>
+      <View style={[styles.handle, isDesktop && styles.handleDesktop]} />
 
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.headerIcon}>
-                <Ionicons name="link-outline" size={18} color={Colors.primaryDark} />
-              </View>
-              <Text style={styles.title}>Lien de réservation directe</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close-outline" size={22} color={Colors.textMuted} />
-            </TouchableOpacity>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.headerIcon}>
+            <Ionicons name="link-outline" size={18} color={Colors.primaryDark} />
           </View>
+          <Text style={styles.title}>Lien de réservation directe</Text>
+        </View>
+        <TouchableOpacity
+          onPress={onClose}
+          style={styles.closeBtn}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="close-outline" size={22} color={Colors.textMuted} />
+        </TouchableOpacity>
+      </View>
 
-          <Text style={styles.subtitle}>
-            Sélectionne les dates et partage le lien. Le locataire pourra réserver et payer directement, sans validation de ta part.
-          </Text>
+      <Text style={styles.subtitle}>
+        Sélectionne les dates et partage le lien. Le locataire pourra réserver et payer directement.
+      </Text>
 
-          <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+        {isDesktop ? (
+          <View style={styles.desktopLayout}>
+            <View style={[styles.calendarCol, { width: calendarWidth }]}>
+              <MiniCalendar
+                startDate={startDate}
+                endDate={endDate}
+                onSelect={handleSelect}
+                bookedRanges={bookedRanges}
+                cellSize={cellSize}
+              />
+            </View>
+            <View style={styles.summaryCol}>
+              {startDate && endDate && days > 0 ? (
+                <PriceBox
+                  pricePerDay={pricePerDay}
+                  days={days}
+                  basePrice={basePrice}
+                  discount={discount}
+                  discountAmt={discountAmt}
+                  totalWithFee={totalWithFee}
+                  serviceFee={serviceFee}
+                  ownerReceives={ownerReceives}
+                />
+              ) : (
+                <View style={styles.hintBox}>
+                  <Ionicons name="calendar-outline" size={28} color={Colors.primary} />
+                  <Text style={styles.hintText}>Sélectionne des dates pour générer le lien</Text>
+                </View>
+              )}
+
+              {link ? (
+                <LinkBox
+                  link={link}
+                  copied={copied}
+                  canShare={canShare}
+                  onCopy={handleCopy}
+                  onShare={handleShare}
+                />
+              ) : null}
+            </View>
+          </View>
+        ) : (
+          <>
             <MiniCalendar
               startDate={startDate}
               endDate={endDate}
               onSelect={handleSelect}
               bookedRanges={bookedRanges}
+              cellSize={cellSize}
             />
 
             {startDate && endDate && days > 0 && (
-              <View style={styles.priceBox}>
-                <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>{pricePerDay}€ × {days} jour{days > 1 ? 's' : ''}</Text>
-                  <Text style={styles.priceValue}>{Math.round(basePrice)}€</Text>
-                </View>
-                {discount > 0 && (
-                  <View style={styles.priceRow}>
-                    <Text style={[styles.priceLabel, { color: Colors.primaryDark }]}>
-                      Remise {Math.round(discount * 100)}% {days >= 7 ? '(7+ jours)' : '(3+ jours)'}
-                    </Text>
-                    <Text style={[styles.priceValue, { color: Colors.primaryDark }]}>-{discountAmt}€</Text>
-                  </View>
-                )}
-                <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>Frais de service (7%)</Text>
-                  <Text style={styles.priceValue}>{serviceFee.toFixed(2)}€</Text>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.priceRow}>
-                  <Text style={styles.totalLabel}>Total locataire</Text>
-                  <Text style={styles.totalValue}>{totalWithFee}€</Text>
-                </View>
-                <View style={styles.ownerReceivesRow}>
-                  <Ionicons name="wallet-outline" size={13} color={Colors.primaryDark} />
-                  <Text style={styles.ownerReceivesText}>
-                    Tu recevras environ {ownerReceives}€ (après 8% de commission)
-                  </Text>
-                </View>
-              </View>
+              <PriceBox
+                pricePerDay={pricePerDay}
+                days={days}
+                basePrice={basePrice}
+                discount={discount}
+                discountAmt={discountAmt}
+                totalWithFee={totalWithFee}
+                serviceFee={serviceFee}
+                ownerReceives={ownerReceives}
+              />
             )}
 
             {link ? (
-              <View style={styles.linkBox}>
-                <View style={styles.linkBoxHeader}>
-                  <Ionicons name="link" size={14} color={Colors.primaryDark} />
-                  <Text style={styles.linkBoxLabel}>Lien généré</Text>
-                </View>
-                <Text style={styles.linkText} numberOfLines={3} selectable>{link}</Text>
-                <View style={styles.linkActions}>
-                  <TouchableOpacity style={[styles.copyBtn, copied && styles.copyBtnDone]} onPress={handleCopy} activeOpacity={0.85}>
-                    <Ionicons name={copied ? 'checkmark-outline' : 'copy-outline'} size={16} color="#fff" />
-                    <Text style={styles.copyBtnText}>{copied ? 'Copié !' : 'Copier le lien'}</Text>
-                  </TouchableOpacity>
-                  {canShare && (
-                    <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
-                      <Ionicons name="share-social-outline" size={16} color={Colors.primaryDark} />
-                      <Text style={styles.shareBtnText}>Partager</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
+              <LinkBox
+                link={link}
+                copied={copied}
+                canShare={canShare}
+                onCopy={handleCopy}
+                onShare={handleShare}
+              />
             ) : (
               <View style={styles.hintBox}>
                 <Ionicons name="calendar-outline" size={28} color={Colors.primary} />
                 <Text style={styles.hintText}>Sélectionne des dates pour générer le lien</Text>
               </View>
             )}
-          </ScrollView>
-        </View>
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={[styles.overlay, isDesktop && styles.overlayDesktop]}>
+        {isDesktop && (
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
+        )}
+        {modalContent}
       </View>
     </Modal>
+  );
+}
+
+interface PriceBoxProps {
+  pricePerDay: number;
+  days: number;
+  basePrice: number;
+  discount: number;
+  discountAmt: number;
+  totalWithFee: string;
+  serviceFee: number;
+  ownerReceives: number;
+}
+
+function PriceBox({ pricePerDay, days, basePrice, discount, discountAmt, totalWithFee, serviceFee, ownerReceives }: PriceBoxProps) {
+  return (
+    <View style={styles.priceBox}>
+      <View style={styles.priceRow}>
+        <Text style={styles.priceLabel}>{pricePerDay}€ × {days} jour{days > 1 ? 's' : ''}</Text>
+        <Text style={styles.priceValue}>{Math.round(basePrice)}€</Text>
+      </View>
+      {discount > 0 && (
+        <View style={styles.priceRow}>
+          <Text style={[styles.priceLabel, { color: Colors.primaryDark }]}>
+            Remise {Math.round(discount * 100)}% {days >= 7 ? '(7+ jours)' : '(3+ jours)'}
+          </Text>
+          <Text style={[styles.priceValue, { color: Colors.primaryDark }]}>-{discountAmt}€</Text>
+        </View>
+      )}
+      <View style={styles.priceRow}>
+        <Text style={styles.priceLabel}>Frais de service (7%)</Text>
+        <Text style={styles.priceValue}>{serviceFee.toFixed(2)}€</Text>
+      </View>
+      <View style={styles.divider} />
+      <View style={styles.priceRow}>
+        <Text style={styles.totalLabel}>Total locataire</Text>
+        <Text style={styles.totalValue}>{totalWithFee}€</Text>
+      </View>
+      <View style={styles.ownerReceivesRow}>
+        <Ionicons name="wallet-outline" size={13} color={Colors.primaryDark} />
+        <Text style={styles.ownerReceivesText}>
+          Tu recevras environ {ownerReceives}€ (après 8% de commission)
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+interface LinkBoxProps {
+  link: string;
+  copied: boolean;
+  canShare: boolean;
+  onCopy: () => void;
+  onShare: () => void;
+}
+
+function LinkBox({ link, copied, canShare, onCopy, onShare }: LinkBoxProps) {
+  return (
+    <View style={styles.linkBox}>
+      <View style={styles.linkBoxHeader}>
+        <Ionicons name="link" size={14} color={Colors.primaryDark} />
+        <Text style={styles.linkBoxLabel}>Lien généré</Text>
+      </View>
+      <Text style={styles.linkText} numberOfLines={3} selectable>{link}</Text>
+      <View style={styles.linkActions}>
+        <TouchableOpacity style={[styles.copyBtn, copied && styles.copyBtnDone]} onPress={onCopy} activeOpacity={0.85}>
+          <Ionicons name={copied ? 'checkmark-outline' : 'copy-outline'} size={16} color="#fff" />
+          <Text style={styles.copyBtnText}>{copied ? 'Copié !' : 'Copier le lien'}</Text>
+        </TouchableOpacity>
+        {canShare && (
+          <TouchableOpacity style={styles.shareBtn} onPress={onShare} activeOpacity={0.85}>
+            <Ionicons name="share-social-outline" size={16} color={Colors.primaryDark} />
+            <Text style={styles.shareBtnText}>Partager</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -382,6 +616,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
+  },
+  overlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 40,
   },
   modal: {
     backgroundColor: Colors.white,
@@ -397,6 +637,17 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' },
     }),
   },
+  modalDesktop: {
+    borderRadius: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    width: '100%',
+    maxWidth: 900,
+    maxHeight: '85%',
+    ...Platform.select({
+      web: { boxShadow: '0 8px 48px rgba(0,0,0,0.18)' },
+    }),
+  },
   handle: {
     width: 40,
     height: 4,
@@ -404,6 +655,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#D9D5C8',
     alignSelf: 'center',
     marginBottom: 16,
+  },
+  handleDesktop: {
+    display: 'none' as any,
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',
@@ -447,7 +702,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 19,
-    marginBottom: 4,
+    marginBottom: 12,
+  },
+  desktopLayout: {
+    flexDirection: 'row',
+    gap: 24,
+    alignItems: 'flex-start',
+  },
+  calendarCol: {
+    flexShrink: 0,
+  },
+  summaryCol: {
+    flex: 1,
+    gap: 14,
   },
   priceBox: {
     backgroundColor: '#F0F4E8',
