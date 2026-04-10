@@ -126,12 +126,13 @@ export default function ExploreScreen() {
   const maxW = isDesktop ? 1200 : isTablet ? 768 : undefined;
   const hPad = isDesktop ? 48 : isTablet ? 32 : 0;
 
-  const gridCols = isDesktop ? 3 : isTablet ? 2 : 2;
-  const gridItemWidth = isDesktop
-    ? `${(100 / gridCols - 1.5)}%`
-    : isTablet
-    ? '48.5%'
-    : '47.5%';
+  const gridCols = isDesktop ? 4 : isTablet ? 3 : 2;
+  const gridGap = isDesktop ? 16 : isTablet ? 16 : 12;
+  const gridPad = isDesktop ? 0 : isTablet ? 0 : 16;
+  const availableWidth = isTabletOrDesktop
+    ? Math.min(width - hPad * 2, isDesktop ? 1200 : 768)
+    : width - gridPad * 2;
+  const gridItemWidth = Math.floor((availableWidth - gridGap * (gridCols - 1)) / gridCols);
 
   if (authLoading) {
     return <View style={styles.loadingScreen} />;
@@ -187,9 +188,9 @@ export default function ExploreScreen() {
 
             {loadingData ? (
               isTabletOrDesktop ? (
-                <View style={[styles.grid, { paddingHorizontal: 0 }]}>
+                <View style={[styles.grid, { gap: gridGap, paddingHorizontal: gridPad }]}>
                   {[1, 2, 3].map((i) => (
-                    <View key={i} style={[styles.gridItem, { width: gridItemWidth as any }]}>
+                    <View key={i} style={[styles.gridItem, { width: gridItemWidth }]}>
                       <SkeletonCard variant="grid" />
                     </View>
                   ))}
@@ -212,9 +213,9 @@ export default function ExploreScreen() {
             ) : nearbyListings.length === 0 ? (
               <EmptyState />
             ) : isTabletOrDesktop ? (
-              <View style={[styles.grid, { paddingHorizontal: 0 }]}>
+              <View style={[styles.grid, { gap: gridGap, paddingHorizontal: gridPad }]}>
                 {nearbyListings.map((item) => (
-                  <View key={item.id} style={[styles.gridItem, { width: gridItemWidth as any }]}>
+                  <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
                     <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
                   </View>
                 ))}
@@ -242,9 +243,9 @@ export default function ExploreScreen() {
             </TouchableOpacity>
 
             {loadingData ? (
-              <View style={[styles.grid, isTabletOrDesktop && { paddingHorizontal: 0 }]}>
-                {[1, 2, isDesktop ? 3 : 4, isDesktop ? 4 : undefined].filter(Boolean).map((i) => (
-                  <View key={i} style={[styles.gridItem, { width: gridItemWidth as any }]}>
+              <View style={[styles.grid, { gap: gridGap, paddingHorizontal: gridPad }]}>
+                {[1, 2, 3, 4].map((i) => (
+                  <View key={i} style={[styles.gridItem, { width: gridItemWidth }]}>
                     <SkeletonCard variant="grid" />
                   </View>
                 ))}
@@ -252,9 +253,9 @@ export default function ExploreScreen() {
             ) : recentListings.length === 0 ? (
               <EmptyState />
             ) : (
-              <View style={[styles.grid, isTabletOrDesktop && { paddingHorizontal: 0 }]}>
+              <View style={[styles.grid, { gap: gridGap, paddingHorizontal: gridPad }]}>
                 {recentListings.map((item) => (
-                  <View key={item.id} style={[styles.gridItem, { width: gridItemWidth as any }]}>
+                  <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
                     <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
                   </View>
                 ))}
@@ -312,9 +313,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 16,
-    gap: 10,
+    gap: 12,
   },
   gridItem: {
-    width: '47.5%',
+    flexGrow: 0,
+    flexShrink: 0,
   },
 });
