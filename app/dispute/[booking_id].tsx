@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { sendEmail } from '@/lib/sendEmail';
 import {
   View,
   Text,
@@ -133,6 +134,26 @@ export default function DisputePage() {
           content: 'Un litige a été ouvert par le propriétaire — La caution reste bloquée jusqu\'à résolution',
           is_system: true,
         });
+      }
+
+      const { data: bookingInfo } = await supabase
+        .from('bookings')
+        .select('renter_id, owner_id, deposit_amount, start_date, end_date, listing:listings(name)')
+        .eq('id', booking_id)
+        .maybeSingle();
+
+      if (bookingInfo) {
+        const disputeData = {
+          listing_name: (bookingInfo.listing as any)?.name ?? 'Location',
+          start_date: new Date(bookingInfo.start_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }),
+          end_date: new Date(bookingInfo.end_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }),
+          deposit: bookingInfo.deposit_amount ?? 0,
+          dispute_id: booking_id,
+        };
+        const { data: renterP } = await supabase.from('profiles').select('email').eq('id', bookingInfo.renter_id).maybeSingle();
+        if (renterP?.email) sendEmail(renterP.email, 'dispute_opened', disputeData);
+        const { data: ownerP } = await supabase.from('profiles').select('email').eq('id', bookingInfo.owner_id).maybeSingle();
+        if (ownerP?.email) sendEmail(ownerP.email, 'dispute_opened', disputeData);
       }
 
       setSubmitted(true);

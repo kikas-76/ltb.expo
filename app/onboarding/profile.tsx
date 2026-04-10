@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { sendEmail } from '@/lib/sendEmail';
 import {
   View,
   Text,
@@ -202,6 +203,9 @@ export default function OnboardingProfileScreen() {
       return;
     }
 
+    sendEmail(params.email, 'welcome', {
+      first_name: cleanUsername,
+    });
     setSubmitting(false);
     router.replace({ pathname: '/onboarding/account-type', params: { userId: userId! } });
   };

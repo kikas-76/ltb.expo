@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { sendEmail } from '@/lib/sendEmail';
 import {
   View,
   Text,
@@ -147,6 +148,42 @@ export default function PaymentScreen() {
           stripe_transfer_id: data.rental_payment_intent_id,
         })
         .eq('id', booking_id);
+
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const feePercent = 0.07;
+      const totalNow = Math.round(booking.total_price * (1 + feePercent) * 100) / 100;
+
+      if (currentUser?.email) {
+        sendEmail(currentUser.email, 'booking_paid_renter', {
+          listing_name: booking.listing?.name ?? 'Location',
+          owner_name: booking.owner?.username ?? 'le propriétaire',
+          start_date: formatDate(booking.start_date),
+          end_date: formatDate(booking.end_date),
+          total_price: totalNow.toFixed(2),
+          deposit: booking.deposit_amount ?? 0,
+          booking_id: booking_id,
+        });
+      }
+
+      const { data: bookingOwner } = await supabase
+        .from('bookings')
+        .select('owner_id')
+        .eq('id', booking_id)
+        .maybeSingle();
+      if (bookingOwner?.owner_id) {
+        const { data: ownerProfile } = await supabase.from('profiles').select('email').eq('id', bookingOwner.owner_id).maybeSingle();
+        if (ownerProfile?.email) {
+          const ownerEarnings = (booking.total_price * 0.92).toFixed(2);
+          sendEmail(ownerProfile.email, 'booking_paid_owner', {
+            listing_name: booking.listing?.name ?? 'Location',
+            renter_name: currentUser?.user_metadata?.username ?? 'un locataire',
+            start_date: formatDate(booking.start_date),
+            end_date: formatDate(booking.end_date),
+            owner_earnings: ownerEarnings,
+            booking_id: booking_id,
+          });
+        }
+      }
 
       router.replace({
         pathname: '/payment-success',
