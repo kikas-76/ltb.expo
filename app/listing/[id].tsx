@@ -371,6 +371,16 @@ export default function ListingDetailScreen() {
   const formatShortDate = (d: Date) =>
     d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else if (isOwner) {
+      router.replace('/(tabs)/mes-annonces' as any);
+    } else {
+      router.replace('/(tabs)/' as any);
+    }
+  };
+
   const headerOpacity = scrollY.interpolate({
     inputRange: [SCROLL_THRESHOLD - 60, SCROLL_THRESHOLD],
     outputRange: [0, 1],
@@ -389,7 +399,7 @@ export default function ListingDetailScreen() {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.notFoundText}>Annonce introuvable</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtnSimple}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/' as any)} style={styles.backBtnSimple}>
           <Text style={styles.backBtnSimpleText}>Retour</Text>
         </TouchableOpacity>
       </View>
@@ -420,7 +430,7 @@ export default function ListingDetailScreen() {
     return (
       <View style={desktopStyles.root}>
         <View style={desktopStyles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} activeOpacity={0.85}>
+          <TouchableOpacity onPress={handleBack} style={styles.navBtn} activeOpacity={0.85}>
             <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
           </TouchableOpacity>
           <Text style={desktopStyles.topBarTitle} numberOfLines={1}>{listing.name}</Text>
@@ -810,7 +820,7 @@ export default function ListingDetailScreen() {
 
       {/* Nav buttons */}
       <View style={styles.navBar} pointerEvents="box-none">
-        <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} activeOpacity={0.85}>
+        <TouchableOpacity onPress={handleBack} style={styles.navBtn} activeOpacity={0.85}>
           <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <View style={styles.navBtnGroup}>
