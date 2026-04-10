@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Dimensions, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
@@ -9,9 +9,10 @@ interface SuccessOverlayProps {
   visible: boolean;
   isEditMode: boolean;
   listingName?: string;
+  onShareLink?: () => void;
 }
 
-export default function SuccessOverlay({ visible, isEditMode, listingName }: SuccessOverlayProps) {
+export default function SuccessOverlay({ visible, isEditMode, listingName, onShareLink }: SuccessOverlayProps) {
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.5)).current;
   const checkScale = useRef(new Animated.Value(0)).current;
@@ -155,9 +156,19 @@ export default function SuccessOverlay({ visible, isEditMode, listingName }: Suc
             : `"${listingName}" est maintenant visible par tous les locataires.`}
         </Animated.Text>
 
-        <Animated.View style={[styles.hint, { opacity: subtitleOpacity }]}>
-          <Text style={styles.hintText}>Redirection en cours…</Text>
-        </Animated.View>
+        {!isEditMode && onShareLink ? (
+          <Animated.View style={[styles.actionsRow, { opacity: subtitleOpacity }]}>
+            <TouchableOpacity style={styles.shareLinkBtn} onPress={onShareLink} activeOpacity={0.85}>
+              <Ionicons name="link-outline" size={16} color="#fff" />
+              <Text style={styles.shareLinkBtnText}>Générer un lien de réservation</Text>
+            </TouchableOpacity>
+            <Text style={styles.hintText}>Redirection automatique dans quelques secondes…</Text>
+          </Animated.View>
+        ) : (
+          <Animated.View style={[styles.hint, { opacity: subtitleOpacity }]}>
+            <Text style={styles.hintText}>Redirection en cours…</Text>
+          </Animated.View>
+        )}
       </Animated.View>
     </Animated.View>
   );
@@ -248,5 +259,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 13,
     color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  actionsRow: {
+    alignItems: 'center',
+    gap: 0,
+  },
+  shareLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.primaryDark,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 999,
+  },
+  shareLinkBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#fff',
   },
 });

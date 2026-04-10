@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   Platform,
   Share,
   ScrollView,
-  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -215,7 +214,6 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const days = startDate && endDate
     ? Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000) + 1
@@ -226,10 +224,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
   }, [startDate, endDate]);
 
   useEffect(() => {
-    if (visible) {
-      Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }).start();
-    } else {
-      fadeAnim.setValue(0);
+    if (!visible) {
       setStartDate(null);
       setEndDate(null);
       setCopied(false);
@@ -292,7 +287,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <Animated.View style={[styles.modal, { opacity: fadeAnim }]}>
+        <View style={styles.modal}>
           <View style={styles.handle} />
 
           <View style={styles.header}>
@@ -378,7 +373,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
               </View>
             )}
           </ScrollView>
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   );

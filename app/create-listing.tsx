@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import SuccessOverlay from '@/components/listing/SuccessOverlay';
+import ShareLinkModal from '@/components/listing/ShareLinkModal';
 
 const COMMISSION = 0.08;
 const TOTAL_STEPS = 4;
@@ -103,6 +104,8 @@ export default function CreateListingScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(isEditMode);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [newListingId, setNewListingId] = useState<string | null>(null);
+  const [shareLinkVisible, setShareLinkVisible] = useState(false);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -341,7 +344,7 @@ export default function CreateListingScreen() {
     const lng = profileData?.location_data?.lng ?? null;
     const ownerType = profileData?.is_pro ? 'professionnel' : 'particulier';
 
-    const { error: insertError } = await supabase.from('listings').insert({
+    const { data: insertData, error: insertError } = await supabase.from('listings').insert({
       owner_id: user.id,
       name: name.trim(),
       description: description.trim(),
@@ -356,11 +359,12 @@ export default function CreateListingScreen() {
       latitude: lat,
       longitude: lng,
       owner_type: ownerType,
-    });
+    }).select('id').maybeSingle();
     setSubmitting(false);
     if (insertError) { setError(insertError.message); return; }
+    if (insertData?.id) setNewListingId(insertData.id);
     setShowSuccess(true);
-    setTimeout(() => router.replace('/(tabs)/mes-annonces'), 2600);
+    setTimeout(() => router.replace('/(tabs)/mes-annonces'), 5000);
   };
 
   const priceNum = parseFloat(price) || 0;
@@ -385,7 +389,22 @@ export default function CreateListingScreen() {
 
   return (
     <>
-    <SuccessOverlay visible={showSuccess} isEditMode={isEditMode} listingName={name.trim()} />
+    <SuccessOverlay
+      visible={showSuccess}
+      isEditMode={isEditMode}
+      listingName={name.trim()}
+      onShareLink={newListingId ? () => setShareLinkVisible(true) : undefined}
+    />
+    {newListingId && (
+      <ShareLinkModal
+        visible={shareLinkVisible}
+        onClose={() => setShareLinkVisible(false)}
+        listingId={newListingId}
+        listingName={name.trim()}
+        pricePerDay={parseFloat(price) || 0}
+        bookedRanges={[]}
+      />
+    )}
     <KeyboardAvoidingView
       style={[styles.flex, isPricingStep && styles.flexPricing]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
