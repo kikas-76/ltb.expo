@@ -22,6 +22,7 @@ export default function VerifyEmailScreen() {
 
   const [resending, setResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -47,8 +48,13 @@ export default function VerifyEmailScreen() {
 
   const handleResend = async () => {
     if (resending || cooldown > 0) return;
+    if (!email) {
+      setResendError("Adresse email introuvable. Recommence l'inscription.");
+      return;
+    }
     setResending(true);
     setResendSuccess(false);
+    setResendError(null);
 
     const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined'
       ? `${window.location.origin}/onboarding/profile`
@@ -65,6 +71,8 @@ export default function VerifyEmailScreen() {
       setResendSuccess(true);
       setCooldown(RESEND_COOLDOWN);
       setTimeout(() => setResendSuccess(false), 5000);
+    } else {
+      setResendError("L'envoi a échoué. Vérifie ton adresse email et réessaie.");
     }
   };
 
@@ -107,6 +115,13 @@ export default function VerifyEmailScreen() {
             <View style={styles.successBanner}>
               <Ionicons name="checkmark-circle-outline" size={16} color={Colors.primaryDark} />
               <Text style={styles.successBannerText}>Email renvoyé avec succès !</Text>
+            </View>
+          )}
+
+          {resendError && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle-outline" size={16} color={Colors.error} />
+              <Text style={styles.errorBannerText}>{resendError}</Text>
             </View>
           )}
 
@@ -281,6 +296,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 13,
     color: Colors.primaryDark,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.error,
+    borderRadius: 12,
+    padding: 12,
+    justifyContent: 'center',
+  },
+  errorBannerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: Colors.error,
+    flex: 1,
+    lineHeight: 18,
   },
   resendBtn: {
     flexDirection: 'row',
