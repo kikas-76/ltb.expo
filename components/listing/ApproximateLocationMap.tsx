@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Platform, LayoutChangeEvent } from 'react-nativ
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
-import { getStaticMapUrl } from '@/lib/googleMaps';
+import { getGoogleMapsEmbedUrl } from '@/lib/googleMaps';
 
 interface ApproximateLocationMapProps {
   lat: number;
@@ -13,18 +13,18 @@ interface ApproximateLocationMapProps {
 
 export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLocationMapProps) {
   const [containerWidth, setContainerWidth] = useState(0);
-  const [imgError, setImgError] = useState(false);
 
   const onLayout = (e: LayoutChangeEvent) => {
     setContainerWidth(e.nativeEvent.layout.width);
   };
 
   const mapHeight = containerWidth > 0 ? Math.round(containerWidth * 0.48) : 0;
-  const apiW = Math.min(Math.round(containerWidth), 640);
-  const apiH = Math.min(Math.round(containerWidth * 0.48), 640);
-  const apiSize = containerWidth > 0 ? `${apiW}x${apiH}` : '600x288';
 
-  const mapUrl = containerWidth > 0 ? getStaticMapUrl(lat, lng, 13, apiSize) : null;
+  const hasCoords = lat !== 0 && lng !== 0;
+
+  const offsetLat = lat + 0.003;
+  const offsetLng = lng + 0.002;
+  const embedUrl = hasCoords ? getGoogleMapsEmbedUrl(offsetLat, offsetLng, 13) : null;
 
   const cx = containerWidth / 2;
   const cy = mapHeight / 2;
@@ -62,31 +62,33 @@ export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLo
   return (
     <View style={styles.card}>
       <View style={[styles.mapContainer, { height: mapHeight || undefined }]} onLayout={onLayout}>
-        {mapUrl && !imgError ? (
+        {embedUrl && containerWidth > 0 ? (
           Platform.OS === 'web' ? (
             <>
-              <img
-                src={mapUrl}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                onError={() => setImgError(true)}
-                alt="Carte de localisation approximative"
+              <iframe
+                src={embedUrl}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  display: 'block',
+                  pointerEvents: 'none',
+                }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Carte de localisation approximative"
               />
               {overlay}
             </>
           ) : (
             <>
-              <NativeImage
-                uri={mapUrl}
-                width={containerWidth}
-                height={mapHeight}
-                onError={() => setImgError(true)}
-              />
+              <NativeWebView uri={embedUrl} width={containerWidth} height={mapHeight} />
               {overlay}
             </>
           )
-        ) : imgError ? (
+        ) : hasCoords && containerWidth === 0 ? null : (
           <FallbackMap city={city} />
-        ) : null}
+        )}
       </View>
 
       <View style={styles.footer}>
@@ -104,14 +106,15 @@ export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLo
   );
 }
 
-function NativeImage({ uri, width, height, onError }: { uri: string; width: number; height: number; onError: () => void }) {
-  const { Image } = require('react-native');
+function NativeWebView({ uri, width, height }: { uri: string; width: number; height: number }) {
+  const { WebView } = require('react-native-webview');
   return (
-    <Image
+    <WebView
       source={{ uri }}
-      style={[StyleSheet.absoluteFill, { width, height }]}
-      resizeMode="cover"
-      onError={onError}
+      style={{ width, height }}
+      scrollEnabled={false}
+      javaScriptEnabled={true}
+      pointerEvents="none"
     />
   );
 }
