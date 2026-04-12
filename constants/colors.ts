@@ -21,4 +21,10 @@ export const Colors = {
   infoLight: '#E8F2FF',
   shadow: '#00000012',
   notification: '#E05252',
+  suspended: '#D97706',
+  suspendedLight: '#FEF3C7',
+  banned: '#7F1D1D',
+  bannedLight: '#FEE2E2',
+  successGreen: '#16A34A',
+  successGreenLight: '#DCFCE7',
 };

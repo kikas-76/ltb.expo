@@ -189,6 +189,10 @@ function RootNavigator() {
         <Stack.Screen name="admin/reports" />
         <Stack.Screen name="admin/users" />
         <Stack.Screen name="admin/bookings" />
+        <Stack.Screen name="admin/user/[id]" />
+        <Stack.Screen name="admin/analytics" />
+        <Stack.Screen name="admin/transactions" />
+        <Stack.Screen name="admin/audit" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="dark" />

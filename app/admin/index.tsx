@@ -19,6 +19,8 @@ interface Metrics {
   activeBookings: number;
   openDisputes: number;
   pendingReports: number;
+  monthlyRevenue: number;
+  restrictedAccounts: number;
 }
 
 interface RecentDispute {
@@ -44,6 +46,7 @@ export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [disputes, setDisputes] = useState<RecentDispute[]>([]);
   const [bookings, setBookings] = useState<RecentBooking[]>([]);
+  const [flaggedCount, setFlaggedCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,18 +55,28 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     setLoading(true);
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
     const [
       { count: users },
       { count: activeBookings },
       { count: openDisputes },
       { count: pendingReports },
+      { count: restrictedAccounts },
+      { data: monthBookings },
       { data: recentDisputes },
       { data: recentBookings },
+      { count: flagged },
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('bookings').select('*', { count: 'exact', head: true }).in('status', ['confirmed', 'active', 'in_progress']),
       supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'open'),
       supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).in('account_status', ['suspended', 'banned']),
+      supabase.from('bookings').select('total_price, status').gte('created_at', monthStart).lte('created_at', monthEnd),
       supabase.from('disputes')
         .select('id, status, created_at, description, reporter:profiles!disputes_reporter_id_fkey(username), booking:bookings(listing:listings(title))')
         .order('created_at', { ascending: false })
@@ -71,17 +84,24 @@ export default function AdminDashboard() {
       supabase.from('bookings')
         .select('id, status, total_price, start_date, end_date, listing:listings(title), renter:profiles!bookings_renter_id_fkey(username)')
         .order('created_at', { ascending: false })
-        .limit(10),
+        .limit(8),
+      supabase.from('admin_audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'flag_transaction'),
     ]);
+
+    const completedMonthBookings = (monthBookings ?? []).filter((b: any) => b.status === 'completed');
+    const monthlyRevenue = completedMonthBookings.reduce((s: number, b: any) => s + (b.total_price ?? 0), 0);
 
     setMetrics({
       users: users ?? 0,
       activeBookings: activeBookings ?? 0,
       openDisputes: openDisputes ?? 0,
       pendingReports: pendingReports ?? 0,
+      monthlyRevenue,
+      restrictedAccounts: restrictedAccounts ?? 0,
     });
     setDisputes((recentDisputes as any) ?? []);
     setBookings((recentBookings as any) ?? []);
+    setFlaggedCount(flagged ?? 0);
     setLoading(false);
   };
 
@@ -98,6 +118,8 @@ export default function AdminDashboard() {
     { label: 'Réservations actives', value: metrics?.activeBookings ?? 0, icon: 'calendar-outline', color: Colors.primaryDark },
     { label: 'Litiges ouverts', value: metrics?.openDisputes ?? 0, icon: 'warning-outline', color: Colors.error },
     { label: 'Signalements', value: metrics?.pendingReports ?? 0, icon: 'flag-outline', color: Colors.warning },
+    { label: 'Revenus du mois', value: `${(metrics?.monthlyRevenue ?? 0).toFixed(0)}€`, icon: 'cash-outline', color: Colors.successGreen },
+    { label: 'Comptes restreints', value: metrics?.restrictedAccounts ?? 0, icon: 'ban-outline', color: Colors.banned },
   ];
 
   const navLinks = [
@@ -105,6 +127,9 @@ export default function AdminDashboard() {
     { label: 'Signalements', icon: 'flag-outline', route: '/admin/reports' },
     { label: 'Utilisateurs', icon: 'people-outline', route: '/admin/users' },
     { label: 'Réservations', icon: 'calendar-outline', route: '/admin/bookings' },
+    { label: 'Transactions', icon: 'receipt-outline', route: '/admin/transactions' },
+    { label: 'Analyses', icon: 'bar-chart-outline', route: '/admin/analytics' },
+    { label: 'Journal d\'audit', icon: 'document-text-outline', route: '/admin/audit' },
   ];
 
   return (
@@ -118,6 +143,20 @@ export default function AdminDashboard() {
           <Ionicons name="refresh-outline" size={20} color={Colors.primaryDark} />
         </TouchableOpacity>
       </View>
+
+      {flaggedCount > 0 && (
+        <TouchableOpacity
+          style={styles.alertBanner}
+          onPress={() => router.push('/admin/transactions' as any)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="warning-outline" size={18} color={Colors.error} />
+          <Text style={styles.alertBannerText}>
+            {flaggedCount} transaction{flaggedCount > 1 ? 's' : ''} signalée{flaggedCount > 1 ? 's' : ''} comme suspecte{flaggedCount > 1 ? 's' : ''}
+          </Text>
+          <Ionicons name="chevron-forward-outline" size={16} color={Colors.error} style={{ marginLeft: 'auto' as any }} />
+        </TouchableOpacity>
+      )}
 
       <View style={styles.metricsGrid}>
         {metricCards.map((card) => (
@@ -221,7 +260,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   title: {
     fontFamily: 'Inter-Bold',
@@ -244,6 +283,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.borderLight,
+  },
+  alertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.errorLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.error + '30',
+  },
+  alertBannerText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.error,
+    flex: 1,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -273,7 +330,7 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     fontFamily: 'Inter-Bold',
-    fontSize: 28,
+    fontSize: 26,
     color: Colors.text,
     letterSpacing: -0.5,
   },

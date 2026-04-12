@@ -6,14 +6,17 @@ const STATUS_MAP: Record<string, { label: string; bg: string; color: string }> =
   pending: { label: 'En attente', bg: Colors.warningLight, color: Colors.warningDark },
   under_review: { label: 'En cours', bg: Colors.infoLight, color: Colors.info },
   resolved: { label: 'Résolu', bg: Colors.primarySurface, color: Colors.primaryDark },
-  completed: { label: 'Terminé', bg: Colors.primarySurface, color: Colors.primaryDark },
-  active: { label: 'Actif', bg: Colors.infoLight, color: Colors.info },
+  completed: { label: 'Terminé', bg: Colors.successGreenLight, color: Colors.successGreen },
+  active: { label: 'Actif', bg: Colors.successGreenLight, color: Colors.successGreen },
   in_progress: { label: 'En cours', bg: Colors.infoLight, color: Colors.info },
   refused: { label: 'Refusé', bg: Colors.borderLight, color: Colors.textSecondary },
   cancelled: { label: 'Annulé', bg: Colors.borderLight, color: Colors.textSecondary },
-  confirmed: { label: 'Confirmé', bg: Colors.primarySurface, color: Colors.primaryDark },
+  confirmed: { label: 'Confirmé', bg: Colors.infoLight, color: Colors.info },
   seen: { label: 'Vu', bg: Colors.primarySurface, color: Colors.primaryDark },
   rejected: { label: 'Rejeté', bg: Colors.borderLight, color: Colors.textSecondary },
+  suspended: { label: 'Suspendu', bg: Colors.suspendedLight, color: Colors.suspended },
+  banned: { label: 'Banni', bg: Colors.bannedLight, color: Colors.banned },
+  flagged: { label: 'Signalé', bg: Colors.errorLight, color: Colors.error },
 };
 
 interface StatusBadgeProps {
