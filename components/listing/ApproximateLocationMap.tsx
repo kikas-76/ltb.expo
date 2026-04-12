@@ -38,9 +38,9 @@ export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLo
       <Svg width={containerWidth} height={mapHeight}>
         <Defs>
           <RadialGradient id="cg" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={Colors.primaryDark} stopOpacity="0.38" />
-            <Stop offset="55%" stopColor={Colors.primary} stopOpacity="0.22" />
-            <Stop offset="100%" stopColor={Colors.primary} stopOpacity="0.04" />
+            <Stop offset="0%" stopColor={Colors.primaryDark} stopOpacity="0.55" />
+            <Stop offset="50%" stopColor={Colors.primary} stopOpacity="0.35" />
+            <Stop offset="100%" stopColor={Colors.primary} stopOpacity="0.08" />
           </RadialGradient>
         </Defs>
         <Circle
@@ -49,12 +49,12 @@ export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLo
           r={r}
           fill="url(#cg)"
           stroke={Colors.primaryDark}
-          strokeWidth={2}
-          strokeOpacity={0.5}
-          strokeDasharray="7 5"
+          strokeWidth={3}
+          strokeOpacity={0.85}
+          strokeDasharray="8 4"
         />
-        <Circle cx={cx} cy={cy} r={9} fill={Colors.primaryDark} fillOpacity={0.85} />
-        <Circle cx={cx} cy={cy} r={4} fill={Colors.white} />
+        <Circle cx={cx} cy={cy} r={10} fill={Colors.primaryDark} fillOpacity={0.95} />
+        <Circle cx={cx} cy={cy} r={4.5} fill={Colors.white} />
       </Svg>
     </View>
   ) : null;
