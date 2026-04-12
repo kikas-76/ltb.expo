@@ -120,20 +120,14 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
       <View style={styles.section}>
         <SectionHeader />
         {Platform.OS === 'web' ? (
-          <div style={{ overflowX: 'auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 8 } as any}>
-            <div style={{ display: 'flex', flexDirection: 'row', gap: 16, width: 'max-content' } as any}>
-              {loading
-                ? skeletons.map((i) => (
-                    <div key={i} style={{ width: 240, flexShrink: 0 } as any}>
-                      <SkeletonCard variant="horizontal" />
-                    </div>
-                  ))
-                : listings.map((item) => (
-                    <div key={item.id} style={{ width: 240, flexShrink: 0 } as any}>
-                      <ListingCard listing={item} variant="horizontal" userLat={userLat} userLng={userLng} userId={userId} />
-                    </div>
-                  ))}
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, paddingLeft: 16, paddingRight: 16 } as any}>
+            {loading
+              ? skeletons.map((i) => <div key={i}><SkeletonCard variant="grid" /></div>)
+              : listings.map((item) => (
+                  <div key={item.id}>
+                    <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
+                  </div>
+                ))}
           </div>
         ) : (
           <FlatList
@@ -143,11 +137,11 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
             renderItem={({ item }: any) =>
               loading ? (
                 <View style={[styles.cardWrapper, { width: 240 }]}>
-                  <SkeletonCard variant="horizontal" />
+                  <SkeletonCard variant="grid" />
                 </View>
               ) : (
                 <View style={[styles.cardWrapper, { width: 240 }]}>
-                  <ListingCard listing={item} variant="horizontal" userLat={userLat} userLng={userLng} userId={userId} />
+                  <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
                 </View>
               )
             }
