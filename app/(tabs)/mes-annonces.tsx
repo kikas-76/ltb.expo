@@ -239,9 +239,9 @@ export default function MesAnnoncesScreen() {
   const hasActiveBooking = async (listingId: string): Promise<boolean> => {
     const { data } = await supabase
       .from('bookings')
-      .select('id, status')
+      .select('id')
       .eq('listing_id', listingId)
-      .in('status', ['active', 'in_progress', 'pending_return', 'pending_owner_validation'])
+      .limit(1)
       .maybeSingle();
     return !!data;
   };
@@ -321,7 +321,7 @@ export default function MesAnnoncesScreen() {
   const handleDeleteRequest = async (item: Listing) => {
     const blocked = await hasActiveBooking(item.id);
     if (blocked) {
-      setBlockingError("Impossible de supprimer cette annonce : une location est en cours ou validée.");
+      setBlockingError("Impossible de supprimer cette annonce : des demandes sont en cours.");
       return;
     }
     setDeleteTarget(item);

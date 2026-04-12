@@ -151,6 +151,7 @@ export default function ListingDetailScreen() {
   const [likeCount, setLikeCount] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteBlockedError, setDeleteBlockedError] = useState(false);
   const [selectedStart, setSelectedStart] = useState<Date | null>(null);
   const [selectedEnd, setSelectedEnd] = useState<Date | null>(null);
   const [selectedDays, setSelectedDays] = useState(0);
@@ -282,6 +283,21 @@ export default function ListingDetailScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!id) return;
+    const { data } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('listing_id', id)
+      .limit(1)
+      .maybeSingle();
+    if (data) {
+      setDeleteBlockedError(true);
+      return;
+    }
+    setDeleteConfirm(true);
   };
 
   const handleDelete = async () => {
@@ -1287,7 +1303,20 @@ export default function ListingDetailScreen() {
       {/* Bottom CTA */}
       {isOwner ? (
         <View style={styles.bottomBar}>
-          {deleteConfirm ? (
+          {deleteBlockedError ? (
+            <View style={styles.deleteConfirmRow}>
+              <Text style={[styles.deleteConfirmText, { color: '#C25450', flex: 1 }]}>
+                Des demandes sont en cours sur cette annonce.
+              </Text>
+              <TouchableOpacity
+                style={styles.deleteCancelBtn}
+                onPress={() => setDeleteBlockedError(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.deleteCancelText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+          ) : deleteConfirm ? (
             <View style={styles.deleteConfirmRow}>
               <Text style={styles.deleteConfirmText}>Supprimer définitivement ?</Text>
               <TouchableOpacity
@@ -1328,7 +1357,7 @@ export default function ListingDetailScreen() {
                 <TouchableOpacity
                   style={styles.ownerDeleteBtn}
                   activeOpacity={0.85}
-                  onPress={() => setDeleteConfirm(true)}
+                  onPress={handleDeleteRequest}
                 >
                   <Ionicons name="trash-outline" size={16} color="#C25450" />
                   <Text style={styles.ownerDeleteBtnText}>Supprimer</Text>
