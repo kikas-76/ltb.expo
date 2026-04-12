@@ -117,7 +117,7 @@ function RootNavigator() {
       if (!session && inAuthGroup) {
         router.replace('/');
       } else if (!session && !inAuthGroup && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLegal && !inBook && segments[0] !== undefined && segments[0] !== '+not-found') {
-      } else if (session && !inOnboarding && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLinkGoogle && segments[0] !== undefined) {
+      } else if (session && !inOnboarding && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLinkGoogle) {
         if (inAdmin && profile?.role !== 'admin') {
           router.replace('/(tabs)');
         } else if (!profile?.username) {
