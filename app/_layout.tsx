@@ -36,12 +36,14 @@ function RootNavigator() {
   useEffect(() => {
     const handleUrl = async (url: string) => {
       try {
+        const isAuthCallback = url.includes('/auth-callback');
         const fragment = url.split('#')[1] ?? '';
         const fragmentParams = new URLSearchParams(fragment);
         const accessToken = fragmentParams.get('access_token');
         const refreshToken = fragmentParams.get('refresh_token');
 
         if (accessToken && refreshToken) {
+          if (isAuthCallback) return;
           const { supabase: sb } = await import('@/lib/supabase');
           await sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
           return;

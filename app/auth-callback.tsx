@@ -1,58 +1,74 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 
+async function redirectByProfile(userId: string) {
+  const { data } = await supabase
+    .from('profiles')
+    .select('onboarding_completed')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!data?.onboarding_completed) {
+    router.replace('/onboarding/profile' as any);
+  } else {
+    router.replace('/(tabs)');
+  }
+}
+
 export default function AuthCallbackScreen() {
-  const { session, loading, profile, profileLoading } = useAuth();
-  const [tokenProcessed, setTokenProcessed] = useState(false);
+  const processed = useRef(false);
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
-      setTokenProcessed(true);
-      return;
-    }
-
-    const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    if (!hash) {
-      setTokenProcessed(true);
-      return;
-    }
-
-    const params = new URLSearchParams(hash.replace(/^#/, ''));
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-
-    if (accessToken && refreshToken) {
-      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(() => {
-          if (typeof window !== 'undefined') {
-            window.history.replaceState(null, '', window.location.pathname);
-          }
-          setTokenProcessed(true);
-        })
-        .catch(() => setTokenProcessed(true));
-    } else {
-      setTokenProcessed(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!tokenProcessed || loading || profileLoading) return;
-
-    if (!session) {
       router.replace('/register');
       return;
     }
 
-    if (!profile?.onboarding_completed) {
-      router.replace('/onboarding/profile' as any);
-    } else {
-      router.replace('/(tabs)');
+    const timeout = setTimeout(() => {
+      if (!processed.current) {
+        processed.current = true;
+        router.replace('/register');
+      }
+    }, 10000);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (processed.current) return;
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+        processed.current = true;
+        clearTimeout(timeout);
+        (async () => { await redirectByProfile(session.user.id); })();
+      }
+    });
+
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.replace(/^#/, ''));
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        window.history.replaceState(null, '', window.location.pathname);
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).catch(() => {});
+        return () => { clearTimeout(timeout); subscription.unsubscribe(); };
+      }
     }
-  }, [tokenProcessed, session, loading, profile, profileLoading]);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (processed.current) return;
+      if (session) {
+        processed.current = true;
+        clearTimeout(timeout);
+        (async () => { await redirectByProfile(session.user.id); })();
+      }
+    });
+
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
