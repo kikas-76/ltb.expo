@@ -256,6 +256,10 @@ export default function AccountSettingsScreen() {
   };
 
   const handleChangePassword = async () => {
+    if (!currentPassword) {
+      setPasswordError('Veuillez saisir votre mot de passe actuel.');
+      return;
+    }
     if (!newPassword || newPassword.length < 8) {
       setPasswordError('Le nouveau mot de passe doit contenir au moins 8 caractères.');
       return;
@@ -266,23 +270,31 @@ export default function AccountSettingsScreen() {
     }
     setPasswordSaving(true);
     setPasswordError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: profile?.email ?? user?.email ?? '',
+    const userEmail = profile?.email ?? user?.email ?? '';
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: userEmail,
       password: currentPassword,
     });
-    if (signInError) {
+    if (signInError || !signInData.session) {
       setPasswordError('Mot de passe actuel incorrect.');
       setPasswordSaving(false);
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setPasswordSaving(false);
+      setPasswordError('Erreur : ' + error.message);
+      return;
+    }
+    await supabase.auth.resetPasswordForEmail(userEmail, {
+      redirectTo: undefined,
+    });
     setPasswordSaving(false);
-    if (error) { setPasswordError('Erreur : ' + error.message); return; }
     setPasswordSuccess(true);
     setTimeout(() => {
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
       setSection('menu');
-    }, 1400);
+    }, 2000);
   };
 
   const handleDeleteAccount = async () => {
@@ -587,7 +599,7 @@ export default function AccountSettingsScreen() {
           <Text style={styles.fieldDescription}>
             Choisissez un mot de passe fort d'au moins 8 caractères.
           </Text>
-          {passwordSuccess && <SuccessBanner message="Mot de passe modifié avec succès !" />}
+          {passwordSuccess && <SuccessBanner message="Mot de passe modifié ! Un email de confirmation vous a été envoyé." />}
           {passwordError && <ErrorBanner message={passwordError} />}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Mot de passe actuel</Text>
