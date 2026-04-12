@@ -291,7 +291,7 @@ export default function ListingDetailScreen() {
       .from('bookings')
       .select('id')
       .eq('listing_id', id)
-      .not('status', 'eq', 'completed')
+      .not('status', 'in', '("completed","cancelled","refused")')
       .limit(1)
       .maybeSingle();
     if (data) {

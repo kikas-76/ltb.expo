@@ -241,7 +241,7 @@ export default function MesAnnoncesScreen() {
       .from('bookings')
       .select('id')
       .eq('listing_id', listingId)
-      .not('status', 'eq', 'completed')
+      .not('status', 'in', '("completed","cancelled","refused")')
       .limit(1)
       .maybeSingle();
     return !!data;
