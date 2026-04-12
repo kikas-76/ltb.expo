@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import InfiniteIconStrip from '@/components/InfiniteIconStrip';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import GoogleButton from '@/components/GoogleButton';
 
 
 function Stepper({ active }: { active: number }) {
@@ -36,6 +38,7 @@ function getRedirectUrl() {
 }
 
 export default function RegisterScreen() {
+  const { signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,6 +46,22 @@ export default function RegisterScreen() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleRegister = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    const { error: googleError, emailConflict } = await signInWithGoogle();
+    setGoogleLoading(false);
+
+    if (emailConflict) {
+      router.push({ pathname: '/link-google-account', params: { email: emailConflict } });
+      return;
+    }
+    if (googleError) {
+      setError(googleError);
+    }
+  };
 
   const handleSubmit = async () => {
     setError(null);
@@ -114,6 +133,14 @@ export default function RegisterScreen() {
               <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
+
+          <GoogleButton onPress={handleGoogleRegister} loading={googleLoading} />
+
+          <View style={styles.separator}>
+            <View style={styles.separatorLine} />
+            <Text style={styles.separatorText}>ou</Text>
+            <View style={styles.separatorLine} />
+          </View>
 
           <View style={styles.inputRow}>
             <TextInput
@@ -309,5 +336,21 @@ const styles = StyleSheet.create({
   loginLinkBold: {
     fontFamily: 'Inter-SemiBold',
     color: Colors.primary,
+  },
+  separator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 2,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  separatorText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: Colors.textMuted,
   },
 });

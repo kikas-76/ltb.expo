@@ -18,10 +18,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDeepLink } from '@/contexts/DeepLinkContext';
 import { Colors } from '@/constants/colors';
+import GoogleButton from '@/components/GoogleButton';
 
 
 export default function LoginScreen() {
-  const { signIn, profile, profileLoading, session } = useAuth();
+  const { signIn, signInWithGoogle, profile, profileLoading, session } = useAuth();
   const { pendingListingId, setPendingListingId } = useDeepLink();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +30,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [waitingForProfile, setWaitingForProfile] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -97,6 +99,21 @@ export default function LoginScreen() {
     }
   }, [waitingForProfile, profileLoading, profile]);
 
+  const handleGoogleLogin = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    const { error: googleError, emailConflict } = await signInWithGoogle();
+    setGoogleLoading(false);
+
+    if (emailConflict) {
+      router.push({ pathname: '/link-google-account', params: { email: emailConflict } });
+      return;
+    }
+    if (googleError) {
+      setError(googleError);
+    }
+  };
+
   const handleLogin = async () => {
     animateBtnPress();
     setError(null);
@@ -154,6 +171,14 @@ export default function LoginScreen() {
               <Text style={styles.errorText}>{error}</Text>
             </Animated.View>
           )}
+
+          <GoogleButton onPress={handleGoogleLogin} loading={googleLoading} />
+
+          <View style={styles.separator}>
+            <View style={styles.separatorLine} />
+            <Text style={styles.separatorText}>ou</Text>
+            <View style={styles.separatorLine} />
+          </View>
 
           <View style={styles.inputRow}>
             <TextInput
@@ -328,5 +353,21 @@ const styles = StyleSheet.create({
   registerLinkBold: {
     fontFamily: 'Inter-SemiBold',
     color: Colors.primary,
+  },
+  separator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 2,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  separatorText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: Colors.textMuted,
   },
 });

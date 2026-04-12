@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { sendEmail } from '@/lib/sendEmail';
 import {
   View,
@@ -61,9 +61,27 @@ export default function OnboardingProfileScreen() {
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [googleAvatarUrl, setGoogleAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const meta = user.user_metadata ?? {};
+    const providers = (user.app_metadata?.providers ?? []) as string[];
+    const isGoogleUser = providers.includes('google') || user.app_metadata?.provider === 'google';
+
+    if (isGoogleUser) {
+      const fullName: string = meta.full_name ?? meta.name ?? '';
+      if (fullName) {
+        const suggested = fullName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_.-]/g, '');
+        if (suggested.length >= 3) setUsername(suggested);
+      }
+      const avatarUrl: string = meta.avatar_url ?? meta.picture ?? '';
+      if (avatarUrl) setGoogleAvatarUrl(avatarUrl);
+    }
+  }, [user]);
 
   const handlePhoneChange = (text: string) => {
     const digits = text.replace(/\D/g, '');
@@ -147,7 +165,12 @@ export default function OnboardingProfileScreen() {
 
     setSubmitting(true);
 
-    const photoUrl = await uploadAvatar(user.id);
+    let photoUrl: string | null = null;
+    if (avatarUri) {
+      photoUrl = await uploadAvatar(user.id);
+    } else if (googleAvatarUrl) {
+      photoUrl = googleAvatarUrl;
+    }
 
     const updates: Record<string, string | null> = {
       username: cleanUsername,
@@ -213,6 +236,8 @@ export default function OnboardingProfileScreen() {
             <TouchableOpacity style={styles.avatarCircle} activeOpacity={0.75} onPress={handlePickAvatar}>
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : googleAvatarUrl ? (
+                <Image source={{ uri: googleAvatarUrl }} style={styles.avatarImage} />
               ) : (
                 <Ionicons name="camera-outline" size={30} color={Colors.primary} />
               )}
@@ -220,6 +245,8 @@ export default function OnboardingProfileScreen() {
             <Text style={styles.avatarLabel}>
               {avatarUri ? (
                 <Text style={styles.avatarLabelGreen}>Photo sélectionnée</Text>
+              ) : googleAvatarUrl ? (
+                <Text style={styles.avatarLabelGreen}>Photo Google importée</Text>
               ) : (
                 <>
                   Photo de profil{' '}
@@ -227,7 +254,7 @@ export default function OnboardingProfileScreen() {
                 </>
               )}
             </Text>
-            {avatarUri && (
+            {(avatarUri || googleAvatarUrl) && (
               <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.7}>
                 <Text style={styles.changePhotoText}>Changer la photo</Text>
               </TouchableOpacity>
