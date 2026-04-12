@@ -614,7 +614,7 @@ export default function ListingDetailScreen() {
           </ScrollView>
 
           <View style={desktopStyles.rightCol}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 28, paddingTop: 32, paddingBottom: 48, gap: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 28, paddingTop: 32, paddingBottom: 48, gap: 20, alignItems: 'stretch' }}>
               <View style={styles.pricingCard}>
                 <View style={styles.priceRow}>
                   <View>

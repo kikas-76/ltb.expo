@@ -12,6 +12,7 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -20,6 +21,8 @@ const SURFACE = '#FFFFFF';
 const TEXT = '#1C2018';
 const TEXT_SUB = '#6B6B6B';
 const BORDER = '#E2DED0';
+
+const DESKTOP_BREAKPOINT = 768;
 
 interface Props {
   visible: boolean;
@@ -58,8 +61,19 @@ export default function RequestMessageModal({
   totalPrice,
   sending,
 }: Props) {
+  const [windowWidth, setWindowWidth] = useState(Dimensions.get('window').width);
+  const isDesktop = windowWidth >= DESKTOP_BREAKPOINT;
+
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', ({ window }) => {
+      setWindowWidth(window.width);
+    });
+    return () => sub?.remove();
+  }, []);
+
   const slideAnim = useRef(new Animated.Value(700)).current;
   const bgOpacity = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.94)).current;
 
   const defaultMessage = `Bonjour ${ownerUsername}, je souhaite louer "${listingTitle}" du ${formatFull(startDate)} au ${formatFull(endDate)}. Est-ce disponible ?`;
   const [message, setMessage] = useState(defaultMessage);
@@ -72,19 +86,161 @@ export default function RequestMessageModal({
 
   useEffect(() => {
     if (visible) {
-      Animated.parallel([
-        Animated.timing(bgOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.spring(slideAnim, { toValue: 0, friction: 9, tension: 85, useNativeDriver: true }),
-      ]).start();
+      if (isDesktop) {
+        Animated.parallel([
+          Animated.timing(bgOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.spring(scaleAnim, { toValue: 1, friction: 9, tension: 85, useNativeDriver: true }),
+        ]).start();
+      } else {
+        Animated.parallel([
+          Animated.timing(bgOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.spring(slideAnim, { toValue: 0, friction: 9, tension: 85, useNativeDriver: true }),
+        ]).start();
+      }
     } else {
-      Animated.parallel([
-        Animated.timing(bgOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 700, duration: 200, useNativeDriver: true }),
-      ]).start();
+      if (isDesktop) {
+        Animated.parallel([
+          Animated.timing(bgOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+          Animated.timing(scaleAnim, { toValue: 0.94, duration: 160, useNativeDriver: true }),
+        ]).start();
+      } else {
+        Animated.parallel([
+          Animated.timing(bgOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+          Animated.timing(slideAnim, { toValue: 700, duration: 200, useNativeDriver: true }),
+        ]).start();
+      }
     }
-  }, [visible]);
+  }, [visible, isDesktop]);
 
   const ownerInitial = (ownerUsername ?? 'U')[0].toUpperCase();
+
+  const sheetContent = (
+    <>
+      {isDesktop ? null : <View style={styles.handle} />}
+
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Confirmer la demande</Text>
+        <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
+          <Ionicons name="close-outline" size={17} color={TEXT_SUB} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.recapCard}>
+          {listingThumb ? (
+            <Image source={{ uri: listingThumb }} style={styles.recapImage} />
+          ) : (
+            <View style={styles.recapImageFallback}>
+              <Text style={styles.recapImageFallbackText}>{listingTitle[0]?.toUpperCase()}</Text>
+            </View>
+          )}
+          <View style={styles.recapContent}>
+            <Text style={styles.recapTitle} numberOfLines={2}>{listingTitle}</Text>
+            <View style={styles.recapMeta}>
+              <View style={styles.recapMetaItem}>
+                <Ionicons name="calendar-outline" size={12} color={Colors.primaryDark} />
+                <Text style={styles.recapMetaText}>
+                  {formatShort(startDate)} — {formatShort(endDate)}
+                </Text>
+              </View>
+              <View style={styles.recapDot} />
+              <View style={styles.recapMetaItem}>
+                <Ionicons name="time-outline" size={12} color={Colors.primaryDark} />
+                <Text style={styles.recapMetaText}>{days} jour{days > 1 ? 's' : ''}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.recapPriceBox}>
+            <Text style={styles.recapPriceAmount}>{totalPrice}</Text>
+            <Text style={styles.recapPriceCurrency}>€</Text>
+          </View>
+        </View>
+
+        <View style={styles.toRow}>
+          <Text style={styles.toLabel}>Pour</Text>
+          <View style={styles.ownerPill}>
+            {ownerAvatarUrl ? (
+              <Image source={{ uri: ownerAvatarUrl }} style={styles.ownerAvatar} />
+            ) : (
+              <View style={styles.ownerAvatarFallback}>
+                <Text style={styles.ownerAvatarInitial}>{ownerInitial}</Text>
+              </View>
+            )}
+            <Text style={styles.ownerName}>{ownerUsername}</Text>
+          </View>
+        </View>
+
+        <View style={styles.messageWrap}>
+          <View style={styles.messageLabelRow}>
+            <Text style={styles.messageLabel}>Votre message</Text>
+            <Text style={[
+              styles.charCount,
+              message.length > 450 && styles.charCountWarn,
+            ]}>
+              {message.length}/500
+            </Text>
+          </View>
+          <TextInput
+            style={[styles.messageInput, focused && styles.messageInputFocused]}
+            value={message}
+            onChangeText={setMessage}
+            multiline
+            maxLength={500}
+            placeholder="Écrivez votre message..."
+            placeholderTextColor={Colors.textMuted}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            textAlignVertical="top"
+          />
+          <Text style={styles.messageHint}>
+            Tapez pour personnaliser le message par défaut.
+          </Text>
+        </View>
+
+        <View style={{ height: 8 }} />
+      </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: !isDesktop && Platform.OS === 'ios' ? 36 : 20 }]}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.75}>
+          <Text style={styles.cancelBtnText}>Annuler</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.sendBtn, (sending || !message.trim()) && styles.sendBtnDisabled]}
+          onPress={() => onConfirm(message.trim())}
+          activeOpacity={0.85}
+          disabled={sending || !message.trim()}
+        >
+          {sending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="send-outline" size={15} color="#fff" />
+              <Text style={styles.sendBtnText}>Envoyer la demande</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+        <Animated.View style={[styles.backdrop, { opacity: bgOpacity }]}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+        </Animated.View>
+        <View style={styles.desktopCentering} pointerEvents="box-none">
+          <Animated.View style={[styles.desktopDialog, { opacity: bgOpacity, transform: [{ scale: scaleAnim }] }]}>
+            {sheetContent}
+          </Animated.View>
+        </View>
+      </Modal>
+    );
+  }
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -97,119 +253,7 @@ export default function RequestMessageModal({
         </Animated.View>
 
         <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.handle} />
-
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Confirmer la demande</Text>
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-              <Ionicons name="close-outline" size={17} color={TEXT_SUB} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.body}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Listing recap */}
-            <View style={styles.recapCard}>
-              {listingThumb ? (
-                <Image source={{ uri: listingThumb }} style={styles.recapImage} />
-              ) : (
-                <View style={styles.recapImageFallback}>
-                  <Text style={styles.recapImageFallbackText}>{listingTitle[0]?.toUpperCase()}</Text>
-                </View>
-              )}
-              <View style={styles.recapContent}>
-                <Text style={styles.recapTitle} numberOfLines={2}>{listingTitle}</Text>
-                <View style={styles.recapMeta}>
-                  <View style={styles.recapMetaItem}>
-                    <Ionicons name="calendar-outline" size={12} color={Colors.primaryDark} />
-                    <Text style={styles.recapMetaText}>
-                      {formatShort(startDate)} — {formatShort(endDate)}
-                    </Text>
-                  </View>
-                  <View style={styles.recapDot} />
-                  <View style={styles.recapMetaItem}>
-                    <Ionicons name="time-outline" size={12} color={Colors.primaryDark} />
-                    <Text style={styles.recapMetaText}>{days} jour{days > 1 ? 's' : ''}</Text>
-                  </View>
-                </View>
-              </View>
-              <View style={styles.recapPriceBox}>
-                <Text style={styles.recapPriceAmount}>{totalPrice}</Text>
-                <Text style={styles.recapPriceCurrency}>€</Text>
-              </View>
-            </View>
-
-            {/* Owner */}
-            <View style={styles.toRow}>
-              <Text style={styles.toLabel}>Pour</Text>
-              <View style={styles.ownerPill}>
-                {ownerAvatarUrl ? (
-                  <Image source={{ uri: ownerAvatarUrl }} style={styles.ownerAvatar} />
-                ) : (
-                  <View style={styles.ownerAvatarFallback}>
-                    <Text style={styles.ownerAvatarInitial}>{ownerInitial}</Text>
-                  </View>
-                )}
-                <Text style={styles.ownerName}>{ownerUsername}</Text>
-              </View>
-            </View>
-
-            {/* Message input */}
-            <View style={styles.messageWrap}>
-              <View style={styles.messageLabelRow}>
-                <Text style={styles.messageLabel}>Votre message</Text>
-                <Text style={[
-                  styles.charCount,
-                  message.length > 450 && styles.charCountWarn
-                ]}>
-                  {message.length}/500
-                </Text>
-              </View>
-              <TextInput
-                style={[styles.messageInput, focused && styles.messageInputFocused]}
-                value={message}
-                onChangeText={setMessage}
-                multiline
-                maxLength={500}
-                placeholder="Écrivez votre message..."
-                placeholderTextColor={Colors.textMuted}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                textAlignVertical="top"
-              />
-              <Text style={styles.messageHint}>
-                Tapez pour personnaliser le message par défaut.
-              </Text>
-            </View>
-
-            <View style={{ height: 8 }} />
-          </ScrollView>
-
-          {/* Footer */}
-          <View style={[styles.footer, { paddingBottom: Platform.OS === 'ios' ? 36 : 20 }]}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.75}>
-              <Text style={styles.cancelBtnText}>Annuler</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.sendBtn, (sending || !message.trim()) && styles.sendBtnDisabled]}
-              onPress={() => onConfirm(message.trim())}
-              activeOpacity={0.85}
-              disabled={sending || !message.trim()}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="send-outline" size={15} color="#fff" />
-                  <Text style={styles.sendBtnText}>Envoyer la demande</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+          {sheetContent}
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
@@ -236,6 +280,24 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0 -6px 32px rgba(0,0,0,0.14)' },
     }),
   },
+
+  desktopCentering: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopDialog: {
+    backgroundColor: SURFACE,
+    borderRadius: 24,
+    width: 580,
+    maxWidth: '90%',
+    maxHeight: '85%',
+    ...Platform.select({
+      web: { boxShadow: '0 8px 48px rgba(0,0,0,0.22)' },
+    }),
+    overflow: 'hidden',
+  },
+
   handle: {
     width: 36,
     height: 4,
@@ -249,8 +311,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
@@ -271,12 +333,11 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
   },
   body: {
-    paddingHorizontal: 22,
-    paddingTop: 18,
+    paddingHorizontal: 24,
+    paddingTop: 20,
     gap: 18,
   },
 
-  /* Recap */
   recapCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -368,7 +429,6 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
 
-  /* To row */
   toRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -414,7 +474,6 @@ const styles = StyleSheet.create({
     color: Colors.primaryDark,
   },
 
-  /* Message */
   messageWrap: {
     gap: 8,
   },
@@ -461,11 +520,10 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
-  /* Footer */
   footer: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 22,
+    paddingHorizontal: 24,
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: BORDER,
