@@ -168,6 +168,7 @@ export default function AccountSettingsScreen() {
       if (updateError) throw updateError;
       await refreshProfile();
       setPhotoSuccess(true);
+      setTimeout(() => setSection('menu'), 1200);
     } catch (e: any) {
       setPhotoError("Erreur lors de l'upload de la photo.");
     } finally {
@@ -188,6 +189,7 @@ export default function AccountSettingsScreen() {
     } else {
       await refreshProfile();
       setPhotoSuccess(true);
+      setTimeout(() => setSection('menu'), 1200);
     }
     setPhotoLoading(false);
   };
@@ -205,7 +207,13 @@ export default function AccountSettingsScreen() {
     const { error } = await supabase.from('profiles').update({ username: trimmed }).eq('id', user!.id);
     setUsernameSaving(false);
     if (error) {
-      setUsernameError(error.code === '23505' ? 'Ce nom est déjà pris.' : 'Une erreur est survenue.');
+      if (error.code === '23505' || error.message?.toLowerCase().includes('unique') || error.message?.toLowerCase().includes('already')) {
+        setUsernameError('Ce nom est déjà pris. Veuillez en choisir un autre.');
+      } else if (error.code === '23514' || error.message?.toLowerCase().includes('check')) {
+        setUsernameError('Nom invalide : 2-30 caractères, lettres, chiffres et _ uniquement.');
+      } else {
+        setUsernameError('Une erreur est survenue : ' + (error.message ?? 'réessayez plus tard.'));
+      }
       return;
     }
     await refreshProfile();

@@ -112,10 +112,12 @@ export default function ProfilScreen() {
     setSavingUsername(false);
 
     if (error) {
-      if (error.code === '23505') {
+      if (error.code === '23505' || error.message?.toLowerCase().includes('unique') || error.message?.toLowerCase().includes('already')) {
         setUsernameError('Ce nom est déjà pris.');
+      } else if (error.code === '23514' || error.message?.toLowerCase().includes('check')) {
+        setUsernameError('Nom invalide : 2-30 caractères, lettres, chiffres et _ uniquement.');
       } else {
-        setUsernameError('Une erreur est survenue.');
+        setUsernameError(error.message ?? 'Une erreur est survenue.');
       }
       return;
     }

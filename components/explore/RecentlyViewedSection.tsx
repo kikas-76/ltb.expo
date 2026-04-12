@@ -74,7 +74,8 @@ export default function RecentlyViewedSection({ userLat, userLng, userId }: Prop
         }));
         const ordered = ids
           .map((id) => mapped.find((l) => l.id === id))
-          .filter(Boolean) as Listing[];
+          .filter(Boolean)
+          .filter((l) => !userId || l!.owner?.id !== userId) as Listing[];
         setListings(ordered);
       }
       setLoading(false);
