@@ -120,7 +120,7 @@ function RootNavigator() {
       } else if (session && !inOnboarding && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLinkGoogle) {
         if (inAdmin && profile?.role !== 'admin') {
           router.replace('/(tabs)');
-        } else if (!profile?.username) {
+        } else if (!profile?.onboarding_completed) {
           router.replace('/onboarding/profile' as any);
         } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inRecent && !inNearby && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess && !inDispute && !inBook && !inAdmin) {
           if (pendingListingId) {

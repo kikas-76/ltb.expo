@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useDeepLink } from '@/contexts/DeepLinkContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
@@ -40,6 +42,7 @@ const STEPS = [
 
 export default function OnboardingWelcomeScreen() {
   const { pendingListingId, setPendingListingId } = useDeepLink();
+  const { user, refreshProfile } = useAuth();
   const headerAnim = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(0)).current;
   const checkRotate = useRef(new Animated.Value(-30)).current;
@@ -220,7 +223,14 @@ export default function OnboardingWelcomeScreen() {
         >
           <TouchableOpacity
             style={styles.btn}
-            onPress={() => {
+            onPress={async () => {
+              if (user) {
+                await supabase
+                  .from('profiles')
+                  .update({ onboarding_completed: true })
+                  .eq('id', user.id);
+                await refreshProfile();
+              }
               if (pendingListingId) {
                 const id = pendingListingId;
                 setPendingListingId(null);
