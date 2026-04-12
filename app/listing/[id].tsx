@@ -172,6 +172,34 @@ export default function ListingDetailScreen() {
   }, [id]);
 
   useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel(`saved_listings:${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'saved_listings',
+          filter: `listing_id=eq.${id}`,
+        },
+        async () => {
+          const { count } = await supabase
+            .from('saved_listings')
+            .select('*', { count: 'exact', head: true })
+            .eq('listing_id', id);
+          setLikeCount(count ?? 0);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
+  useEffect(() => {
     if (initialFavoriteRef.current === null) {
       initialFavoriteRef.current = isFavorite;
       return;

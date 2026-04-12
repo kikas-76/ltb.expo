@@ -30,6 +30,8 @@ interface Listing {
   location_data: { address?: string } | null;
   is_active: boolean;
   created_at: string;
+  view_count: number;
+  favorite_count: number;
 }
 
 function StatBadge({ label, value }: { label: string; value: string }) {
@@ -174,6 +176,19 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
               )}
             </View>
 
+            <View style={styles.listingStats}>
+              <View style={styles.listingStatItem}>
+                <Ionicons name="eye-outline" size={11} color={Colors.textMuted} />
+                <Text style={styles.listingStatText}>{item.view_count}</Text>
+              </View>
+              <View style={styles.listingStatItem}>
+                <Ionicons name="heart-outline" size={11} color={Colors.error} />
+                <Text style={[styles.listingStatText, item.favorite_count > 0 && styles.listingStatFav]}>
+                  {item.favorite_count}
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.cardFooter}>
               <Text style={styles.cardPrice}>
                 {parseFloat(String(item.price)).toFixed(2)} €
@@ -273,7 +288,35 @@ export default function MesAnnoncesScreen() {
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
 
-    setListings(data ?? []);
+    if (!data) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    const ids = data.map((l: any) => l.id);
+
+    const [viewsRes, favsRes] = await Promise.all([
+      supabase.from('listing_views').select('listing_id').in('listing_id', ids),
+      supabase.from('saved_listings').select('listing_id').in('listing_id', ids),
+    ]);
+
+    const viewCounts: Record<string, number> = {};
+    (viewsRes.data ?? []).forEach((v: any) => {
+      viewCounts[v.listing_id] = (viewCounts[v.listing_id] ?? 0) + 1;
+    });
+    const favCounts: Record<string, number> = {};
+    (favsRes.data ?? []).forEach((v: any) => {
+      favCounts[v.listing_id] = (favCounts[v.listing_id] ?? 0) + 1;
+    });
+
+    setListings(
+      data.map((l: any) => ({
+        ...l,
+        view_count: viewCounts[l.id] ?? 0,
+        favorite_count: favCounts[l.id] ?? 0,
+      }))
+    );
     setLoading(false);
     setRefreshing(false);
   };
@@ -827,6 +870,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: Colors.textMuted,
     flex: 1,
+  },
+  listingStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 6,
+  },
+  listingStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  listingStatText: {
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+    color: Colors.textMuted,
+  },
+  listingStatFav: {
+    color: Colors.error,
   },
   cardFooter: {
     flexDirection: 'row',
