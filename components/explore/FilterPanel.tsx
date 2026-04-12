@@ -18,12 +18,7 @@ export type OwnerType = 'all' | 'particulier' | 'professionnel';
 export type LocationMode = 'around_me' | 'city' | 'none';
 
 export const CITIES: { label: string; value: string; lat: number; lng: number }[] = [
-  { label: 'Paris', value: 'paris', lat: 48.8566, lng: 2.3522 },
   { label: 'Lyon', value: 'lyon', lat: 45.7640, lng: 4.8357 },
-  { label: 'Marseille', value: 'marseille', lat: 43.2965, lng: 5.3698 },
-  { label: 'Bordeaux', value: 'bordeaux', lat: 44.8378, lng: -0.5792 },
-  { label: 'Toulouse', value: 'toulouse', lat: 43.6047, lng: 1.4442 },
-  { label: 'Nantes', value: 'nantes', lat: 47.2184, lng: -1.5536 },
   { label: 'Reims', value: 'reims', lat: 49.2583, lng: 4.0317 },
   { label: 'Rouen', value: 'rouen', lat: 49.4432, lng: 1.0993 },
 ];
@@ -245,7 +240,7 @@ export default function FilterPanel({
 
               <TouchableOpacity
                 style={[styles.locationTab, filters.locationMode === 'city' && styles.locationTabActive]}
-                onPress={() => set({ locationMode: 'city', selectedCity: filters.selectedCity || 'paris' })}
+                onPress={() => set({ locationMode: 'city', selectedCity: filters.selectedCity || 'lyon' })}
                 activeOpacity={0.8}
               >
                 <View style={[styles.locationIconWrap, filters.locationMode === 'city' && styles.locationIconWrapActive]}>
@@ -256,7 +251,7 @@ export default function FilterPanel({
                     Choisir une ville
                   </Text>
                   <Text style={[styles.locationTabSub, filters.locationMode === 'city' && styles.locationTabSubActive]}>
-                    {CITIES.map((c) => c.label).slice(0, 3).join(', ')}…
+                    {CITIES.map((c) => c.label).join(', ')}
                   </Text>
                 </View>
                 {filters.locationMode === 'city' && (

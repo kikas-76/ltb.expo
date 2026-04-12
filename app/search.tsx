@@ -11,6 +11,7 @@ import {
   Platform,
   TextInput,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ import FilterPanel, {
   SortKey,
   CategoryOption,
 } from '@/components/explore/FilterPanel';
+import { useResponsive } from '@/hooks/useResponsive';
 
 interface Listing {
   id: string;
@@ -54,7 +56,8 @@ interface Suggestion {
 }
 
 const HISTORY_KEY = 'ltb_search_history';
-const MAX_HISTORY = 8;
+const MAX_HISTORY = 3;
+const PAGE_SIZE = 20;
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -139,6 +142,7 @@ export default function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string }>();
   const inputRef = useRef<TextInput>(null);
+  const { isDesktop, width: windowWidth } = useResponsive();
 
   const [searchQuery, setSearchQuery] = useState(params.q ?? '');
   const [debouncedQuery, setDebouncedQuery] = useState(params.q ?? '');
@@ -155,6 +159,8 @@ export default function SearchScreen() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [localHistory, setLocalHistory] = useState<string[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [page, setPage] = useState(0);
+  const [allListingNames, setAllListingNames] = useState<string[]>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(12)).current;
@@ -183,11 +189,17 @@ export default function SearchScreen() {
 
   useEffect(() => {
     loadCategories();
+    loadAllListingNames();
   }, []);
 
   const loadCategories = async () => {
     const { data } = await supabase.from('categories').select('id, name, value').order('order');
     setCategories(data ?? []);
+  };
+
+  const loadAllListingNames = async () => {
+    const { data } = await supabase.from('listings').select('name').eq('is_active', true).limit(500);
+    setAllListingNames((data ?? []).map((l: any) => l.name.toLowerCase()));
   };
 
   useEffect(() => {
@@ -202,6 +214,12 @@ export default function SearchScreen() {
       setSuggestions([]);
     }
   }, [debouncedQuery]);
+
+  const queryMatchesListingName = (q: string): boolean => {
+    const lower = q.trim().toLowerCase();
+    if (lower.length < 3) return false;
+    return allListingNames.some((name) => name.includes(lower));
+  };
 
   const fetchSuggestions = async (q: string) => {
     const { data } = await supabase.rpc('get_search_suggestions', {
@@ -220,10 +238,15 @@ export default function SearchScreen() {
     }).start();
   };
 
+  const showHistoryInDropdown = showSuggestions &&
+    searchQuery.trim().length >= 3 &&
+    queryMatchesListingName(searchQuery) &&
+    localHistory.length > 0;
+
   useEffect(() => {
-    const hasSugg = suggestions.length > 0 || (showSuggestions && localHistory.length > 0 && !searchQuery.trim());
+    const hasSugg = suggestions.length > 0 || showHistoryInDropdown;
     animateSuggestions(hasSugg && showSuggestions);
-  }, [suggestions, showSuggestions, localHistory, searchQuery]);
+  }, [suggestions, showSuggestions, showHistoryInDropdown]);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -314,6 +337,7 @@ export default function SearchScreen() {
   }, [debouncedQuery, selectedCategoryIds, appliedFilters]);
 
   useEffect(() => {
+    setPage(0);
     fetchListings();
   }, [fetchListings]);
 
@@ -407,8 +431,11 @@ export default function SearchScreen() {
     setLocalHistory(getLocalHistory());
   };
 
-  const showHistoryList = showSuggestions && !searchQuery.trim() && localHistory.length > 0;
+  const showHistoryList = showHistoryInDropdown;
   const showSuggestionList = showSuggestions && searchQuery.trim().length >= 2 && suggestions.length > 0;
+
+  const pagedFiltered = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const hasMore = filtered.length > pagedFiltered.length;
 
   const renderItem = ({ item }: { item: Listing }) => (
     <View style={styles.gridItem}>
@@ -632,9 +659,9 @@ export default function SearchScreen() {
 
       <Animated.View style={[styles.flex, { opacity: fadeAnim }]}>
         {loading ? (
-          <View style={styles.skeletonGrid}>
-            {[1, 2, 3, 4].map((i) => (
-              <View key={i} style={styles.gridItem}>
+          <View style={[styles.skeletonGrid, isDesktop && styles.skeletonGridDesktop]}>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <View key={i} style={isDesktop ? styles.gridItemDesktop : styles.gridItem}>
                 <SkeletonCard variant="grid" />
               </View>
             ))}
@@ -649,13 +676,53 @@ export default function SearchScreen() {
               }
             />
           </View>
+        ) : isDesktop ? (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.listContent, styles.listContentDesktop]}
+          >
+            {renderListHeader()}
+            <View style={styles.desktopGrid}>
+              {pagedFiltered.map((item) => (
+                <View key={item.id} style={styles.gridItemDesktop}>
+                  <ListingCard listing={item} variant="grid" />
+                </View>
+              ))}
+            </View>
+            {hasMore && (
+              <TouchableOpacity
+                style={styles.loadMoreBtn}
+                onPress={() => setPage((p) => p + 1)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.loadMoreBtnText}>
+                  Afficher plus ({filtered.length - pagedFiltered.length} restantes)
+                </Text>
+                <Ionicons name="chevron-down-outline" size={15} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
+          </ScrollView>
         ) : (
           <FlatList
-            data={filtered}
+            data={pagedFiltered}
             keyExtractor={(item) => item.id}
             numColumns={2}
             renderItem={renderItem}
             ListHeaderComponent={renderListHeader}
+            ListFooterComponent={
+              hasMore ? (
+                <TouchableOpacity
+                  style={styles.loadMoreBtn}
+                  onPress={() => setPage((p) => p + 1)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.loadMoreBtnText}>
+                    Afficher plus ({filtered.length - pagedFiltered.length} restantes)
+                  </Text>
+                  <Ionicons name="chevron-down-outline" size={15} color={Colors.primary} />
+                </TouchableOpacity>
+              ) : null
+            }
             contentContainerStyle={styles.listContent}
             columnWrapperStyle={styles.columnWrapper}
             showsVerticalScrollIndicator={false}
@@ -936,5 +1003,53 @@ const styles = StyleSheet.create({
   },
   emptyWrap: {
     flex: 1,
+  },
+  skeletonGridDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 32,
+    paddingTop: 16,
+    gap: 16,
+    maxWidth: 1280,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  gridItemDesktop: {
+    width: '23%',
+  },
+  listContentDesktop: {
+    maxWidth: 1280,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 32,
+  },
+  desktopGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+    marginBottom: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 24,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    alignSelf: 'center',
+    minWidth: 220,
+    ...Platform.select({
+      web: { boxShadow: `0 2px 8px ${Colors.primary}20` } as any,
+    }),
+  },
+  loadMoreBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: Colors.primary,
   },
 });
