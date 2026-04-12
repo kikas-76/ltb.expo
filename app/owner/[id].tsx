@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -17,8 +18,7 @@ import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import ProBadge from '@/components/ProBadge';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - 48 - 12) / 2;
+const DESKTOP_BREAKPOINT = 900;
 
 type DayHours = { open: string; close: string; closed: boolean };
 type WeekHours = Record<string, DayHours>;
@@ -75,11 +75,11 @@ function parseCity(address: string | undefined): string | null {
   return parts[0] ?? null;
 }
 
-function ListingMiniCard({ listing }: { listing: Listing }) {
+function ListingMiniCard({ listing, cardWidth }: { listing: Listing; cardWidth: number }) {
   const photo = listing.photos_url?.[0];
   return (
     <TouchableOpacity
-      style={styles.listingCard}
+      style={[styles.listingCard, { width: cardWidth }]}
       activeOpacity={0.82}
       onPress={() => router.push(`/listing/${listing.id}` as any)}
     >
@@ -116,6 +116,16 @@ export default function OwnerProfilePage() {
   const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [windowWidth, setWindowWidth] = useState(Dimensions.get('window').width);
+
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', ({ window }) => {
+      setWindowWidth(window.width);
+    });
+    return () => sub?.remove();
+  }, []);
+
+  const isDesktop = windowWidth >= DESKTOP_BREAKPOINT;
 
   useEffect(() => {
     if (!id) return;
@@ -146,157 +156,216 @@ export default function OwnerProfilePage() {
     parseCity(owner?.location_data?.address) ??
     null;
 
+  const profilePanel = (
+    <View style={[styles.profilePanel, isDesktop && styles.profilePanelDesktop]}>
+      <View style={styles.avatarContainer}>
+        <View style={styles.avatarRing}>
+          {photo ? (
+            <Image source={{ uri: photo }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarFallback}>
+              <Text style={styles.avatarInitials}>{initials}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.onlineDot} />
+      </View>
+
+      <View style={styles.heroNameRow}>
+        <Text style={styles.heroName}>{name}</Text>
+        {owner?.is_pro && <ProBadge />}
+      </View>
+
+      <View style={styles.metaChipsRow}>
+        {owner?.created_at && (
+          <View style={styles.metaChip}>
+            <Ionicons name="time-outline" size={12} color={Colors.primaryDark} />
+            <Text style={styles.metaChipText}>
+              Membre depuis {formatMemberSince(owner.created_at)}
+            </Text>
+          </View>
+        )}
+        {city && (
+          <View style={styles.metaChip}>
+            <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
+            <Text style={styles.metaChipText}>{city}</Text>
+          </View>
+        )}
+      </View>
+
+      {owner?.bio ? (
+        <View style={styles.bioCard}>
+          <Text style={styles.bioText}>{owner.bio}</Text>
+        </View>
+      ) : (
+        <View style={styles.emptyBioCard}>
+          <Text style={styles.emptyBioText}>
+            Ce membre n'a pas encore rempli son profil
+          </Text>
+        </View>
+      )}
+
+      {owner?.is_pro && (owner.business_type || owner.business_address || owner.business_hours) && (
+        <View style={styles.proInfoCard}>
+          {owner.business_name ? (
+            <View style={styles.proInfoRow}>
+              <Ionicons name="storefront-outline" size={14} color={Colors.primaryDark} />
+              <Text style={styles.proInfoLabel}>{owner.business_name}</Text>
+            </View>
+          ) : null}
+          {owner.business_type ? (
+            <View style={styles.proInfoRow}>
+              <Ionicons name="briefcase-outline" size={14} color={Colors.primaryDark} />
+              <Text style={styles.proInfoText}>{owner.business_type}</Text>
+            </View>
+          ) : null}
+          {owner.business_address ? (
+            <View style={styles.proInfoRow}>
+              <Ionicons name="location-outline" size={14} color={Colors.primaryDark} />
+              <Text style={styles.proInfoText} numberOfLines={2}>{owner.business_address}</Text>
+            </View>
+          ) : null}
+          {owner.business_hours && (
+            <View style={styles.proHoursSection}>
+              <View style={styles.proInfoRow}>
+                <Ionicons name="time-outline" size={14} color={Colors.primaryDark} />
+                <Text style={styles.proInfoLabel}>Horaires</Text>
+              </View>
+              <View style={styles.hoursGrid}>
+                {DAYS_ORDER.map((dayKey) => {
+                  const dayHours = owner.business_hours![dayKey];
+                  if (!dayHours) return null;
+                  return (
+                    <View key={dayKey} style={styles.hoursRow}>
+                      <Text style={styles.hoursDay}>{DAYS_FR[dayKey]}</Text>
+                      {dayHours.closed ? (
+                        <Text style={styles.hoursClosed}>Fermé</Text>
+                      ) : (
+                        <Text style={styles.hoursTime}>{dayHours.open} – {dayHours.close}</Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
+      <View style={styles.statsBand}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{listings.length}</Text>
+          <Text style={styles.statLabel}>Annonce{listings.length !== 1 ? 's' : ''}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const computeCardWidth = () => {
+    if (isDesktop) {
+      const contentWidth = Math.min(windowWidth, 1280) - 340 - 64 - 24;
+      const cols = contentWidth >= 700 ? 3 : 2;
+      return (contentWidth - (cols - 1) * 12) / cols;
+    }
+    return (windowWidth - 48 - 12) / 2;
+  };
+
+  const cardWidth = computeCardWidth();
+
+  const listingsPanel = (
+    <View style={[styles.listingsSection, isDesktop && styles.listingsSectionDesktop]}>
+      <View style={styles.listingsHeader}>
+        <Ionicons name="grid-outline" size={18} color={Colors.text} />
+        <Text style={styles.listingsSectionTitle}>Ses Annonces</Text>
+      </View>
+
+      {listings.length === 0 ? (
+        <View style={styles.noListingsWrap}>
+          <View style={styles.noListingsIcon}>
+            <Ionicons name="cube-outline" size={32} color={Colors.primary} />
+          </View>
+          <Text style={styles.noListingsTitle}>Aucune annonce</Text>
+          <Text style={styles.noListingsText}>
+            Ce membre n'a pas encore publié d'annonces
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.listingsGrid}>
+          {listings.map((item) => (
+            <ListingMiniCard key={item.id} listing={item} cardWidth={cardWidth} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.root}>
+        <StatusBar barStyle="dark-content" />
+        <View style={[styles.loadingWrap, { paddingTop: insets.top + 80 }]}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (isDesktop) {
+    return (
+      <View style={styles.root}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.desktopScroll, { paddingBottom: insets.bottom + 48 }]}
+        >
+          <View style={[styles.desktopTopBar, { paddingTop: insets.top + 16 }]}>
+            <View style={styles.desktopInner}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.backBtnDesktop}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back-outline" size={18} color={Colors.text} />
+                <Text style={styles.backBtnDesktopText}>Retour</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.desktopInner}>
+            <View style={styles.desktopLayout}>
+              <View style={styles.desktopLeft}>
+                {profilePanel}
+              </View>
+              <View style={styles.desktopRight}>
+                {listingsPanel}
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" />
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
       >
-        {loading ? (
-          <View style={[styles.loadingWrap, { paddingTop: insets.top + 80 }]}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        ) : (
-          <>
-            <View style={[styles.heroSection, { paddingTop: insets.top + 16 }]}>
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={styles.backBtn}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="arrow-back-outline" size={18} color={Colors.text} />
-              </TouchableOpacity>
+        <View style={[styles.heroSection, { paddingTop: insets.top + 16 }]}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back-outline" size={18} color={Colors.text} />
+          </TouchableOpacity>
 
-              <View style={styles.avatarContainer}>
-                <View style={styles.avatarRing}>
-                  {photo ? (
-                    <Image source={{ uri: photo }} style={styles.avatar} />
-                  ) : (
-                    <View style={styles.avatarFallback}>
-                      <Text style={styles.avatarInitials}>{initials}</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.onlineDot} />
-              </View>
+          {profilePanel}
+        </View>
 
-              <View style={styles.heroNameRow}>
-                <Text style={styles.heroName}>{name}</Text>
-                {owner?.is_pro && <ProBadge />}
-              </View>
-
-              <View style={styles.metaChipsRow}>
-                {owner?.created_at && (
-                  <View style={styles.metaChip}>
-                    <Ionicons name="time-outline" size={12} color={Colors.primaryDark} />
-                    <Text style={styles.metaChipText}>
-                      Membre depuis {formatMemberSince(owner.created_at)}
-                    </Text>
-                  </View>
-                )}
-                {city && (
-                  <View style={styles.metaChip}>
-                    <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
-                    <Text style={styles.metaChipText}>{city}</Text>
-                  </View>
-                )}
-              </View>
-
-              {owner?.bio ? (
-                <View style={styles.bioCard}>
-                  <Text style={styles.bioText}>{owner.bio}</Text>
-                </View>
-              ) : (
-                <View style={styles.emptyBioCard}>
-                  <Text style={styles.emptyBioText}>
-                    Ce membre n'a pas encore rempli son profil
-                  </Text>
-                </View>
-              )}
-
-              {owner?.is_pro && (owner.business_type || owner.business_address || owner.business_hours) && (
-                <View style={styles.proInfoCard}>
-                  {owner.business_name ? (
-                    <View style={styles.proInfoRow}>
-                      <Ionicons name="storefront-outline" size={14} color={Colors.primaryDark} />
-                      <Text style={styles.proInfoLabel}>{owner.business_name}</Text>
-                    </View>
-                  ) : null}
-                  {owner.business_type ? (
-                    <View style={styles.proInfoRow}>
-                      <Ionicons name="briefcase-outline" size={14} color={Colors.primaryDark} />
-                      <Text style={styles.proInfoText}>{owner.business_type}</Text>
-                    </View>
-                  ) : null}
-                  {owner.business_address ? (
-                    <View style={styles.proInfoRow}>
-                      <Ionicons name="location-outline" size={14} color={Colors.primaryDark} />
-                      <Text style={styles.proInfoText} numberOfLines={2}>{owner.business_address}</Text>
-                    </View>
-                  ) : null}
-                  {owner.business_hours && (
-                    <View style={styles.proHoursSection}>
-                      <View style={styles.proInfoRow}>
-                        <Ionicons name="time-outline" size={14} color={Colors.primaryDark} />
-                        <Text style={styles.proInfoLabel}>Horaires</Text>
-                      </View>
-                      <View style={styles.hoursGrid}>
-                        {DAYS_ORDER.map((dayKey) => {
-                          const dayHours = owner.business_hours![dayKey];
-                          if (!dayHours) return null;
-                          return (
-                            <View key={dayKey} style={styles.hoursRow}>
-                              <Text style={styles.hoursDay}>{DAYS_FR[dayKey]}</Text>
-                              {dayHours.closed ? (
-                                <Text style={styles.hoursClosed}>Fermé</Text>
-                              ) : (
-                                <Text style={styles.hoursTime}>{dayHours.open} – {dayHours.close}</Text>
-                              )}
-                            </View>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              <View style={styles.statsBand}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{listings.length}</Text>
-                  <Text style={styles.statLabel}>Annonce{listings.length !== 1 ? 's' : ''}</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.listingsSection}>
-              <View style={styles.listingsHeader}>
-                <Ionicons name="grid-outline" size={18} color={Colors.text} />
-                <Text style={styles.listingsSectionTitle}>Ses Annonces</Text>
-              </View>
-
-              {listings.length === 0 ? (
-                <View style={styles.noListingsWrap}>
-                  <View style={styles.noListingsIcon}>
-                    <Ionicons name="cube-outline" size={32} color={Colors.primary} />
-                  </View>
-                  <Text style={styles.noListingsTitle}>Aucune annonce</Text>
-                  <Text style={styles.noListingsText}>
-                    Ce membre n'a pas encore publié d'annonces
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.listingsGrid}>
-                  {listings.map((item) => (
-                    <ListingMiniCard key={item.id} listing={item} />
-                  ))}
-                </View>
-              )}
-            </View>
-          </>
-        )}
+        {listingsPanel}
       </ScrollView>
     </View>
   );
@@ -313,6 +382,7 @@ const styles = StyleSheet.create({
   loadingWrap: {
     alignItems: 'center',
   },
+
   heroSection: {
     backgroundColor: '#D8DDCA',
     paddingHorizontal: 24,
@@ -334,6 +404,71 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
   },
+
+  desktopScroll: {
+    flexGrow: 1,
+  },
+  desktopTopBar: {
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingBottom: 14,
+    marginBottom: 32,
+  },
+  desktopInner: {
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 32,
+  },
+  backBtnDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.white,
+    borderRadius: 100,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Platform.select({ web: { boxShadow: '0 1px 4px rgba(0,0,0,0.06)' } }),
+  },
+  backBtnDesktopText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.text,
+  },
+  desktopLayout: {
+    flexDirection: 'row',
+    gap: 24,
+    alignItems: 'flex-start',
+  },
+  desktopLeft: {
+    width: 300,
+    flexShrink: 0,
+  },
+  desktopRight: {
+    flex: 1,
+  },
+
+  profilePanel: {
+    alignItems: 'center',
+    paddingBottom: 0,
+    width: '100%',
+  },
+  profilePanelDesktop: {
+    backgroundColor: Colors.white,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 0,
+    alignItems: 'center',
+    ...Platform.select({ web: { boxShadow: '0 2px 16px rgba(0,0,0,0.06)' } }),
+  },
+
   avatarContainer: {
     marginTop: 8,
     marginBottom: 16,
@@ -389,9 +524,9 @@ const styles = StyleSheet.create({
   },
   heroName: {
     fontFamily: 'Inter-Bold',
-    fontSize: 26,
+    fontSize: 22,
     color: Colors.text,
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
     textAlign: 'center',
   },
   metaChipsRow: {
@@ -423,7 +558,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     marginBottom: 20,
-    maxWidth: SCREEN_WIDTH - 64,
+    width: '100%',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.6)',
   },
@@ -440,7 +575,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     marginBottom: 20,
-    maxWidth: SCREEN_WIDTH - 64,
+    width: '100%',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.4)',
   },
@@ -458,7 +593,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 8,
     gap: 10,
-    maxWidth: SCREEN_WIDTH - 64,
+    width: '100%',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.6)',
   },
@@ -520,7 +655,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 32,
     marginBottom: -20,
-    marginHorizontal: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
   },
@@ -540,9 +674,14 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 1,
   },
+
   listingsSection: {
     paddingTop: 36,
     paddingHorizontal: 20,
+  },
+  listingsSectionDesktop: {
+    paddingTop: 0,
+    paddingHorizontal: 0,
   },
   listingsHeader: {
     flexDirection: 'row',
@@ -562,7 +701,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   listingCard: {
-    width: CARD_WIDTH,
     backgroundColor: Colors.white,
     borderRadius: 18,
     overflow: 'hidden',
@@ -571,6 +709,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.09,
     shadowRadius: 8,
     elevation: 3,
+    ...Platform.select({ web: { boxShadow: '0 3px 12px rgba(0,0,0,0.08)' } }),
   },
   listingImageWrap: {
     width: '100%',
