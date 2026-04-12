@@ -291,6 +291,7 @@ export default function ListingDetailScreen() {
       .from('bookings')
       .select('id')
       .eq('listing_id', id)
+      .not('status', 'eq', 'completed')
       .limit(1)
       .maybeSingle();
     if (data) {

@@ -241,6 +241,7 @@ export default function MesAnnoncesScreen() {
       .from('bookings')
       .select('id')
       .eq('listing_id', listingId)
+      .not('status', 'eq', 'completed')
       .limit(1)
       .maybeSingle();
     return !!data;
