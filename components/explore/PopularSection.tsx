@@ -120,7 +120,7 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
       <View style={styles.section}>
         <SectionHeader />
         {Platform.OS === 'web' ? (
-          <div className="hide-scrollbar" style={{ overflowX: 'auto', paddingLeft: 16, paddingRight: 16, paddingBottom: 8 } as any}>
+          <div style={{ overflowX: 'auto', paddingLeft: 16, paddingRight: 16, paddingBottom: 8, msOverflowStyle: 'none', scrollbarWidth: 'none' } as any}>
             <div style={{ display: 'flex', flexDirection: 'row', gap: 16, width: 'max-content' } as any}>
               {loading
                 ? skeletons.map((i) => (
