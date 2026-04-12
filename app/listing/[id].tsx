@@ -458,7 +458,8 @@ export default function ListingDetailScreen() {
           >
             <ImageGallery
               photos={photos}
-              height={Math.min(windowWidth * 0.28, 380)}
+              height={Math.min(windowWidth * 0.25, 340)}
+              containerWidth={Math.min(windowWidth, 1280) - 380}
               onPhotoChange={(i) => setActivePhoto(i)}
             />
             <View style={{ paddingHorizontal: 40, paddingTop: 32 }}>
@@ -709,7 +710,7 @@ export default function ListingDetailScreen() {
               {!isOwner && (
                 existingConvId ? (
                   <TouchableOpacity
-                    style={styles.ctaBtn}
+                    style={[styles.ctaBtn, { flex: undefined, width: '100%' }]}
                     activeOpacity={0.85}
                     onPress={() => router.push(`/chat/${existingConvId}` as any)}
                   >
@@ -717,7 +718,7 @@ export default function ListingDetailScreen() {
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
-                    style={[styles.ctaBtn, !selectedDays && styles.ctaBtnDisabled]}
+                    style={[styles.ctaBtn, { flex: undefined, width: '100%' }, !selectedDays && styles.ctaBtnDisabled]}
                     activeOpacity={0.85}
                     onPress={handleRequestPress}
                     disabled={!selectedDays}

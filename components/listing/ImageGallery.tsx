@@ -21,6 +21,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface ImageGalleryProps {
   photos: string[];
   height?: number;
+  containerWidth?: number;
   onPhotoChange?: (index: number) => void;
 }
 
@@ -172,7 +173,8 @@ function LightboxModal({
   );
 }
 
-export default function ImageGallery({ photos, height = 340, onPhotoChange }: ImageGalleryProps) {
+export default function ImageGallery({ photos, height = 340, containerWidth, onPhotoChange }: ImageGalleryProps) {
+  const slideWidth = containerWidth ?? SCREEN_WIDTH;
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -191,7 +193,7 @@ export default function ImageGallery({ photos, height = 340, onPhotoChange }: Im
   };
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    const idx = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
     if (idx !== activeIndex) {
       setActiveIndex(idx);
       animateDot(idx);
@@ -206,7 +208,7 @@ export default function ImageGallery({ photos, height = 340, onPhotoChange }: Im
 
   const goTo = (dir: -1 | 1) => {
     const next = Math.max(0, Math.min(photos.length - 1, activeIndex + dir));
-    scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
+    scrollRef.current?.scrollTo({ x: next * slideWidth, animated: true });
     setActiveIndex(next);
     animateDot(next);
     onPhotoChange?.(next);
@@ -225,7 +227,7 @@ export default function ImageGallery({ photos, height = 340, onPhotoChange }: Im
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScroll}
         scrollEnabled={photos.length > 1}
-        style={{ width: SCREEN_WIDTH, height }}
+        style={{ width: slideWidth, height }}
         decelerationRate="fast"
       >
         {photos.map((photo, i) => (
@@ -233,9 +235,9 @@ export default function ImageGallery({ photos, height = 340, onPhotoChange }: Im
             key={i}
             activeOpacity={0.97}
             onPress={() => openLightbox(i)}
-            style={{ width: SCREEN_WIDTH, height }}
+            style={{ width: slideWidth, height }}
           >
-            <Image source={{ uri: photo }} style={{ width: SCREEN_WIDTH, height }} resizeMode="cover" />
+            <Image source={{ uri: photo }} style={{ width: slideWidth, height }} resizeMode="contain" />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -324,6 +326,7 @@ const styles = StyleSheet.create({
   galleryContainer: {
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: '#f5f5f5',
   },
   fallback: {
     backgroundColor: Colors.primaryLight,
