@@ -75,11 +75,18 @@ Deno.serve(async (req: Request) => {
         `&key=${mapsKey}`;
 
       const imgRes = await fetch(googleUrl);
+      if (!imgRes.ok) {
+        return new Response(JSON.stringify({ error: `Google Maps error: ${imgRes.status}` }), {
+          status: imgRes.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const contentType = imgRes.headers.get("Content-Type") ?? "image/png";
       const imgBuffer = await imgRes.arrayBuffer();
       return new Response(imgBuffer, {
         headers: {
           ...corsHeaders,
-          "Content-Type": "image/png",
+          "Content-Type": contentType,
           "Cache-Control": "public, max-age=86400",
         },
       });

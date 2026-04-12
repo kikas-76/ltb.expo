@@ -20,9 +20,9 @@ export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLo
   };
 
   const mapHeight = containerWidth > 0 ? Math.round(containerWidth * 0.48) : 0;
-  const apiSize = containerWidth > 0
-    ? `${Math.round(containerWidth)}x${mapHeight}`
-    : '600x288';
+  const apiW = Math.min(Math.round(containerWidth), 640);
+  const apiH = Math.min(Math.round(containerWidth * 0.48), 640);
+  const apiSize = containerWidth > 0 ? `${apiW}x${apiH}` : '600x288';
 
   const mapUrl = containerWidth > 0 ? getStaticMapUrl(lat, lng, 13, apiSize) : null;
 
