@@ -75,7 +75,8 @@ export default function RecentlyViewedSection({ userLat, userLng, userId }: Prop
         const ordered = ids
           .map((id) => mapped.find((l) => l.id === id))
           .filter(Boolean)
-          .filter((l) => !userId || l!.owner?.id !== userId) as Listing[];
+          .filter((l) => !userId || l!.owner?.id !== userId)
+          .slice(0, 10) as Listing[];
         setListings(ordered);
       }
       setLoading(false);
@@ -88,14 +89,60 @@ export default function RecentlyViewedSection({ userLat, userLng, userId }: Prop
 
   const skeletons = [1, 2, 3];
 
-  if (isDesktop || isTablet) {
-    const cols = isDesktop ? 4 : 2;
+  if (isDesktop) {
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Récemment consultés</Text>
         </View>
-        <View style={[styles.gridContainer, { paddingHorizontal: isDesktop ? 20 : 20 }]}>
+        {Platform.OS === 'web' ? (
+          <div style={{ overflowX: 'auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 8 } as any}>
+            <div style={{ display: 'flex', flexDirection: 'row', gap: 16, width: 'max-content' } as any}>
+              {loading
+                ? skeletons.map((i) => (
+                    <div key={i} style={{ width: 240, flexShrink: 0 } as any}>
+                      <SkeletonCard variant="horizontal" />
+                    </div>
+                  ))
+                : listings.map((item) => (
+                    <div key={item.id} style={{ width: 240, flexShrink: 0 } as any}>
+                      <ListingCard listing={item} variant="horizontal" userLat={userLat} userLng={userLng} userId={userId} />
+                    </div>
+                  ))}
+            </div>
+          </div>
+        ) : (
+          <FlatList
+            horizontal
+            data={loading ? skeletons as any[] : listings}
+            keyExtractor={(item: any) => String(item.id ?? item)}
+            renderItem={({ item }: any) =>
+              loading ? (
+                <View style={[styles.cardWrapper, { width: 240 }]}>
+                  <SkeletonCard variant="horizontal" />
+                </View>
+              ) : (
+                <View style={[styles.cardWrapper, { width: 240 }]}>
+                  <ListingCard listing={item} variant="horizontal" userLat={userLat} userLng={userLng} userId={userId} />
+                </View>
+              )
+            }
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+          />
+        )}
+      </View>
+    );
+  }
+
+  if (isTablet) {
+    const cols = 2;
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Récemment consultés</Text>
+        </View>
+        <View style={[styles.gridContainer, { paddingHorizontal: 20 }]}>
           {loading
             ? skeletons.map((i) => (
                 <View key={i} style={[styles.gridCell, { width: `${100 / cols - 1}%` }]}>

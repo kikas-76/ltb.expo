@@ -82,7 +82,7 @@ export default function ExploreScreen() {
           )
           .eq('is_active', true)
           .order('created_at', { ascending: false })
-          .limit(20),
+          .limit(19),
       ]);
 
       if (catRes.data) setCategories(catRes.data);
@@ -112,8 +112,15 @@ export default function ExploreScreen() {
   const applyFilters = (items: Listing[]) =>
     items.filter((l) => l.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const nearbyListings = applyFilters(listings.slice(0, isDesktop ? 12 : 8));
-  const recentListings = applyFilters(listings.slice(0, isDesktop ? 12 : 8));
+  const DESKTOP_GRID_LIMIT = 18;
+  const filteredListings = applyFilters(listings);
+  const hasMoreListings = isDesktop && filteredListings.length > DESKTOP_GRID_LIMIT;
+  const nearbyListings = isDesktop
+    ? filteredListings.slice(0, DESKTOP_GRID_LIMIT)
+    : filteredListings.slice(0, 8);
+  const recentListings = isDesktop
+    ? filteredListings.slice(0, DESKTOP_GRID_LIMIT)
+    : filteredListings.slice(0, 8);
   const address = profile?.location_data?.address ?? null;
   const userLat = profile?.location_data?.lat ?? null;
   const userLng = profile?.location_data?.lng ?? null;
@@ -197,13 +204,21 @@ export default function ExploreScreen() {
             ) : nearbyListings.length === 0 ? (
               <EmptyState />
             ) : (
-              <View style={[styles.grid, { gap: gridGap }]}>
-                {nearbyListings.map((item) => (
-                  <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
-                    <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
-                  </View>
-                ))}
-              </View>
+              <>
+                <View style={[styles.grid, { gap: gridGap }]}>
+                  {nearbyListings.map((item) => (
+                    <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
+                      <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
+                    </View>
+                  ))}
+                </View>
+                {hasMoreListings && (
+                  <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/nearby')}>
+                    <Text style={styles.viewAllText}>Voir toutes les annonces</Text>
+                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.primary} />
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
 
@@ -226,13 +241,21 @@ export default function ExploreScreen() {
             ) : recentListings.length === 0 ? (
               <EmptyState />
             ) : (
-              <View style={[styles.grid, { gap: gridGap }]}>
-                {recentListings.map((item) => (
-                  <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
-                    <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
-                  </View>
-                ))}
-              </View>
+              <>
+                <View style={[styles.grid, { gap: gridGap }]}>
+                  {recentListings.map((item) => (
+                    <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
+                      <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
+                    </View>
+                  ))}
+                </View>
+                {hasMoreListings && (
+                  <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/recent')}>
+                    <Text style={styles.viewAllText}>Voir toutes les annonces</Text>
+                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.primary} />
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -291,5 +314,23 @@ const styles = StyleSheet.create({
   gridItem: {
     flexGrow: 0,
     flexShrink: 0,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 20,
+    marginHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    backgroundColor: 'transparent',
+  },
+  viewAllText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: Colors.primary,
   },
 });
