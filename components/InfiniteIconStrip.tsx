@@ -41,11 +41,12 @@ export default function InfiniteIconStrip() {
     return () => anim.stop();
   }, []);
 
-  const items = [...ICONS, ...ICONS];
+  const items = [...ICONS, ...ICONS, ...ICONS, ...ICONS];
+  const totalWidth = items.length * ITEM_STRIDE;
 
   return (
     <View style={styles.wrapper}>
-      <Animated.View style={[styles.strip, { transform: [{ translateX }] }]}>
+      <Animated.View style={[styles.strip, { width: totalWidth, transform: [{ translateX }] }]}>
         {items.map(({ iconName, color, bg }, i) => (
           <View key={i} style={[styles.item, { backgroundColor: bg }]}>
             <Ionicons name={iconName as any} size={22} color={color} />
@@ -58,6 +59,7 @@ export default function InfiniteIconStrip() {
 
 const styles = StyleSheet.create({
   wrapper: {
+    width: '100%',
     height: ITEM_SIZE + VERTICAL_PADDING * 2,
     overflow: 'hidden',
     backgroundColor: Colors.background,
@@ -65,7 +67,6 @@ const styles = StyleSheet.create({
   strip: {
     flexDirection: 'row',
     gap: ITEM_GAP,
-    paddingHorizontal: 5,
     paddingVertical: VERTICAL_PADDING,
   },
   item: {
