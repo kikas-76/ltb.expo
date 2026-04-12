@@ -454,14 +454,14 @@ export default function ListingDetailScreen() {
           <ScrollView
             style={desktopStyles.leftCol}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 48 }}
+            contentContainerStyle={{ paddingBottom: 64 }}
           >
             <ImageGallery
               photos={photos}
-              height={Math.min(windowWidth * 0.35, 480)}
+              height={Math.min(windowWidth * 0.38, 520)}
               onPhotoChange={(i) => setActivePhoto(i)}
             />
-            <View style={{ paddingHorizontal: 32, paddingTop: 28 }}>
+            <View style={{ paddingHorizontal: 40, paddingTop: 32 }}>
               <View style={styles.metaRow}>
                 {listing.category_name && (
                   <TouchableOpacity
@@ -613,7 +613,7 @@ export default function ListingDetailScreen() {
           </ScrollView>
 
           <View style={desktopStyles.rightCol}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 28, gap: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 28, paddingTop: 32, paddingBottom: 48, gap: 20 }}>
               <View style={styles.pricingCard}>
                 <View style={styles.priceRow}>
                   <View>
@@ -2387,36 +2387,40 @@ const desktopStyles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
+    paddingHorizontal: 48,
+    paddingVertical: 16,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     gap: 16,
+    ...Platform.select({
+      web: { boxShadow: '0 1px 0 rgba(0,0,0,0.06)' },
+    }),
   },
   topBarTitle: {
     flex: 1,
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
+    fontSize: 17,
     color: Colors.text,
     letterSpacing: -0.3,
   },
   body: {
     flex: 1,
     flexDirection: 'row',
-    maxWidth: 1200,
+    maxWidth: 1280,
     alignSelf: 'center',
     width: '100%',
   },
   leftCol: {
-    flex: 6,
+    flex: 1,
     borderRightWidth: 1,
-    borderRightColor: Colors.border,
+    borderRightColor: Colors.borderLight,
   },
   rightCol: {
-    width: 380,
+    width: 400,
     backgroundColor: Colors.white,
-    borderLeftWidth: 1,
-    borderLeftColor: Colors.border,
+    ...Platform.select({
+      web: { position: 'sticky', top: 0, alignSelf: 'flex-start', maxHeight: '100vh', overflowY: 'auto' } as any,
+    }),
   },
 });

@@ -8,11 +8,12 @@ import {
   Dimensions,
   Platform,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_DAYS = 7;
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const MONTH_NAMES = [
@@ -72,8 +73,12 @@ export default function DateRangeCalendar({
   pricePerDay,
   bookedRanges = [],
 }: DateRangeCalendarProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = windowWidth >= 1024;
+
   const backdropAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const slideAnim = useRef(new Animated.Value(isDesktop ? 20 : SCREEN_HEIGHT)).current;
+  const scaleAnim = useRef(new Animated.Value(isDesktop ? 0.96 : 1)).current;
   const [rendered, setRendered] = useState(false);
 
   const today = stripTime(new Date());
@@ -90,34 +95,34 @@ export default function DateRangeCalendar({
       setEndDate(null);
       setViewMonth(today.getMonth());
       setViewYear(today.getFullYear());
-      Animated.parallel([
-        Animated.timing(backdropAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          damping: 25,
-          stiffness: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
+
+      if (isDesktop) {
+        Animated.parallel([
+          Animated.timing(backdropAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.spring(slideAnim, { toValue: 0, damping: 28, stiffness: 400, useNativeDriver: true }),
+          Animated.spring(scaleAnim, { toValue: 1, damping: 28, stiffness: 400, useNativeDriver: true }),
+        ]).start();
+      } else {
+        Animated.parallel([
+          Animated.timing(backdropAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.spring(slideAnim, { toValue: 0, damping: 25, stiffness: 300, useNativeDriver: true }),
+        ]).start();
+      }
     } else if (rendered) {
-      Animated.parallel([
-        Animated.timing(backdropAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start(() => setRendered(false));
+      if (isDesktop) {
+        Animated.parallel([
+          Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+          Animated.timing(slideAnim, { toValue: 16, duration: 180, useNativeDriver: true }),
+          Animated.timing(scaleAnim, { toValue: 0.96, duration: 180, useNativeDriver: true }),
+        ]).start(() => setRendered(false));
+      } else {
+        Animated.parallel([
+          Animated.timing(backdropAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+          Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 250, useNativeDriver: true }),
+        ]).start(() => setRendered(false));
+      }
     }
-  }, [visible]);
+  }, [visible, isDesktop]);
 
   const selectedDays = startDate && endDate ? daysBetween(startDate, endDate) : startDate ? 1 : 0;
 
@@ -172,21 +177,13 @@ export default function DateRangeCalendar({
   };
 
   const goToPrevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear(viewYear - 1);
-    } else {
-      setViewMonth(viewMonth - 1);
-    }
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
+    else setViewMonth(viewMonth - 1);
   };
 
   const goToNextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear(viewYear + 1);
-    } else {
-      setViewMonth(viewMonth + 1);
-    }
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
+    else setViewMonth(viewMonth + 1);
   };
 
   const isPrevDisabled =
@@ -197,25 +194,180 @@ export default function DateRangeCalendar({
 
   if (!rendered) return null;
 
+  const calendarWidth = isDesktop
+    ? Math.min(windowWidth * 0.4, 480)
+    : windowWidth;
+  const cellSize = Math.floor((calendarWidth - (isDesktop ? 64 : 48)) / 7);
+
+  const CalendarGrid = (
+    <>
+      <View style={styles.monthNav}>
+        <TouchableOpacity
+          onPress={goToPrevMonth}
+          disabled={isPrevDisabled}
+          style={[styles.monthNavBtn, isPrevDisabled && styles.monthNavBtnDisabled]}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back-outline" size={18} color={isPrevDisabled ? Colors.borderLight : Colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.monthLabel}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
+        <TouchableOpacity onPress={goToNextMonth} style={styles.monthNavBtn} activeOpacity={0.7}>
+          <Ionicons name="chevron-forward-outline" size={18} color={Colors.text} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.dayLabelsRow}>
+        {DAY_LABELS.map((l) => (
+          <View key={l} style={[styles.dayLabelCell, { width: cellSize }]}>
+            <Text style={styles.dayLabelText}>{l}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.daysGrid}>
+        {calendarDays.map((day, idx) => {
+          if (!day) return <View key={`empty-${idx}`} style={[styles.dayCell, { width: cellSize, height: cellSize }]} />;
+
+          const isPast = day < today;
+          const isBooked = !isPast && isDateBooked(day, bookedRanges);
+          const isDisabled = isPast || isBooked;
+          const isToday = isSameDay(day, today);
+          const isStart = startDate ? isSameDay(day, startDate) : false;
+          const isEnd = endDate ? isSameDay(day, endDate) : false;
+          const isInRange = startDate && endDate && day > startDate && day < endDate;
+          const isSelected = isStart || isEnd;
+
+          return (
+            <TouchableOpacity
+              key={toKey(day)}
+              style={[styles.dayCell, { width: cellSize, height: cellSize }]}
+              onPress={() => handleDayPress(day)}
+              disabled={isDisabled}
+              activeOpacity={0.6}
+            >
+              {isInRange && !isBooked && <View style={styles.rangeBg} />}
+              {isStart && endDate && !isBooked && <View style={[styles.rangeBg, styles.rangeBgHalfRight]} />}
+              {isEnd && !isBooked && <View style={[styles.rangeBg, styles.rangeBgHalfLeft]} />}
+              <View style={[
+                styles.dayInner,
+                { width: cellSize - 6, height: cellSize - 6, borderRadius: (cellSize - 6) / 2 },
+                isSelected && !isBooked && styles.daySelected,
+                isToday && !isSelected && !isBooked && styles.dayToday,
+                isBooked && styles.dayBooked,
+              ]}>
+                <Text style={[
+                  styles.dayText,
+                  isPast && styles.dayTextDisabled,
+                  isBooked && styles.dayTextBooked,
+                  isSelected && !isBooked && styles.dayTextSelected,
+                  isInRange && !isBooked && styles.dayTextRange,
+                  isToday && !isSelected && !isBooked && styles.dayTextToday,
+                ]}>
+                  {day.getDate()}
+                </Text>
+                {isBooked && (
+                  <View style={styles.bookedStrikeWrap} pointerEvents="none">
+                    <View style={styles.bookedStrike} />
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {bookedRanges.length > 0 && (
+        <View style={styles.legendRow}>
+          <View style={styles.legendDot} />
+          <Text style={styles.legendText}>Dates indisponibles (demandes en cours)</Text>
+        </View>
+      )}
+
+      {selectedDays > 0 && (
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>{selectedDays} jour{selectedDays > 1 ? 's' : ''} x {pricePerDay}€</Text>
+            <Text style={styles.summaryValue}>{totalBeforeDiscount}€</Text>
+          </View>
+          {discount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryDiscountLabel}>Remise {Math.round(discount * 100)}%</Text>
+              <Text style={styles.summaryDiscountValue}>-{Math.round(totalBeforeDiscount * discount)}€</Text>
+            </View>
+          )}
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryTotalLabel}>Total</Text>
+            <Text style={styles.summaryTotalValue}>{totalPrice}€</Text>
+          </View>
+        </View>
+      )}
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <Animated.View
+          style={[styles.backdrop, { opacity: backdropAnim }]}
+          pointerEvents={visible ? 'auto' : 'none'}
+        >
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.desktopModal,
+            { width: calendarWidth, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] },
+          ]}
+          pointerEvents={visible ? 'auto' : 'none'}
+        >
+          <View style={styles.sheetHeader}>
+            <View>
+              <Text style={styles.sheetTitle}>Dates de location</Text>
+              <Text style={styles.sheetSubtitle}>{MAX_DAYS} jours max.</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.8}>
+              <Ionicons name="close-outline" size={18} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            contentContainerStyle={[styles.scrollInner, { paddingHorizontal: 28 }]}
+          >
+            {CalendarGrid}
+          </ScrollView>
+
+          <View style={[styles.sheetFooter, { paddingBottom: 20 }]}>
+            <TouchableOpacity
+              style={[styles.confirmBtn, selectedDays === 0 && styles.confirmBtnDisabled]}
+              onPress={handleConfirm}
+              disabled={selectedDays === 0}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="calendar-outline" size={16} color="#fff" />
+              <Text style={styles.confirmBtnText}>
+                {selectedDays === 0 ? 'Sélectionnez des dates' : `Confirmer (${totalPrice}€)`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </View>
+    );
+  }
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Animated.View
         style={[styles.backdrop, { opacity: backdropAnim }]}
         pointerEvents={visible ? 'auto' : 'none'}
       >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
       </Animated.View>
 
-      <Animated.View
-        style={[
-          styles.sheet,
-          { transform: [{ translateY: slideAnim }] },
-        ]}
-      >
+      <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
         <View style={styles.handle} />
 
         <View style={styles.sheetHeader}>
@@ -228,132 +380,8 @@ export default function DateRangeCalendar({
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          contentContainerStyle={styles.scrollInner}
-        >
-          <View style={styles.monthNav}>
-            <TouchableOpacity
-              onPress={goToPrevMonth}
-              disabled={isPrevDisabled}
-              style={[styles.monthNavBtn, isPrevDisabled && styles.monthNavBtnDisabled]}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chevron-back-outline" size={18} color={isPrevDisabled ? Colors.borderLight : Colors.text} />
-            </TouchableOpacity>
-            <Text style={styles.monthLabel}>
-              {MONTH_NAMES[viewMonth]} {viewYear}
-            </Text>
-            <TouchableOpacity onPress={goToNextMonth} style={styles.monthNavBtn} activeOpacity={0.7}>
-              <Ionicons name="chevron-forward-outline" size={18} color={Colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.dayLabelsRow}>
-            {DAY_LABELS.map((l) => (
-              <View key={l} style={styles.dayLabelCell}>
-                <Text style={styles.dayLabelText}>{l}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.daysGrid}>
-            {calendarDays.map((day, idx) => {
-              if (!day) {
-                return <View key={`empty-${idx}`} style={styles.dayCell} />;
-              }
-
-              const isPast = day < today;
-              const isBooked = !isPast && isDateBooked(day, bookedRanges);
-              const isDisabled = isPast || isBooked;
-              const isToday = isSameDay(day, today);
-              const isStart = startDate ? isSameDay(day, startDate) : false;
-              const isEnd = endDate ? isSameDay(day, endDate) : false;
-              const isInRange =
-                startDate && endDate && day > startDate && day < endDate;
-              const isSelected = isStart || isEnd;
-
-              return (
-                <TouchableOpacity
-                  key={toKey(day)}
-                  style={styles.dayCell}
-                  onPress={() => handleDayPress(day)}
-                  disabled={isDisabled}
-                  activeOpacity={0.6}
-                >
-                  {isInRange && !isBooked && (
-                    <View style={styles.rangeBg} />
-                  )}
-                  {isStart && endDate && !isBooked && (
-                    <View style={[styles.rangeBg, styles.rangeBgHalfRight]} />
-                  )}
-                  {isEnd && !isBooked && (
-                    <View style={[styles.rangeBg, styles.rangeBgHalfLeft]} />
-                  )}
-                  <View
-                    style={[
-                      styles.dayInner,
-                      isSelected && !isBooked && styles.daySelected,
-                      isToday && !isSelected && !isBooked && styles.dayToday,
-                      isBooked && styles.dayBooked,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayText,
-                        isPast && styles.dayTextDisabled,
-                        isBooked && styles.dayTextBooked,
-                        isSelected && !isBooked && styles.dayTextSelected,
-                        isInRange && !isBooked && styles.dayTextRange,
-                        isToday && !isSelected && !isBooked && styles.dayTextToday,
-                      ]}
-                    >
-                      {day.getDate()}
-                    </Text>
-                    {isBooked && (
-                      <View style={styles.bookedStrikeWrap} pointerEvents="none">
-                        <View style={styles.bookedStrike} />
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {bookedRanges.length > 0 && (
-            <View style={styles.legendRow}>
-              <View style={styles.legendDot} />
-              <Text style={styles.legendText}>Dates indisponibles (demandes en cours)</Text>
-            </View>
-          )}
-
-          {selectedDays > 0 && (
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>
-                  {selectedDays} jour{selectedDays > 1 ? 's' : ''} x {pricePerDay}€
-                </Text>
-                <Text style={styles.summaryValue}>{totalBeforeDiscount}€</Text>
-              </View>
-              {discount > 0 && (
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryDiscountLabel}>
-                    Remise {Math.round(discount * 100)}%
-                  </Text>
-                  <Text style={styles.summaryDiscountValue}>
-                    -{Math.round(totalBeforeDiscount * discount)}€
-                  </Text>
-                </View>
-              )}
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryTotalLabel}>Total</Text>
-                <Text style={styles.summaryTotalValue}>{totalPrice}€</Text>
-              </View>
-            </View>
-          )}
+        <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={styles.scrollInner}>
+          {CalendarGrid}
         </ScrollView>
 
         <View style={styles.sheetFooter}>
@@ -365,9 +393,7 @@ export default function DateRangeCalendar({
           >
             <Ionicons name="calendar-outline" size={16} color="#fff" />
             <Text style={styles.confirmBtnText}>
-              {selectedDays === 0
-                ? 'Sélectionnez des dates'
-                : `Confirmer (${totalPrice}€)`}
+              {selectedDays === 0 ? 'Sélectionnez des dates' : `Confirmer (${totalPrice}€)`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -385,20 +411,12 @@ function buildCalendarDays(year: number, month: number): (Date | null)[] {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: (Date | null)[] = [];
 
-  for (let i = 0; i < startDow; i++) {
-    cells.push(null);
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push(new Date(year, month, d));
-  }
-  while (cells.length % 7 !== 0) {
-    cells.push(null);
-  }
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+  while (cells.length % 7 !== 0) cells.push(null);
 
   return cells;
 }
-
-const CELL_SIZE = Math.floor((SCREEN_WIDTH - 48) / 7);
 
 const styles = StyleSheet.create({
   backdrop: {
@@ -417,14 +435,25 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     maxHeight: SCREEN_HEIGHT * 0.85,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -6 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-      },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.15, shadowRadius: 20 },
       android: { elevation: 20 },
       web: { boxShadow: '0 -6px 30px rgba(0,0,0,0.15)' },
+    }),
+  },
+  desktopModal: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    zIndex: 101,
+    backgroundColor: Colors.background,
+    borderRadius: 24,
+    maxHeight: '85%',
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        transform: 'translate(-50%, -50%)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.12)',
+      } as any,
     }),
   },
   handle: {
@@ -440,9 +469,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingTop: 8,
-    paddingBottom: 14,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
@@ -471,7 +500,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
   },
-
   monthNav: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -488,22 +516,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  monthNavBtnDisabled: {
-    opacity: 0.35,
-  },
+  monthNavBtnDisabled: { opacity: 0.35 },
   monthLabel: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
     color: Colors.text,
     letterSpacing: -0.2,
   },
-
   dayLabelsRow: {
     flexDirection: 'row',
     marginBottom: 6,
   },
   dayLabelCell: {
-    width: CELL_SIZE,
     alignItems: 'center',
   },
   dayLabelText: {
@@ -511,54 +535,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
   },
-
   daysGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   dayCell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   dayInner: {
-    width: CELL_SIZE - 6,
-    height: CELL_SIZE - 6,
-    borderRadius: (CELL_SIZE - 6) / 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
   },
-  daySelected: {
-    backgroundColor: Colors.primary,
-  },
-  dayToday: {
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-  },
+  daySelected: { backgroundColor: Colors.primary },
+  dayToday: { borderWidth: 1.5, borderColor: Colors.primary },
   dayText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: Colors.text,
   },
-  dayTextDisabled: {
-    color: Colors.borderLight,
-  },
-  dayTextSelected: {
-    color: '#fff',
-    fontFamily: 'Inter-Bold',
-  },
-  dayTextRange: {
-    color: Colors.primary,
-    fontFamily: 'Inter-SemiBold',
-  },
-  dayTextToday: {
-    color: Colors.primary,
-    fontFamily: 'Inter-Bold',
-  },
-
+  dayTextDisabled: { color: Colors.borderLight },
+  dayTextSelected: { color: '#fff', fontFamily: 'Inter-Bold' },
+  dayTextRange: { color: Colors.primary, fontFamily: 'Inter-SemiBold' },
+  dayTextToday: { color: Colors.primary, fontFamily: 'Inter-Bold' },
   rangeBg: {
     position: 'absolute',
     top: 3,
@@ -568,29 +569,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight + '70',
     zIndex: 1,
   },
-  rangeBgHalfRight: {
-    left: '50%',
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
-  },
-  rangeBgHalfLeft: {
-    right: '50%',
-    borderTopRightRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  dayBooked: {
-    backgroundColor: Colors.borderLight,
-  },
-  dayTextBooked: {
-    color: Colors.textMuted,
-    opacity: 0.6,
-  },
+  rangeBgHalfRight: { left: '50%' },
+  rangeBgHalfLeft: { right: '50%' },
+  dayBooked: { backgroundColor: Colors.borderLight },
+  dayTextBooked: { color: Colors.textMuted, opacity: 0.6 },
   bookedStrikeWrap: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -623,7 +608,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
   },
-
   summaryCard: {
     marginTop: 16,
     backgroundColor: Colors.white,
@@ -638,43 +622,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  summaryLabel: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  summaryValue: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: Colors.text,
-  },
-  summaryDiscountLabel: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: Colors.primary,
-  },
-  summaryDiscountValue: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 14,
-    color: Colors.primary,
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: 4,
-  },
-  summaryTotalLabel: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: Colors.text,
-  },
-  summaryTotalValue: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 18,
-    color: Colors.text,
-    letterSpacing: -0.3,
-  },
-
+  summaryLabel: { fontFamily: 'Inter-Regular', fontSize: 14, color: Colors.textSecondary },
+  summaryValue: { fontFamily: 'Inter-Medium', fontSize: 14, color: Colors.text },
+  summaryDiscountLabel: { fontFamily: 'Inter-Medium', fontSize: 14, color: Colors.primary },
+  summaryDiscountValue: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.primary },
+  summaryDivider: { height: 1, backgroundColor: Colors.borderLight, marginVertical: 4 },
+  summaryTotalLabel: { fontFamily: 'Inter-Bold', fontSize: 16, color: Colors.text },
+  summaryTotalValue: { fontFamily: 'Inter-Bold', fontSize: 18, color: Colors.text, letterSpacing: -0.3 },
   sheetFooter: {
     paddingHorizontal: 22,
     paddingTop: 12,
@@ -692,12 +646,7 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     height: 52,
     ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-      },
+      ios: { shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 16px rgba(183,191,156,0.5)' },
     }),
