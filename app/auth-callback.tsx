@@ -46,8 +46,19 @@ export default function AuthCallbackScreen() {
     const hash = window.location.hash;
     if (hash) {
       const params = new URLSearchParams(hash.replace(/^#/, ''));
+      const errorCode = params.get('error_code');
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
+
+      if (errorCode) {
+        processed.current = true;
+        clearTimeout(timeout);
+        subscription.unsubscribe();
+        window.history.replaceState(null, '', window.location.pathname);
+        router.replace('/register');
+        return;
+      }
+
       if (accessToken && refreshToken) {
         window.history.replaceState(null, '', window.location.pathname);
         supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).catch(() => {});
