@@ -1,9 +1,9 @@
 export const Colors = {
   background: '#F5F2E3',
-  primary: '#B7BF9C',
-  primaryDark: '#8E9878',
-  primaryLight: '#D4DAC4',
-  primarySurface: '#ECEEE6',
+  primary: '#7A9060',
+  primaryDark: '#4E6B38',
+  primaryLight: '#C2D0A8',
+  primarySurface: '#E8EEE0',
   text: '#2C2C2C',
   textSecondary: '#6B6B6B',
   textMuted: '#9B9B9B',
