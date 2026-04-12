@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import ListingCard from '@/components/explore/ListingCard';
 import SkeletonCard from '@/components/explore/SkeletonCard';
+import { useResponsive } from '@/hooks/useResponsive';
 
 interface Listing {
   id: string;
@@ -56,6 +58,7 @@ const PAGE_SIZE = 20;
 export default function NearbyPage() {
   const router = useRouter();
   const { profile, session } = useAuth();
+  const { isDesktop, isTablet } = useResponsive();
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +71,8 @@ export default function NearbyPage() {
   const userLng = profile?.location_data?.lng ?? null;
   const userId = session?.user.id ?? null;
   const hasLocation = userLat !== null && userLng !== null;
+
+  const numColumns = isDesktop ? 4 : isTablet ? 3 : 2;
 
   const fetchAndSort = useCallback(async () => {
     if (!hasLocation) {
@@ -129,19 +134,25 @@ export default function NearbyPage() {
     setLoadingMore(false);
   };
 
+  const PageHeader = (
+    <View style={[styles.header, isDesktop && styles.headerDesktop]}>
+      <View style={isDesktop ? styles.headerInner : { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Ionicons name="location-outline" size={18} color={Colors.primaryDark} />
+          <Text style={styles.headerTitle}>Près de chez vous</Text>
+        </View>
+        <View style={styles.headerRight} />
+      </View>
+    </View>
+  );
+
   if (!hasLocation && !loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Ionicons name="location-outline" size={18} color={Colors.primaryDark} />
-            <Text style={styles.headerTitle}>Près de chez vous</Text>
-          </View>
-          <View style={styles.headerRight} />
-        </View>
+        {PageHeader}
         <View style={styles.noLocationState}>
           <View style={styles.noLocationIcon}>
             <Ionicons name="location-outline" size={36} color={Colors.textMuted} />
@@ -162,18 +173,64 @@ export default function NearbyPage() {
     );
   }
 
+  if (Platform.OS === 'web' && (isDesktop || isTablet)) {
+    const skeletonCount = numColumns * 3;
+    return (
+      <SafeAreaView style={styles.safe}>
+        {PageHeader}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.webScrollContent}
+          showsVerticalScrollIndicator={false}
+          onScroll={({ nativeEvent }) => {
+            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+            if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 200) {
+              loadMore();
+            }
+          }}
+          scrollEventThrottle={400}
+        >
+          <View style={styles.webGridWrapper}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numColumns}, 1fr)`, gap: 16 } as any}>
+              {loading
+                ? Array.from({ length: skeletonCount }).map((_, i) => (
+                    <div key={i}>
+                      <SkeletonCard variant="grid" />
+                    </div>
+                  ))
+                : listings.map((item) => (
+                    <div key={item.id}>
+                      <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
+                      {item.distanceKm !== null && (
+                        <View style={styles.distanceBadge}>
+                          <Ionicons name="location-outline" size={10} color={Colors.primary} />
+                          <Text style={styles.distanceText}>{formatDistance(item.distanceKm)}</Text>
+                        </View>
+                      )}
+                    </div>
+                  ))}
+            </div>
+            {loadingMore && (
+              <View style={styles.loadMoreIndicator}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            )}
+            {!loading && listings.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="location-outline" size={40} color={Colors.border} />
+                <Text style={styles.emptyTitle}>Aucune annonce à proximité</Text>
+                <Text style={styles.emptySubtitle}>Il n'y a pas encore d'objets près de chez vous</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Ionicons name="location-outline" size={18} color={Colors.primaryDark} />
-          <Text style={styles.headerTitle}>Près de chez vous</Text>
-        </View>
-        <View style={styles.headerRight} />
-      </View>
+      {PageHeader}
 
       {loading ? (
         <View style={styles.grid}>
@@ -248,6 +305,17 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
     backgroundColor: Colors.background,
   },
+  headerDesktop: {
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+  },
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 1200,
+  },
   backBtn: {
     width: 38,
     height: 38,
@@ -271,6 +339,16 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 38,
+  },
+  webScrollContent: {
+    alignItems: 'center',
+    paddingBottom: 48,
+  },
+  webGridWrapper: {
+    width: '100%',
+    maxWidth: 1200,
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
   listContent: {
     paddingHorizontal: 12,

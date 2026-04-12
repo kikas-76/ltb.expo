@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import ListingCard from '@/components/explore/ListingCard';
 import SkeletonCard from '@/components/explore/SkeletonCard';
+import { useResponsive } from '@/hooks/useResponsive';
 
 interface Listing {
   id: string;
@@ -43,6 +45,7 @@ const PAGE_SIZE = 20;
 export default function DealsPage() {
   const router = useRouter();
   const { profile, session } = useAuth();
+  const { isDesktop, isTablet } = useResponsive();
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +57,8 @@ export default function DealsPage() {
   const userLat = profile?.location_data?.lat ?? null;
   const userLng = profile?.location_data?.lng ?? null;
   const userId = session?.user.id ?? null;
+
+  const numColumns = isDesktop ? 4 : isTablet ? 3 : 2;
 
   const fetchListings = useCallback(async (pageNum: number, order: 'asc' | 'desc', reset = false) => {
     if (pageNum === 0) setLoading(true);
@@ -96,9 +101,9 @@ export default function DealsPage() {
   const minPrice = listings.length > 0 ? Math.min(...listings.map((l) => l.price)) : null;
   const maxPrice = listings.length > 0 ? Math.max(...listings.map((l) => l.price)) : null;
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
+  const Header = (
+    <View style={[styles.header, isDesktop && styles.headerDesktop]}>
+      <View style={isDesktop ? styles.headerInner : { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
@@ -108,8 +113,12 @@ export default function DealsPage() {
         </View>
         <View style={styles.headerRight} />
       </View>
+    </View>
+  );
 
-      <View style={styles.sortBar}>
+  const SortBar = (
+    <View style={[styles.sortBar, isDesktop && styles.sortBarDesktop]}>
+      <View style={isDesktop ? styles.sortBarInner : { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={styles.sortLeft}>
           <Ionicons name="filter-outline" size={14} color={Colors.textMuted} />
           <Text style={styles.sortLabel}>Trier par :</Text>
@@ -129,6 +138,77 @@ export default function DealsPage() {
           ))}
         </View>
       </View>
+    </View>
+  );
+
+  if (Platform.OS === 'web' && (isDesktop || isTablet)) {
+    const skeletonCount = numColumns * 3;
+    return (
+      <SafeAreaView style={styles.safe}>
+        {Header}
+        {SortBar}
+        {!loading && listings.length > 0 && (
+          <View style={[styles.statsBar, isDesktop && styles.statsBarDesktop]}>
+            <View style={isDesktop ? styles.statsBarInner : { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.statsText}>
+                {listings.length}+ annonce{listings.length > 1 ? 's' : ''}
+              </Text>
+              {minPrice !== null && maxPrice !== null && (
+                <Text style={styles.statsRange}>
+                  de {minPrice}€ à {maxPrice}€ / jour
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.webScrollContent}
+          showsVerticalScrollIndicator={false}
+          onScroll={({ nativeEvent }) => {
+            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+            if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 200) {
+              loadMore();
+            }
+          }}
+          scrollEventThrottle={400}
+        >
+          <View style={styles.webGridWrapper}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numColumns}, 1fr)`, gap: 16 } as any}>
+              {loading
+                ? Array.from({ length: skeletonCount }).map((_, i) => (
+                    <div key={i}>
+                      <SkeletonCard variant="grid" />
+                    </div>
+                  ))
+                : listings.map((item) => (
+                    <div key={item.id}>
+                      <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
+                    </div>
+                  ))}
+            </div>
+            {loadingMore && (
+              <View style={styles.loadMoreIndicator}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            )}
+            {!loading && listings.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="pricetag-outline" size={40} color={Colors.border} />
+                <Text style={styles.emptyTitle}>Aucune annonce</Text>
+                <Text style={styles.emptySubtitle}>Revenez bientôt pour de nouvelles offres</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      {Header}
+      {SortBar}
 
       {!loading && listings.length > 0 && (
         <View style={styles.statsBar}>
@@ -208,6 +288,17 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
     backgroundColor: Colors.background,
   },
+  headerDesktop: {
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+  },
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 1200,
+  },
   backBtn: {
     width: 38,
     height: 38,
@@ -241,6 +332,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
+  },
+  sortBarDesktop: {
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  sortBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 1200,
   },
   sortLeft: {
     flexDirection: 'row',
@@ -283,6 +385,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
+  statsBarDesktop: {
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  statsBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 1200,
+  },
   statsText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
@@ -292,6 +405,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  webScrollContent: {
+    alignItems: 'center',
+    paddingBottom: 48,
+  },
+  webGridWrapper: {
+    width: '100%',
+    maxWidth: 1200,
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
   listContent: {
     paddingHorizontal: 12,
