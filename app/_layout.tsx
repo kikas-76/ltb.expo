@@ -111,11 +111,12 @@ function RootNavigator() {
       const inLogin = segments[0] === 'login';
       const inRegister = segments[0] === 'register';
       const inVerifyEmail = segments[0] === 'verify-email';
+      const inEmailConfirmed = segments[0] === 'email-confirmed';
 
       if (!session && inAuthGroup) {
         router.replace('/');
-      } else if (!session && !inAuthGroup && !inLogin && !inRegister && !inVerifyEmail && !inLegal && !inBook && segments[0] !== undefined && segments[0] !== '+not-found') {
-      } else if (session && !inOnboarding && !inLogin && !inRegister && !inVerifyEmail && segments[0] !== undefined) {
+      } else if (!session && !inAuthGroup && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLegal && !inBook && segments[0] !== undefined && segments[0] !== '+not-found') {
+      } else if (session && !inOnboarding && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && segments[0] !== undefined) {
         if (inAdmin && profile?.role !== 'admin') {
           router.replace('/(tabs)');
         } else if (!profile?.username) {
@@ -157,6 +158,7 @@ function RootNavigator() {
         <Stack.Screen name="login" />
         <Stack.Screen name="register" />
         <Stack.Screen name="verify-email" />
+        <Stack.Screen name="email-confirmed" />
         <Stack.Screen name="onboarding/profile" />
         <Stack.Screen name="onboarding/address" />
         <Stack.Screen name="onboarding/welcome" />

@@ -57,8 +57,8 @@ export default function VerifyEmailScreen() {
     setResendError(null);
 
     const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-      ? `${window.location.origin}/onboarding/profile`
-      : 'louetonbien://onboarding/profile';
+      ? `${window.location.origin}/email-confirmed`
+      : 'louetonbien://email-confirmed';
 
     const { error } = await supabase.auth.resend({
       type: 'signup',

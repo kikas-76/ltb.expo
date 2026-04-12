@@ -30,9 +30,9 @@ function Stepper({ active }: { active: number }) {
 
 function getRedirectUrl() {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    return `${window.location.origin}/onboarding/profile`;
+    return `${window.location.origin}/email-confirmed`;
   }
-  return 'louetonbien://onboarding/profile';
+  return 'louetonbien://email-confirmed';
 }
 
 export default function RegisterScreen() {
