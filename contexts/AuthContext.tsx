@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async (): Promise<{ error: string | null; emailConflict?: string }> => {
     try {
       const redirectUrl = Platform.OS === 'web'
-        ? `${window.location.origin}/`
+        ? `${window.location.origin}/auth-callback`
         : 'louetonbien://';
 
       const { data, error } = await supabase.auth.signInWithOAuth({

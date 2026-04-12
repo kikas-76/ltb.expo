@@ -113,11 +113,12 @@ function RootNavigator() {
       const inVerifyEmail = segments[0] === 'verify-email';
       const inEmailConfirmed = segments[0] === 'email-confirmed';
       const inLinkGoogle = segments[0] === 'link-google-account';
+      const inAuthCallback = segments[0] === 'auth-callback';
 
       if (!session && inAuthGroup) {
         router.replace('/');
-      } else if (!session && !inAuthGroup && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLegal && !inBook && segments[0] !== undefined && segments[0] !== '+not-found') {
-      } else if (session && !inOnboarding && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLinkGoogle) {
+      } else if (!session && !inAuthGroup && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLegal && !inBook && !inAuthCallback && segments[0] !== undefined && segments[0] !== '+not-found') {
+      } else if (session && !inOnboarding && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLinkGoogle && !inAuthCallback) {
         if (inAdmin && profile?.role !== 'admin') {
           router.replace('/(tabs)');
         } else if (!profile?.onboarding_completed) {
@@ -161,6 +162,7 @@ function RootNavigator() {
         <Stack.Screen name="verify-email" />
         <Stack.Screen name="email-confirmed" />
         <Stack.Screen name="link-google-account" />
+        <Stack.Screen name="auth-callback" />
         <Stack.Screen name="onboarding/profile" />
         <Stack.Screen name="onboarding/address" />
         <Stack.Screen name="onboarding/welcome" />
