@@ -130,9 +130,10 @@ export default function ExploreScreen() {
 
   const gridCols = isDesktop ? 4 : isTablet ? 3 : 2;
   const gridGap = isDesktop ? 16 : isTablet ? 14 : 10;
+  const gridPadding = isTabletOrDesktop ? 0 : 32;
   const contentWidth = isTabletOrDesktop
-    ? Math.min(width - hPad * 2, isDesktop ? 1200 : 900)
-    : width - hPad * 2;
+    ? Math.min(width - hPad * 2, isDesktop ? 1200 : 900) - gridPadding
+    : width - 32;
   const gridItemWidth = Math.floor((contentWidth - gridGap * (gridCols - 1)) / gridCols);
 
   if (authLoading) {
@@ -194,24 +195,40 @@ export default function ExploreScreen() {
             </TouchableOpacity>
 
             {loadingData ? (
-              <View style={[styles.grid, { gap: gridGap }]}>
-                {[1, 2, 3, 4].map((i) => (
-                  <View key={i} style={[styles.gridItem, { width: gridItemWidth }]}>
-                    <SkeletonCard variant="grid" />
-                  </View>
-                ))}
-              </View>
+              isDesktop && Platform.OS === 'web' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: gridGap, paddingLeft: 16, paddingRight: 16 } as any}>
+                  {[1, 2, 3, 4].map((i) => <div key={i}><SkeletonCard variant="grid" /></div>)}
+                </div>
+              ) : (
+                <View style={[styles.grid, { gap: gridGap }]}>
+                  {[1, 2, 3, 4].map((i) => (
+                    <View key={i} style={[styles.gridItem, { width: gridItemWidth }]}>
+                      <SkeletonCard variant="grid" />
+                    </View>
+                  ))}
+                </View>
+              )
             ) : nearbyListings.length === 0 ? (
               <EmptyState />
             ) : (
               <>
-                <View style={[styles.grid, { gap: gridGap }]}>
-                  {nearbyListings.map((item) => (
-                    <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
-                      <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
-                    </View>
-                  ))}
-                </View>
+                {isDesktop && Platform.OS === 'web' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: gridGap, paddingLeft: 16, paddingRight: 16 } as any}>
+                    {nearbyListings.map((item) => (
+                      <div key={item.id}>
+                        <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <View style={[styles.grid, { gap: gridGap }]}>
+                    {nearbyListings.map((item) => (
+                      <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
+                        <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
+                      </View>
+                    ))}
+                  </View>
+                )}
                 {hasMoreListings && (
                   <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/nearby')}>
                     <Text style={styles.viewAllText}>Voir toutes les annonces</Text>
@@ -231,24 +248,40 @@ export default function ExploreScreen() {
             </TouchableOpacity>
 
             {loadingData ? (
-              <View style={[styles.grid, { gap: gridGap }]}>
-                {[1, 2, 3, 4].map((i) => (
-                  <View key={i} style={[styles.gridItem, { width: gridItemWidth }]}>
-                    <SkeletonCard variant="grid" />
-                  </View>
-                ))}
-              </View>
+              isDesktop && Platform.OS === 'web' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: gridGap, paddingLeft: 16, paddingRight: 16 } as any}>
+                  {[1, 2, 3, 4].map((i) => <div key={i}><SkeletonCard variant="grid" /></div>)}
+                </div>
+              ) : (
+                <View style={[styles.grid, { gap: gridGap }]}>
+                  {[1, 2, 3, 4].map((i) => (
+                    <View key={i} style={[styles.gridItem, { width: gridItemWidth }]}>
+                      <SkeletonCard variant="grid" />
+                    </View>
+                  ))}
+                </View>
+              )
             ) : recentListings.length === 0 ? (
               <EmptyState />
             ) : (
               <>
-                <View style={[styles.grid, { gap: gridGap }]}>
-                  {recentListings.map((item) => (
-                    <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
-                      <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
-                    </View>
-                  ))}
-                </View>
+                {isDesktop && Platform.OS === 'web' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: gridGap, paddingLeft: 16, paddingRight: 16 } as any}>
+                    {recentListings.map((item) => (
+                      <div key={item.id}>
+                        <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <View style={[styles.grid, { gap: gridGap }]}>
+                    {recentListings.map((item) => (
+                      <View key={item.id} style={[styles.gridItem, { width: gridItemWidth }]}>
+                        <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={session?.user.id} />
+                      </View>
+                    ))}
+                  </View>
+                )}
                 {hasMoreListings && (
                   <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/recent')}>
                     <Text style={styles.viewAllText}>Voir toutes les annonces</Text>
