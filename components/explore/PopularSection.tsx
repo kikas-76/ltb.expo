@@ -120,14 +120,20 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
       <View style={styles.section}>
         <SectionHeader />
         {Platform.OS === 'web' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, paddingLeft: 16, paddingRight: 16 } as any}>
-            {loading
-              ? skeletons.map((i) => <div key={i}><SkeletonCard variant="grid" /></div>)
-              : listings.map((item) => (
-                  <div key={item.id}>
-                    <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
-                  </div>
-                ))}
+          <div style={{ overflowX: 'auto', paddingLeft: 16, paddingRight: 16, paddingBottom: 8 } as any}>
+            <div style={{ display: 'flex', flexDirection: 'row', gap: 16, width: 'max-content' } as any}>
+              {loading
+                ? skeletons.map((i) => (
+                    <div key={i} style={{ width: 260, flexShrink: 0 } as any}>
+                      <SkeletonCard variant="grid" />
+                    </div>
+                  ))
+                : listings.map((item) => (
+                    <div key={item.id} style={{ width: 260, flexShrink: 0 } as any}>
+                      <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
+                    </div>
+                  ))}
+            </div>
           </div>
         ) : (
           <FlatList
