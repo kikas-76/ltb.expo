@@ -6,6 +6,7 @@ import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUnread } from '@/contexts/UnreadContext';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useAuth } from '@/contexts/AuthContext';
 
 const TAB_BAR_HEIGHT = 58;
 const WEB_BOTTOM_PAD = Platform.OS === 'web' ? 8 : 0;
@@ -76,6 +77,8 @@ function SidebarItem({ icon, label, focused, onPress, showDot, collapsed, descri
 
 function DesktopSidebar({ collapsed, onToggle, hideToggle }: { collapsed: boolean; onToggle: () => void; hideToggle?: boolean }) {
   const { hasIncomingRequests } = useUnread();
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const pathname = usePathname();
 
   const getRoute = () => {
@@ -118,6 +121,13 @@ function DesktopSidebar({ collapsed, onToggle, hideToggle }: { collapsed: boolea
       icon: (focused: boolean) => <Ionicons name="person-outline" size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
       onPress: () => router.push('/(tabs)/profil'),
     },
+    ...(isAdmin ? [{
+      route: 'admin',
+      label: 'Administration',
+      description: 'Gestion de la plateforme',
+      icon: (_focused: boolean) => <Ionicons name="shield-checkmark-outline" size={20} color={Colors.error} />,
+      onPress: () => router.push('/admin' as any),
+    }] : []),
   ];
 
   return (

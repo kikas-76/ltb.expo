@@ -106,6 +106,7 @@ function RootNavigator() {
       const inPaymentSuccess = segments[0] === 'payment-success';
       const inDispute = segments[0] === 'dispute';
       const inBook = segments[0] === 'book';
+      const inAdmin = segments[0] === 'admin';
 
       const inLogin = segments[0] === 'login';
       const inRegister = segments[0] === 'register';
@@ -115,9 +116,11 @@ function RootNavigator() {
         router.replace('/');
       } else if (!session && !inAuthGroup && !inLogin && !inRegister && !inVerifyEmail && !inLegal && !inBook && segments[0] !== undefined && segments[0] !== '+not-found') {
       } else if (session && !inOnboarding && !inLogin && !inRegister && !inVerifyEmail && segments[0] !== undefined) {
-        if (!profile?.username) {
+        if (inAdmin && profile?.role !== 'admin') {
+          router.replace('/(tabs)');
+        } else if (!profile?.username) {
           router.replace('/onboarding/profile' as any);
-        } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inRecent && !inNearby && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess && !inDispute && !inBook) {
+        } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inRecent && !inNearby && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess && !inDispute && !inBook && !inAdmin) {
           if (pendingListingId) {
             const id = pendingListingId;
             setPendingListingId(null);
@@ -181,6 +184,11 @@ function RootNavigator() {
         <Stack.Screen name="payment-success" />
         <Stack.Screen name="dispute/[booking_id]" />
         <Stack.Screen name="book/[id]" />
+        <Stack.Screen name="admin/index" />
+        <Stack.Screen name="admin/disputes" />
+        <Stack.Screen name="admin/reports" />
+        <Stack.Screen name="admin/users" />
+        <Stack.Screen name="admin/bookings" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="dark" />

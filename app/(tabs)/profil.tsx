@@ -53,6 +53,7 @@ function MenuSection({ rows, isDesktop }: { rows: MenuRow[]; isDesktop?: boolean
 
 export default function ProfilScreen() {
   const { profile, user, refreshProfile, signOut } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1024;
@@ -176,6 +177,14 @@ export default function ProfilScreen() {
     },
   ];
 
+  const adminRows: MenuRow[] = [
+    {
+      icon: <Ionicons name="shield-checkmark-outline" size={isDesktop ? 20 : 17} color={Colors.error} />,
+      label: 'Administration',
+      onPress: () => router.push('/admin' as any),
+    },
+  ];
+
   const handleSignOut = async () => {
     await signOut();
     router.replace('/');
@@ -279,6 +288,12 @@ export default function ProfilScreen() {
             <MenuSection rows={accountRows} isDesktop />
             <Text style={[desktopStyles.sectionLabel, { marginTop: 24 }]}>AIDE</Text>
             <MenuSection rows={supportRows} isDesktop />
+            {isAdmin && (
+              <>
+                <Text style={[desktopStyles.sectionLabel, { marginTop: 24 }]}>ADMINISTRATION</Text>
+                <MenuSection rows={adminRows} isDesktop />
+              </>
+            )}
           </ScrollView>
         </Animated.View>
       </View>
@@ -367,6 +382,12 @@ export default function ProfilScreen() {
           <MenuSection rows={accountRows} />
           <Text style={styles.sectionLabel}>Aide</Text>
           <MenuSection rows={supportRows} />
+          {isAdmin && (
+            <>
+              <Text style={styles.sectionLabel}>Administration</Text>
+              <MenuSection rows={adminRows} />
+            </>
+          )}
           <TouchableOpacity
             style={styles.signOutBtn}
             onPress={handleSignOut}
