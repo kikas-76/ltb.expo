@@ -315,12 +315,12 @@ export default function DateRangeCalendar({
           <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
         </Animated.View>
 
+        <View style={[styles.desktopModalWrapper, { width: calendarWidth }]} pointerEvents={visible ? 'auto' : 'none'}>
         <Animated.View
           style={[
             styles.desktopModal,
-            { width: calendarWidth, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] },
+            { transform: [{ translateY: slideAnim }, { scale: scaleAnim }] },
           ]}
-          pointerEvents={visible ? 'auto' : 'none'}
         >
           <View style={styles.sheetHeader}>
             <View>
@@ -354,6 +354,7 @@ export default function DateRangeCalendar({
             </TouchableOpacity>
           </View>
         </Animated.View>
+        </View>
       </View>
     );
   }
@@ -440,18 +441,24 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0 -6px 30px rgba(0,0,0,0.15)' },
     }),
   },
-  desktopModal: {
+  desktopModalWrapper: {
     position: 'absolute',
     top: '50%',
     left: '50%',
     zIndex: 101,
-    backgroundColor: Colors.background,
-    borderRadius: 24,
-    maxHeight: '85%',
-    overflow: 'hidden',
     ...Platform.select({
       web: {
         transform: 'translate(-50%, -50%)',
+      } as any,
+    }),
+  },
+  desktopModal: {
+    backgroundColor: Colors.background,
+    borderRadius: 24,
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        maxHeight: '85vh',
         boxShadow: '0 20px 60px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.12)',
       } as any,
     }),

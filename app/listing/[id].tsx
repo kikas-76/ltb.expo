@@ -458,7 +458,7 @@ export default function ListingDetailScreen() {
           >
             <ImageGallery
               photos={photos}
-              height={Math.min(windowWidth * 0.38, 520)}
+              height={Math.min(windowWidth * 0.28, 380)}
               onPhotoChange={(i) => setActivePhoto(i)}
             />
             <View style={{ paddingHorizontal: 40, paddingTop: 32 }}>
@@ -2079,13 +2079,15 @@ const styles = StyleSheet.create({
   ownerDeleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 13,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#C25450',
     backgroundColor: '#FFF0EF',
+    minWidth: 120,
   },
   ownerDeleteBtnText: {
     fontFamily: 'Inter-SemiBold',
@@ -2383,6 +2385,9 @@ const desktopStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
     flexDirection: 'column',
+    ...Platform.select({
+      web: { height: '100vh', overflow: 'hidden' } as any,
+    }),
   },
   topBar: {
     flexDirection: 'row',
@@ -2410,6 +2415,7 @@ const desktopStyles = StyleSheet.create({
     maxWidth: 1280,
     alignSelf: 'center',
     width: '100%',
+    alignItems: 'stretch',
   },
   leftCol: {
     flex: 1,
@@ -2417,10 +2423,10 @@ const desktopStyles = StyleSheet.create({
     borderRightColor: Colors.borderLight,
   },
   rightCol: {
-    width: 400,
+    width: 380,
     backgroundColor: Colors.white,
     ...Platform.select({
-      web: { position: 'sticky', top: 0, alignSelf: 'flex-start', maxHeight: '100vh', overflowY: 'auto' } as any,
+      web: { position: 'sticky', top: 0, alignSelf: 'flex-start', height: '100vh', overflowY: 'auto' } as any,
     }),
   },
 });
