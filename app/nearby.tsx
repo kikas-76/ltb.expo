@@ -17,7 +17,9 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import ListingCard from '@/components/explore/ListingCard';
 import SkeletonCard from '@/components/explore/SkeletonCard';
+import FilterPanel from '@/components/explore/FilterPanel';
 import { useResponsive } from '@/hooks/useResponsive';
+import { usePageFilters } from '@/hooks/usePageFilters';
 
 interface Listing {
   id: string;
@@ -29,6 +31,7 @@ interface Listing {
   latitude: number | null;
   longitude: number | null;
   distanceKm: number | null;
+  owner_type: string | null;
   owner: {
     id?: string;
     username: string | null;
@@ -59,6 +62,7 @@ export default function NearbyPage() {
   const router = useRouter();
   const { profile, session } = useAuth();
   const { isDesktop, isTablet } = useResponsive();
+  const pageFilters = usePageFilters();
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,8 +75,9 @@ export default function NearbyPage() {
   const userLng = profile?.location_data?.lng ?? null;
   const userId = session?.user.id ?? null;
   const hasLocation = userLat !== null && userLng !== null;
-
   const numColumns = isDesktop ? 4 : isTablet ? 3 : 2;
+
+  const { filters, selectedCategoryIds } = pageFilters;
 
   const fetchAndSort = useCallback(async () => {
     if (!hasLocation) {
@@ -82,17 +87,26 @@ export default function NearbyPage() {
 
     setLoading(true);
 
-    const { data } = await supabase
+    let query = supabase
       .from('listings')
       .select(
-        'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+        'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
       )
       .eq('is_active', true)
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
       .limit(500);
 
+    if (filters.ownerType !== 'all') query = (query as any).eq('owner_type', filters.ownerType);
+    if (filters.priceMin !== '') query = (query as any).gte('price', Number(filters.priceMin));
+    if (filters.priceMax !== '') query = (query as any).lte('price', Number(filters.priceMax));
+    if (selectedCategoryIds.length > 0) query = (query as any).in('category_id', selectedCategoryIds);
+
+    const { data } = await query;
+
     if (data) {
+      const radiusKm = filters.locationMode === 'none' ? 9999 : filters.radiusKm;
+
       const mapped: Listing[] = data
         .map((l: any) => {
           const dist =
@@ -105,7 +119,8 @@ export default function NearbyPage() {
             distanceKm: dist,
           };
         })
-        .sort((a, b) => {
+        .filter((l: Listing) => l.distanceKm === null || l.distanceKm <= radiusKm)
+        .sort((a: Listing, b: Listing) => {
           if (a.distanceKm === null) return 1;
           if (b.distanceKm === null) return -1;
           return a.distanceKm - b.distanceKm;
@@ -117,9 +132,10 @@ export default function NearbyPage() {
     }
 
     setLoading(false);
-  }, [userLat, userLng, hasLocation]);
+  }, [userLat, userLng, hasLocation, filters, selectedCategoryIds]);
 
   useEffect(() => {
+    setPage(0);
     fetchAndSort();
   }, [fetchAndSort]);
 
@@ -134,9 +150,11 @@ export default function NearbyPage() {
     setLoadingMore(false);
   };
 
+  const activeCount = pageFilters.activeFilterCount;
+
   const PageHeader = (
     <View style={[styles.header, isDesktop && styles.headerDesktop]}>
-      <View style={isDesktop ? styles.headerInner : { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={isDesktop ? styles.headerInner : styles.headerInnerMobile}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
@@ -144,7 +162,18 @@ export default function NearbyPage() {
           <Ionicons name="location-outline" size={18} color={Colors.primaryDark} />
           <Text style={styles.headerTitle}>Près de chez vous</Text>
         </View>
-        <View style={styles.headerRight} />
+        <TouchableOpacity
+          style={[styles.filterBtn, activeCount > 0 && styles.filterBtnActive]}
+          onPress={pageFilters.openPanel}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="options-outline" size={16} color={activeCount > 0 ? Colors.white : Colors.text} />
+          {activeCount > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -173,127 +202,103 @@ export default function NearbyPage() {
     );
   }
 
-  if (Platform.OS === 'web' && (isDesktop || isTablet)) {
-    const skeletonCount = numColumns * 3;
-    return (
-      <SafeAreaView style={styles.safe}>
-        {PageHeader}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.webScrollContent}
-          showsVerticalScrollIndicator={false}
-          onScroll={({ nativeEvent }) => {
-            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-            if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 200) {
-              loadMore();
-            }
-          }}
-          scrollEventThrottle={400}
-        >
-          <View style={styles.webGridWrapper}>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numColumns}, 1fr)`, gap: 16 } as any}>
-              {loading
-                ? Array.from({ length: skeletonCount }).map((_, i) => (
-                    <div key={i}>
-                      <SkeletonCard variant="grid" />
-                    </div>
-                  ))
-                : listings.map((item) => (
-                    <div key={item.id}>
-                      <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
-                      {item.distanceKm !== null && (
-                        <View style={styles.distanceBadge}>
-                          <Ionicons name="location-outline" size={10} color={Colors.primary} />
-                          <Text style={styles.distanceText}>{formatDistance(item.distanceKm)}</Text>
-                        </View>
-                      )}
-                    </div>
-                  ))}
-            </div>
-            {loadingMore && (
-              <View style={styles.loadMoreIndicator}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-              </View>
-            )}
-            {!loading && listings.length === 0 && (
-              <View style={styles.emptyState}>
-                <Ionicons name="location-outline" size={40} color={Colors.border} />
-                <Text style={styles.emptyTitle}>Aucune annonce à proximité</Text>
-                <Text style={styles.emptySubtitle}>Il n'y a pas encore d'objets près de chez vous</Text>
+  const WebGrid = (
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={styles.webScrollContent}
+      showsVerticalScrollIndicator={false}
+      onScroll={({ nativeEvent }) => {
+        const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+        if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 200) loadMore();
+      }}
+      scrollEventThrottle={400}
+    >
+      <View style={styles.webGridWrapper}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numColumns}, 1fr)`, gap: 16 } as any}>
+          {loading
+            ? Array.from({ length: numColumns * 3 }).map((_, i) => <div key={i}><SkeletonCard variant="grid" /></div>)
+            : listings.map((item) => (
+                <div key={item.id}>
+                  <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
+                  {item.distanceKm !== null && (
+                    <View style={styles.distanceBadge}>
+                      <Ionicons name="location-outline" size={10} color={Colors.primary} />
+                      <Text style={styles.distanceText}>{formatDistance(item.distanceKm)}</Text>
+                    </View>
+                  )}
+                </div>
+              ))}
+        </div>
+        {loadingMore && <View style={styles.loadMoreIndicator}><ActivityIndicator size="small" color={Colors.primary} /></View>}
+        {!loading && listings.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="location-outline" size={40} color={Colors.border} />
+            <Text style={styles.emptyTitle}>Aucune annonce à proximité</Text>
+            <Text style={styles.emptySubtitle}>Aucun résultat pour ces filtres</Text>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  const MobileList = loading ? (
+    <View style={styles.grid}>
+      {[1, 2, 3, 4].map((i) => <View key={i} style={styles.gridItem}><SkeletonCard variant="grid" /></View>)}
+    </View>
+  ) : (
+    <FlatList
+      data={listings}
+      keyExtractor={(item) => item.id}
+      numColumns={2}
+      contentContainerStyle={styles.listContent}
+      columnWrapperStyle={styles.columnWrapper}
+      showsVerticalScrollIndicator={false}
+      onEndReached={loadMore}
+      onEndReachedThreshold={0.4}
+      renderItem={({ item }) => (
+        <View style={styles.gridItem}>
+          <View>
+            <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
+            {item.distanceKm !== null && (
+              <View style={styles.distanceBadge}>
+                <Ionicons name="location-outline" size={10} color={Colors.primary} />
+                <Text style={styles.distanceText}>{formatDistance(item.distanceKm)}</Text>
               </View>
             )}
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
+        </View>
+      )}
+      ListFooterComponent={loadingMore ? <View style={styles.loadMoreIndicator}><ActivityIndicator size="small" color={Colors.primary} /></View> : null}
+      ListEmptyComponent={
+        <View style={styles.emptyState}>
+          <Ionicons name="location-outline" size={40} color={Colors.border} />
+          <Text style={styles.emptyTitle}>Aucune annonce à proximité</Text>
+          <Text style={styles.emptySubtitle}>Aucun résultat pour ces filtres</Text>
+        </View>
+      }
+    />
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
       {PageHeader}
-
-      {loading ? (
-        <View style={styles.grid}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <View key={i} style={styles.gridItem}>
-              <SkeletonCard variant="grid" />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <FlatList
-          data={listings}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.listContent}
-          columnWrapperStyle={styles.columnWrapper}
-          showsVerticalScrollIndicator={false}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          renderItem={({ item }) => (
-            <View style={styles.gridItem}>
-              <View>
-                <ListingCard
-                  listing={item}
-                  variant="grid"
-                  userLat={userLat}
-                  userLng={userLng}
-                  userId={userId}
-                />
-                {item.distanceKm !== null && (
-                  <View style={styles.distanceBadge}>
-                    <Ionicons name="location-outline" size={10} color={Colors.primary} />
-                    <Text style={styles.distanceText}>{formatDistance(item.distanceKm)}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={styles.loadMoreIndicator}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="location-outline" size={40} color={Colors.border} />
-              <Text style={styles.emptyTitle}>Aucune annonce à proximité</Text>
-              <Text style={styles.emptySubtitle}>Il n'y a pas encore d'objets près de chez vous</Text>
-            </View>
-          }
-        />
-      )}
+      {Platform.OS === 'web' && (isDesktop || isTablet) ? WebGrid : MobileList}
+      <FilterPanel
+        visible={pageFilters.filterPanelVisible}
+        filters={pageFilters.pendingFilters}
+        onFiltersChange={pageFilters.setPendingFilters}
+        onClose={pageFilters.closePanel}
+        onApply={pageFilters.applyPanel}
+        categories={pageFilters.categories}
+        selectedCategoryIds={pageFilters.pendingCategoryIds}
+        onToggleCategory={pageFilters.toggleCategory}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  safe: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -305,145 +310,61 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
     backgroundColor: Colors.background,
   },
-  headerDesktop: {
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-  },
+  headerDesktop: { paddingHorizontal: 24, justifyContent: 'center' },
   headerInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    maxWidth: 1200,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    width: '100%', maxWidth: 1200,
+  },
+  headerInnerMobile: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  headerCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontFamily: 'Inter-Bold', fontSize: 18, color: Colors.text, letterSpacing: -0.3 },
+  filterBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  headerTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 18,
-    color: Colors.text,
-    letterSpacing: -0.3,
+  filterBtnActive: { backgroundColor: Colors.primaryDark, borderColor: Colors.primaryDark },
+  filterBadge: {
+    position: 'absolute', top: -4, right: -4,
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: Colors.notification, alignItems: 'center', justifyContent: 'center',
   },
-  headerRight: {
-    width: 38,
-  },
-  webScrollContent: {
-    alignItems: 'center',
-    paddingBottom: 48,
-  },
-  webGridWrapper: {
-    width: '100%',
-    maxWidth: 1200,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
-  listContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 32,
-    paddingTop: 8,
-  },
-  columnWrapper: {
-    gap: 10,
-    marginBottom: 10,
-  },
-  gridItem: {
-    flex: 1,
-  },
+  filterBadgeText: { fontFamily: 'Inter-Bold', fontSize: 9, color: Colors.white },
+  webScrollContent: { alignItems: 'center', paddingBottom: 48 },
+  webGridWrapper: { width: '100%', maxWidth: 1200, paddingHorizontal: 24, paddingTop: 24 },
+  listContent: { paddingHorizontal: 12, paddingBottom: 32, paddingTop: 8 },
+  columnWrapper: { gap: 10, marginBottom: 10 },
+  gridItem: { flex: 1 },
   distanceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingTop: 4,
-    paddingBottom: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 6, paddingTop: 4, paddingBottom: 2,
   },
-  distanceText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 11,
-    color: Colors.primary,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    gap: 10,
-  },
-  loadMoreIndicator: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    gap: 12,
-  },
-  emptyTitle: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: Colors.text,
-  },
-  emptySubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 13,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
+  distanceText: { fontFamily: 'Inter-Medium', fontSize: 11, color: Colors.primary },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, paddingTop: 8, gap: 10 },
+  loadMoreIndicator: { paddingVertical: 20, alignItems: 'center' },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 12 },
+  emptyTitle: { fontFamily: 'Inter-SemiBold', fontSize: 16, color: Colors.text },
+  emptySubtitle: { fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingHorizontal: 32 },
   noLocationState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    gap: 12,
+    flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 12,
   },
   noLocationIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.borderLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: Colors.borderLight, alignItems: 'center', justifyContent: 'center', marginBottom: 4,
   },
-  noLocationTitle: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: Colors.text,
-    textAlign: 'center',
-  },
+  noLocationTitle: { fontFamily: 'Inter-SemiBold', fontSize: 18, color: Colors.text, textAlign: 'center' },
   noLocationSubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 21,
+    fontFamily: 'Inter-Regular', fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 21,
   },
   addAddressBtn: {
-    marginTop: 8,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    marginTop: 8, backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12,
   },
-  addAddressBtnText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 14,
-    color: Colors.white,
-  },
+  addAddressBtnText: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.white },
 });

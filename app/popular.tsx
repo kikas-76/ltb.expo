@@ -17,7 +17,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import ListingCard from '@/components/explore/ListingCard';
 import SkeletonCard from '@/components/explore/SkeletonCard';
+import FilterPanel from '@/components/explore/FilterPanel';
+import { CITIES } from '@/components/explore/FilterPanel';
 import { useResponsive } from '@/hooks/useResponsive';
+import { usePageFilters } from '@/hooks/usePageFilters';
 
 interface Listing {
   id: string;
@@ -31,11 +34,24 @@ interface Listing {
   view_count: number;
   favorite_count: number;
   score: number;
+  owner_type: string | null;
   owner: {
     id?: string;
     username: string | null;
     photo_url: string | null;
   } | null;
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 const SORT_OPTIONS = [
@@ -49,7 +65,8 @@ const PAGE_SIZE = 20;
 export default function PopularPage() {
   const router = useRouter();
   const { profile, session } = useAuth();
-  const { isDesktop, isTablet, width } = useResponsive();
+  const { isDesktop, isTablet } = useResponsive();
+  const pageFilters = usePageFilters();
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,71 +78,101 @@ export default function PopularPage() {
   const userLat = profile?.location_data?.lat ?? null;
   const userLng = profile?.location_data?.lng ?? null;
   const userId = session?.user.id ?? null;
-
   const numColumns = isDesktop ? 4 : isTablet ? 3 : 2;
 
-  const fetchListings = useCallback(async (pageNum: number, sort: typeof sortBy, reset = false) => {
-    if (pageNum === 0) setLoading(true);
-    else setLoadingMore(true);
+  const { filters, selectedCategoryIds } = pageFilters;
 
-    const { data } = await supabase
-      .from('listings')
-      .select(
-        'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
-      )
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .range(pageNum * PAGE_SIZE * 3, (pageNum + 1) * PAGE_SIZE * 3 - 1);
+  const fetchListings = useCallback(
+    async (pageNum: number, sort: typeof sortBy, reset = false) => {
+      if (pageNum === 0) setLoading(true);
+      else setLoadingMore(true);
 
-    if (data && data.length > 0) {
-      const ids = data.map((l: any) => l.id);
+      let query = supabase
+        .from('listings')
+        .select(
+          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+        )
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-      const [viewsRes, favsRes] = await Promise.all([
-        supabase.from('listing_views').select('listing_id').in('listing_id', ids),
-        supabase.from('saved_listings').select('listing_id').in('listing_id', ids),
-      ]);
+      if (filters.ownerType !== 'all') query = query.eq('owner_type', filters.ownerType);
+      if (filters.priceMin !== '') query = query.gte('price', Number(filters.priceMin));
+      if (filters.priceMax !== '') query = query.lte('price', Number(filters.priceMax));
+      if (selectedCategoryIds.length > 0) query = query.in('category_id', selectedCategoryIds);
 
-      const viewCounts: Record<string, number> = {};
-      (viewsRes.data ?? []).forEach((v: any) => {
-        viewCounts[v.listing_id] = (viewCounts[v.listing_id] ?? 0) + 1;
-      });
+      const fetchSize = PAGE_SIZE * 3;
+      query = query.range(pageNum * fetchSize, (pageNum + 1) * fetchSize - 1);
 
-      const favCounts: Record<string, number> = {};
-      (favsRes.data ?? []).forEach((v: any) => {
-        favCounts[v.listing_id] = (favCounts[v.listing_id] ?? 0) + 1;
-      });
+      const { data } = await query;
 
-      const mapped: Listing[] = data.map((l: any) => {
-        const views = viewCounts[l.id] ?? 0;
-        const favs = favCounts[l.id] ?? 0;
-        return {
-          ...l,
-          owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
-          view_count: views,
-          favorite_count: favs,
-          score: views + favs * 3,
-        };
-      });
+      if (data && data.length > 0) {
+        const ids = data.map((l: any) => l.id);
 
-      const sorted = [...mapped].sort((a, b) => {
-        if (sort === 'views') return b.view_count - a.view_count;
-        if (sort === 'favorites') return b.favorite_count - a.favorite_count;
-        return b.score - a.score;
-      });
+        const [viewsRes, favsRes] = await Promise.all([
+          supabase.from('listing_views').select('listing_id').in('listing_id', ids),
+          supabase.from('saved_listings').select('listing_id').in('listing_id', ids),
+        ]);
 
-      const paged = sorted.slice(0, PAGE_SIZE);
-      setListings((prev) => (reset || pageNum === 0 ? paged : [...prev, ...paged]));
-      setHasMore(sorted.length >= PAGE_SIZE);
-    }
+        const viewCounts: Record<string, number> = {};
+        (viewsRes.data ?? []).forEach((v: any) => {
+          viewCounts[v.listing_id] = (viewCounts[v.listing_id] ?? 0) + 1;
+        });
+        const favCounts: Record<string, number> = {};
+        (favsRes.data ?? []).forEach((v: any) => {
+          favCounts[v.listing_id] = (favCounts[v.listing_id] ?? 0) + 1;
+        });
 
-    setLoading(false);
-    setLoadingMore(false);
-  }, []);
+        let mapped: Listing[] = data.map((l: any) => {
+          const views = viewCounts[l.id] ?? 0;
+          const favs = favCounts[l.id] ?? 0;
+          return {
+            ...l,
+            owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
+            view_count: views,
+            favorite_count: favs,
+            score: views + favs * 3,
+          };
+        });
+
+        if (filters.locationMode !== 'none') {
+          let refLat: number | null = null;
+          let refLng: number | null = null;
+          if (filters.locationMode === 'around_me') { refLat = userLat; refLng = userLng; }
+          else if (filters.locationMode === 'city') {
+            const city = CITIES.find((c) => c.value === filters.selectedCity);
+            if (city) { refLat = city.lat; refLng = city.lng; }
+          }
+          if (refLat !== null && refLng !== null) {
+            mapped = mapped
+              .filter((l) => l.latitude != null && l.longitude != null)
+              .filter((l) => haversineKm(refLat!, refLng!, l.latitude!, l.longitude!) <= filters.radiusKm);
+          }
+        }
+
+        const sorted = [...mapped].sort((a, b) => {
+          if (sort === 'views') return b.view_count - a.view_count;
+          if (sort === 'favorites') return b.favorite_count - a.favorite_count;
+          return b.score - a.score;
+        });
+
+        const paged = sorted.slice(0, PAGE_SIZE);
+        setListings((prev) => (reset || pageNum === 0 ? paged : [...prev, ...paged]));
+        setHasMore(sorted.length >= PAGE_SIZE);
+      } else if (reset || pageNum === 0) {
+        setListings([]);
+        setHasMore(false);
+      }
+
+      setLoading(false);
+      setLoadingMore(false);
+    },
+    [filters, selectedCategoryIds, userLat, userLng]
+  );
 
   useEffect(() => {
     setPage(0);
     fetchListings(0, sortBy, true);
-  }, [sortBy]);
+  }, [sortBy, filters, selectedCategoryIds]);
 
   const loadMore = () => {
     if (loadingMore || !hasMore) return;
@@ -134,9 +181,11 @@ export default function PopularPage() {
     fetchListings(next, sortBy);
   };
 
-  const Header = (
+  const activeCount = pageFilters.activeFilterCount;
+
+  const PageHeader = (
     <View style={[styles.header, isDesktop && styles.headerDesktop]}>
-      <View style={isDesktop ? styles.headerInner : { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={isDesktop ? styles.headerInner : styles.headerInnerMobile}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
@@ -144,14 +193,25 @@ export default function PopularPage() {
           <Ionicons name="trending-up-outline" size={18} color={Colors.primaryDark} />
           <Text style={styles.headerTitle}>Les plus populaires</Text>
         </View>
-        <View style={styles.headerRight} />
+        <TouchableOpacity
+          style={[styles.filterBtn, activeCount > 0 && styles.filterBtnActive]}
+          onPress={pageFilters.openPanel}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="options-outline" size={16} color={activeCount > 0 ? Colors.white : Colors.text} />
+          {activeCount > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
 
   const SortBar = (
     <View style={[styles.sortBar, isDesktop && styles.sortBarDesktop]}>
-      <View style={isDesktop ? styles.sortBarInner : { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <View style={isDesktop ? styles.sortBarInner : styles.sortBarInnerMobile}>
         <Text style={styles.sortLabel}>Classé par :</Text>
         <View style={styles.sortOptions}>
           {SORT_OPTIONS.map((opt) => (
@@ -171,127 +231,100 @@ export default function PopularPage() {
     </View>
   );
 
-  if (Platform.OS === 'web' && (isDesktop || isTablet)) {
-    const skeletonCount = numColumns * 3;
-    return (
-      <SafeAreaView style={styles.safe}>
-        {Header}
-        {SortBar}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.webScrollContent}
-          showsVerticalScrollIndicator={false}
-          onScroll={({ nativeEvent }) => {
-            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-            if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 200) {
-              loadMore();
-            }
-          }}
-          scrollEventThrottle={400}
-        >
-          <View style={styles.webGridWrapper}>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numColumns}, 1fr)`, gap: 16 } as any}>
-              {loading
-                ? Array.from({ length: skeletonCount }).map((_, i) => (
-                    <div key={i}>
-                      <SkeletonCard variant="grid" />
-                    </div>
-                  ))
-                : listings.map((item, index) => (
-                    <div key={item.id} style={{ position: 'relative' } as any}>
-                      {index < 3 && (
-                        <View style={[styles.rankBadge, index === 0 && styles.rankBadgeGold, index === 1 && styles.rankBadgeSilver, index === 2 && styles.rankBadgeBronze]}>
-                          <Text style={styles.rankBadgeText}>#{index + 1}</Text>
-                        </View>
-                      )}
-                      <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
-                    </div>
-                  ))}
-            </div>
-            {loadingMore && (
-              <View style={styles.loadMoreIndicator}>
-                <ActivityIndicator size="small" color={Colors.primary} />
+  const WebGrid = (
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={styles.webScrollContent}
+      showsVerticalScrollIndicator={false}
+      onScroll={({ nativeEvent }) => {
+        const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+        if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 200) loadMore();
+      }}
+      scrollEventThrottle={400}
+    >
+      <View style={styles.webGridWrapper}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numColumns}, 1fr)`, gap: 16 } as any}>
+          {loading
+            ? Array.from({ length: numColumns * 3 }).map((_, i) => <div key={i}><SkeletonCard variant="grid" /></div>)
+            : listings.map((item, index) => (
+                <div key={item.id} style={{ position: 'relative' } as any}>
+                  {index < 3 && (
+                    <View style={[styles.rankBadge, index === 0 && styles.rankBadgeGold, index === 1 && styles.rankBadgeSilver, index === 2 && styles.rankBadgeBronze]}>
+                      <Text style={styles.rankBadgeText}>#{index + 1}</Text>
+                    </View>
+                  )}
+                  <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
+                </div>
+              ))}
+        </div>
+        {loadingMore && <View style={styles.loadMoreIndicator}><ActivityIndicator size="small" color={Colors.primary} /></View>}
+        {!loading && listings.length === 0 && <EmptyState />}
+      </View>
+    </ScrollView>
+  );
+
+  const MobileList = loading ? (
+    <View style={styles.grid}>
+      {[1, 2, 3, 4].map((i) => <View key={i} style={styles.gridItem}><SkeletonCard variant="grid" /></View>)}
+    </View>
+  ) : (
+    <FlatList
+      data={listings}
+      keyExtractor={(item) => item.id}
+      numColumns={2}
+      contentContainerStyle={styles.listContent}
+      columnWrapperStyle={styles.columnWrapper}
+      showsVerticalScrollIndicator={false}
+      onEndReached={loadMore}
+      onEndReachedThreshold={0.4}
+      renderItem={({ item, index }) => (
+        <View style={styles.gridItem}>
+          <View style={styles.rankBadgeWrap}>
+            {index < 3 && (
+              <View style={[styles.rankBadge, index === 0 && styles.rankBadgeGold, index === 1 && styles.rankBadgeSilver, index === 2 && styles.rankBadgeBronze]}>
+                <Text style={styles.rankBadgeText}>#{index + 1}</Text>
               </View>
             )}
-            {!loading && listings.length === 0 && (
-              <View style={styles.emptyState}>
-                <Ionicons name="trending-up-outline" size={40} color={Colors.border} />
-                <Text style={styles.emptyTitle}>Aucune annonce populaire</Text>
-                <Text style={styles.emptySubtitle}>Les annonces les plus consultées apparaîtront ici</Text>
-              </View>
-            )}
+            <ListingCard listing={item} variant="grid" userLat={userLat} userLng={userLng} userId={userId} />
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
+        </View>
+      )}
+      ListFooterComponent={loadingMore ? <View style={styles.loadMoreIndicator}><ActivityIndicator size="small" color={Colors.primary} /></View> : null}
+      ListEmptyComponent={<EmptyState />}
+    />
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
-      {Header}
+      {PageHeader}
       {SortBar}
-
-      {loading ? (
-        <View style={styles.grid}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <View key={i} style={styles.gridItem}>
-              <SkeletonCard variant="grid" />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <FlatList
-          data={listings}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.listContent}
-          columnWrapperStyle={styles.columnWrapper}
-          showsVerticalScrollIndicator={false}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          renderItem={({ item, index }) => (
-            <View style={styles.gridItem}>
-              <View style={styles.rankBadgeWrap}>
-                {index < 3 && (
-                  <View style={[styles.rankBadge, index === 0 && styles.rankBadgeGold, index === 1 && styles.rankBadgeSilver, index === 2 && styles.rankBadgeBronze]}>
-                    <Text style={styles.rankBadgeText}>#{index + 1}</Text>
-                  </View>
-                )}
-                <ListingCard
-                  listing={item}
-                  variant="grid"
-                  userLat={userLat}
-                  userLng={userLng}
-                  userId={userId}
-                />
-              </View>
-            </View>
-          )}
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={styles.loadMoreIndicator}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="trending-up-outline" size={40} color={Colors.border} />
-              <Text style={styles.emptyTitle}>Aucune annonce populaire</Text>
-              <Text style={styles.emptySubtitle}>Les annonces les plus consultées apparaîtront ici</Text>
-            </View>
-          }
-        />
-      )}
+      {Platform.OS === 'web' && (isDesktop || isTablet) ? WebGrid : MobileList}
+      <FilterPanel
+        visible={pageFilters.filterPanelVisible}
+        filters={pageFilters.pendingFilters}
+        onFiltersChange={pageFilters.setPendingFilters}
+        onClose={pageFilters.closePanel}
+        onApply={pageFilters.applyPanel}
+        categories={pageFilters.categories}
+        selectedCategoryIds={pageFilters.pendingCategoryIds}
+        onToggleCategory={pageFilters.toggleCategory}
+      />
     </SafeAreaView>
   );
 }
 
+function EmptyState() {
+  return (
+    <View style={styles.emptyState}>
+      <Ionicons name="trending-up-outline" size={40} color={Colors.border} />
+      <Text style={styles.emptyTitle}>Aucune annonce populaire</Text>
+      <Text style={styles.emptySubtitle}>Aucun résultat pour ces filtres</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  safe: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -303,172 +336,72 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
     backgroundColor: Colors.background,
   },
-  headerDesktop: {
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-  },
+  headerDesktop: { paddingHorizontal: 24, justifyContent: 'center' },
   headerInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    maxWidth: 1200,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    width: '100%', maxWidth: 1200,
+  },
+  headerInnerMobile: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  headerCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontFamily: 'Inter-Bold', fontSize: 18, color: Colors.text, letterSpacing: -0.3 },
+  filterBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  headerTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 18,
-    color: Colors.text,
-    letterSpacing: -0.3,
+  filterBtnActive: { backgroundColor: Colors.primaryDark, borderColor: Colors.primaryDark },
+  filterBadge: {
+    position: 'absolute', top: -4, right: -4,
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: Colors.notification, alignItems: 'center', justifyContent: 'center',
   },
-  headerRight: {
-    width: 38,
-  },
+  filterBadgeText: { fontFamily: 'Inter-Bold', fontSize: 9, color: Colors.white },
   sortBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-    flexWrap: 'wrap',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight, flexWrap: 'wrap',
   },
-  sortBarDesktop: {
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
+  sortBarDesktop: { justifyContent: 'center', paddingHorizontal: 24 },
   sortBarInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    width: '100%',
-    maxWidth: 1200,
-    flexWrap: 'wrap',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    width: '100%', maxWidth: 1200, flexWrap: 'wrap',
   },
-  sortLabel: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
-  sortOptions: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
+  sortBarInnerMobile: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  sortLabel: { fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textMuted },
+  sortOptions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   sortChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border,
   },
-  sortChipActive: {
-    backgroundColor: Colors.primaryDark,
-    borderColor: Colors.primaryDark,
-  },
-  sortChipText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  sortChipTextActive: {
-    color: '#fff',
-  },
-  webScrollContent: {
-    alignItems: 'center',
-    paddingBottom: 48,
-  },
-  webGridWrapper: {
-    width: '100%',
-    maxWidth: 1200,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
-  listContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 32,
-    paddingTop: 4,
-  },
-  columnWrapper: {
-    gap: 10,
-    marginBottom: 10,
-  },
-  gridItem: {
-    flex: 1,
-  },
-  rankBadgeWrap: {
-    position: 'relative',
-  },
+  sortChipActive: { backgroundColor: Colors.primaryDark, borderColor: Colors.primaryDark },
+  sortChipText: { fontFamily: 'Inter-Medium', fontSize: 12, color: Colors.textSecondary },
+  sortChipTextActive: { color: '#fff' },
+  webScrollContent: { alignItems: 'center', paddingBottom: 48 },
+  webGridWrapper: { width: '100%', maxWidth: 1200, paddingHorizontal: 24, paddingTop: 24 },
+  listContent: { paddingHorizontal: 12, paddingBottom: 32, paddingTop: 4 },
+  columnWrapper: { gap: 10, marginBottom: 10 },
+  gridItem: { flex: 1 },
+  rankBadgeWrap: { position: 'relative' },
   rankBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    zIndex: 10,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute', top: 6, left: 6, zIndex: 10,
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.border,
   },
-  rankBadgeGold: {
-    backgroundColor: '#F5C842',
-  },
-  rankBadgeSilver: {
-    backgroundColor: '#C0C0C0',
-  },
-  rankBadgeBronze: {
-    backgroundColor: '#CD7F32',
-  },
-  rankBadgeText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 9,
-    color: '#fff',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingTop: 4,
-    gap: 10,
-  },
-  loadMoreIndicator: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    gap: 12,
-  },
-  emptyTitle: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: Colors.text,
-  },
-  emptySubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 13,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
+  rankBadgeGold: { backgroundColor: '#F5C842' },
+  rankBadgeSilver: { backgroundColor: '#C0C0C0' },
+  rankBadgeBronze: { backgroundColor: '#CD7F32' },
+  rankBadgeText: { fontFamily: 'Inter-Bold', fontSize: 9, color: '#fff' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, paddingTop: 4, gap: 10 },
+  loadMoreIndicator: { paddingVertical: 20, alignItems: 'center' },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 12 },
+  emptyTitle: { fontFamily: 'Inter-SemiBold', fontSize: 16, color: Colors.text },
+  emptySubtitle: { fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingHorizontal: 32 },
 });
