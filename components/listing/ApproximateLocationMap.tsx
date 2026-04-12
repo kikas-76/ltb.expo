@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, Platform, LayoutChangeEvent } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, Platform, LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -13,7 +13,7 @@ interface ApproximateLocationMapProps {
 
 export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLocationMapProps) {
   const [containerWidth, setContainerWidth] = useState(0);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   const onLayout = (e: LayoutChangeEvent) => {
     setContainerWidth(e.nativeEvent.layout.width);
@@ -24,79 +24,69 @@ export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLo
     ? `${Math.round(containerWidth)}x${mapHeight}`
     : '600x288';
 
-  const mapUrl = containerWidth > 0
-    ? getStaticMapUrl(lat, lng, 13, apiSize)
-    : null;
-
-  useEffect(() => {
-    if (Platform.OS !== 'web' || !mapUrl) return;
-    let revoked = false;
-    fetch(mapUrl, {
-      headers: {
-        Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-        apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
-        'X-Maps-Key': process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? '',
-      },
-    })
-      .then((res) => res.blob())
-      .then((blob) => {
-        if (!revoked) {
-          const url = URL.createObjectURL(blob);
-          setBlobUrl(url);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      revoked = true;
-      setBlobUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
-    };
-  }, [mapUrl]);
+  const mapUrl = containerWidth > 0 ? getStaticMapUrl(lat, lng, 13, apiSize) : null;
 
   const cx = containerWidth / 2;
   const cy = mapHeight / 2;
   const r = Math.round(containerWidth * 0.14);
 
-  const webImageSrc = Platform.OS === 'web' ? blobUrl : mapUrl;
+  const overlay = containerWidth > 0 && mapHeight > 0 ? (
+    <View
+      style={[StyleSheet.absoluteFill, { width: containerWidth, height: mapHeight }]}
+      pointerEvents="none"
+    >
+      <Svg width={containerWidth} height={mapHeight}>
+        <Defs>
+          <RadialGradient id="cg" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor={Colors.primaryDark} stopOpacity="0.38" />
+            <Stop offset="55%" stopColor={Colors.primary} stopOpacity="0.22" />
+            <Stop offset="100%" stopColor={Colors.primary} stopOpacity="0.04" />
+          </RadialGradient>
+        </Defs>
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={r}
+          fill="url(#cg)"
+          stroke={Colors.primaryDark}
+          strokeWidth={2}
+          strokeOpacity={0.5}
+          strokeDasharray="7 5"
+        />
+        <Circle cx={cx} cy={cy} r={9} fill={Colors.primaryDark} fillOpacity={0.85} />
+        <Circle cx={cx} cy={cy} r={4} fill={Colors.white} />
+      </Svg>
+    </View>
+  ) : null;
 
   return (
     <View style={styles.card}>
-      <View style={styles.mapContainer} onLayout={onLayout}>
-        {containerWidth > 0 && webImageSrc && (
-          <>
-            <Image
-              source={{ uri: webImageSrc }}
-              style={[StyleSheet.absoluteFill, { width: containerWidth, height: mapHeight }]}
-              resizeMode="cover"
-            />
-
-            <View style={[StyleSheet.absoluteFill, { width: containerWidth, height: mapHeight }]} pointerEvents="none">
-              <Svg width={containerWidth} height={mapHeight}>
-                <Defs>
-                  <RadialGradient id="cg" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%" stopColor={Colors.primaryDark} stopOpacity="0.38" />
-                    <Stop offset="55%" stopColor={Colors.primary} stopOpacity="0.22" />
-                    <Stop offset="100%" stopColor={Colors.primary} stopOpacity="0.04" />
-                  </RadialGradient>
-                </Defs>
-                <Circle
-                  cx={cx}
-                  cy={cy}
-                  r={r}
-                  fill="url(#cg)"
-                  stroke={Colors.primaryDark}
-                  strokeWidth={2}
-                  strokeOpacity={0.5}
-                  strokeDasharray="7 5"
-                />
-                <Circle cx={cx} cy={cy} r={9} fill={Colors.primaryDark} fillOpacity={0.85} />
-                <Circle cx={cx} cy={cy} r={4} fill={Colors.white} />
-              </Svg>
-            </View>
-          </>
-        )}
+      <View style={[styles.mapContainer, { height: mapHeight || undefined }]} onLayout={onLayout}>
+        {mapUrl && !imgError ? (
+          Platform.OS === 'web' ? (
+            <>
+              <img
+                src={mapUrl}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={() => setImgError(true)}
+                alt="Carte de localisation approximative"
+              />
+              {overlay}
+            </>
+          ) : (
+            <>
+              <NativeImage
+                uri={mapUrl}
+                width={containerWidth}
+                height={mapHeight}
+                onError={() => setImgError(true)}
+              />
+              {overlay}
+            </>
+          )
+        ) : imgError ? (
+          <FallbackMap city={city} />
+        ) : null}
       </View>
 
       <View style={styles.footer}>
@@ -110,6 +100,27 @@ export default function ApproximateLocationMap({ lat, lng, city }: ApproximateLo
         </View>
         <Text style={styles.approxLabel}>Adresse approximative</Text>
       </View>
+    </View>
+  );
+}
+
+function NativeImage({ uri, width, height, onError }: { uri: string; width: number; height: number; onError: () => void }) {
+  const { Image } = require('react-native');
+  return (
+    <Image
+      source={{ uri }}
+      style={[StyleSheet.absoluteFill, { width, height }]}
+      resizeMode="cover"
+      onError={onError}
+    />
+  );
+}
+
+function FallbackMap({ city }: { city: string | null }) {
+  return (
+    <View style={styles.fallback}>
+      <Ionicons name="map-outline" size={32} color={Colors.primary} />
+      <Text style={styles.fallbackText}>{city ?? 'Carte non disponible'}</Text>
     </View>
   );
 }
@@ -164,5 +175,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textMuted,
     fontStyle: 'italic',
+  },
+  fallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.borderLight,
+  },
+  fallbackText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.textMuted,
   },
 });
