@@ -54,27 +54,39 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
         )
         .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(30);
+        .limit(50);
 
       if (data && data.length > 0) {
         const ids = data.map((l: any) => l.id);
-        const { data: viewData } = await supabase
-          .from('listing_views')
-          .select('listing_id')
-          .in('listing_id', ids);
+
+        const [viewsRes, favsRes] = await Promise.all([
+          supabase.from('listing_views').select('listing_id').in('listing_id', ids),
+          supabase.from('saved_listings').select('listing_id').in('listing_id', ids),
+        ]);
 
         const viewCounts: Record<string, number> = {};
-        (viewData ?? []).forEach((v: any) => {
+        (viewsRes.data ?? []).forEach((v: any) => {
           viewCounts[v.listing_id] = (viewCounts[v.listing_id] ?? 0) + 1;
         });
 
+        const favCounts: Record<string, number> = {};
+        (favsRes.data ?? []).forEach((v: any) => {
+          favCounts[v.listing_id] = (favCounts[v.listing_id] ?? 0) + 1;
+        });
+
         const mapped: Listing[] = data
-          .map((l: any) => ({
-            ...l,
-            owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
-            view_count: viewCounts[l.id] ?? 0,
-          }))
-          .sort((a: Listing, b: Listing) => b.view_count - a.view_count)
+          .map((l: any) => {
+            const views = viewCounts[l.id] ?? 0;
+            const favs = favCounts[l.id] ?? 0;
+            return {
+              ...l,
+              owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
+              view_count: views,
+              favorite_count: favs,
+              score: views + favs * 3,
+            };
+          })
+          .sort((a: any, b: any) => b.score - a.score)
           .slice(0, 8);
 
         setListings(mapped);
