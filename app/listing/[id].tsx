@@ -143,6 +143,7 @@ export default function ListingDetailScreen() {
 
   const [listing, setListing] = useState<Listing | null>(null);
   const { isFavorite, toggle: toggleFavorite } = useFavorite(id ?? '', userId, listing?.name ?? undefined);
+  const initialFavoriteRef = useRef<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [activePhoto, setActivePhoto] = useState(0);
   const [calendarVisible, setCalendarVisible] = useState(false);
@@ -168,6 +169,14 @@ export default function ListingDetailScreen() {
   useEffect(() => {
     if (id) fetchListing();
   }, [id]);
+
+  useEffect(() => {
+    if (initialFavoriteRef.current === null) {
+      initialFavoriteRef.current = isFavorite;
+      return;
+    }
+    setLikeCount((prev) => isFavorite ? prev + 1 : Math.max(0, prev - 1));
+  }, [isFavorite]);
 
   useEffect(() => {
     if (!loading && listing) {
