@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
+import { useResponsive } from '@/hooks/useResponsive';
 
 export type SortKey = 'recent' | 'price_asc' | 'price_desc' | 'nearest';
 export type OwnerType = 'all' | 'particulier' | 'professionnel';
@@ -108,7 +109,9 @@ export default function FilterPanel({
   selectedCategoryIds = [],
   onToggleCategory,
 }: FilterPanelProps) {
+  const { isDesktop } = useResponsive();
   const translateY = useRef(new Animated.Value(800)).current;
+  const translateX = useRef(new Animated.Value(420)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const isRendered = useRef(false);
 
@@ -116,34 +119,34 @@ export default function FilterPanel({
     if (visible) {
       isRendered.current = true;
       Animated.parallel([
-        Animated.timing(translateY, {
+        Animated.timing(isDesktop ? translateX : translateY, {
           toValue: 0,
-          duration: 380,
+          duration: 320,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 320,
+          duration: 260,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: 800,
-          duration: 260,
+        Animated.timing(isDesktop ? translateX : translateY, {
+          toValue: isDesktop ? 420 : 800,
+          duration: 240,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacity, {
           toValue: 0,
-          duration: 220,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start();
     }
-  }, [visible]);
+  }, [visible, isDesktop]);
 
   if (!visible && !isRendered.current) return null;
 
@@ -164,13 +167,24 @@ export default function FilterPanel({
     Number(filters.priceMin) > Number(filters.priceMax);
 
   return (
-    <View style={styles.overlay} pointerEvents={visible ? 'auto' : 'none'}>
+    <View
+      style={[styles.overlay, isDesktop && styles.overlayDesktop]}
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
       </Animated.View>
 
-      <Animated.View style={[styles.panel, { transform: [{ translateY }] }]}>
-        <View style={styles.handleBar} />
+      <Animated.View
+        style={[
+          styles.panel,
+          isDesktop ? styles.panelDesktop : null,
+          isDesktop
+            ? { transform: [{ translateX }] }
+            : { transform: [{ translateY }] },
+        ]}
+      >
+        {!isDesktop && <View style={styles.handleBar} />}
 
         <View style={styles.panelHeader}>
           <View style={styles.panelTitleRow}>
@@ -513,6 +527,11 @@ const styles = StyleSheet.create({
     zIndex: 200,
     justifyContent: 'flex-end',
   },
+  overlayDesktop: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'stretch',
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(20,18,14,0.52)',
@@ -526,6 +545,18 @@ const styles = StyleSheet.create({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.14, shadowRadius: 20 },
       android: { elevation: 20 },
       web: { boxShadow: '0 -4px 24px rgba(0,0,0,0.12)' } as any,
+    }),
+  },
+  panelDesktop: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    maxHeight: '100%',
+    width: 400,
+    flexShrink: 0,
+    ...Platform.select({
+      web: { boxShadow: '-4px 0 32px rgba(0,0,0,0.13)' } as any,
     }),
   },
   handleBar: {
