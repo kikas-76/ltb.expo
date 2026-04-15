@@ -25,6 +25,10 @@ const COMMISSION = 0.08;
 const TOTAL_STEPS = 4;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+const MAX_PHOTO_COUNT = 10;
+const MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
 type Step = 'DETAILS' | 'CATEGORY' | 'PHOTOS' | 'PRICING';
 const STEPS: Step[] = ['DETAILS', 'CATEGORY', 'PHOTOS', 'PRICING'];
 
@@ -226,15 +230,48 @@ export default function CreateListingScreen() {
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = 'image/*';
+      input.accept = ALLOWED_IMAGE_TYPES.join(',');
       input.multiple = true;
       input.onchange = (e: any) => {
         const files: File[] = Array.from(e.target.files ?? []);
-        const newItems: PhotoItem[] = files.map((file) => ({
-          uri: URL.createObjectURL(file),
-          file,
-        }));
-        setPhotos((prev) => [...prev, ...newItems].slice(0, 10));
+        const currentCount = photos.length;
+        const remaining = MAX_PHOTO_COUNT - currentCount;
+
+        if (remaining <= 0) {
+          setError(`Vous pouvez ajouter jusqu'à ${MAX_PHOTO_COUNT} photos maximum.`);
+          return;
+        }
+
+        const validItems: PhotoItem[] = [];
+        let hasFormatError = false;
+        let hasSizeError = false;
+
+        for (const file of files) {
+          if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            hasFormatError = true;
+            continue;
+          }
+          if (file.size > MAX_PHOTO_SIZE_BYTES) {
+            hasSizeError = true;
+            continue;
+          }
+          validItems.push({ uri: URL.createObjectURL(file), file });
+        }
+
+        if (hasFormatError) {
+          setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
+          return;
+        }
+        if (hasSizeError) {
+          setError('Chaque photo doit faire moins de 8 Mo.');
+          return;
+        }
+
+        const toAdd = validItems.slice(0, remaining);
+        if (files.length > remaining + (files.length - validItems.length)) {
+          setError(`Vous pouvez ajouter jusqu'à ${MAX_PHOTO_COUNT} photos maximum.`);
+        }
+        setPhotos((prev) => [...prev, ...toAdd].slice(0, MAX_PHOTO_COUNT));
       };
       input.click();
     } else {
@@ -247,13 +284,13 @@ export default function CreateListingScreen() {
         mediaTypes: ['images'],
         allowsMultipleSelection: true,
         quality: 0.85,
-        selectionLimit: 10 - photos.length,
+        selectionLimit: MAX_PHOTO_COUNT - photos.length,
       });
       if (!result.canceled && result.assets.length > 0) {
         const newItems: PhotoItem[] = result.assets.map((asset) => ({
           uri: asset.uri,
         }));
-        setPhotos((prev) => [...prev, ...newItems].slice(0, 10));
+        setPhotos((prev) => [...prev, ...newItems].slice(0, MAX_PHOTO_COUNT));
       }
     }
   };
@@ -285,14 +322,21 @@ export default function CreateListingScreen() {
             : 'image/jpeg';
         }
 
+        if (!ALLOWED_IMAGE_TYPES.includes(contentType)) {
+          setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
+          return urls;
+        }
+
+        if (blob.size > MAX_PHOTO_SIZE_BYTES) {
+          setError('Chaque photo doit faire moins de 8 Mo.');
+          return urls;
+        }
+
         const ALLOWED_EXTS: Record<string, string> = {
           'image/jpeg': 'jpg',
           'image/jpg': 'jpg',
           'image/png': 'png',
           'image/webp': 'webp',
-          'image/gif': 'gif',
-          'image/heic': 'heic',
-          'image/heif': 'heif',
         };
         const ext = ALLOWED_EXTS[contentType] ?? 'jpg';
         const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -600,7 +644,7 @@ export default function CreateListingScreen() {
                   <View style={styles.photoCountRow}>
                     <Text style={styles.photoCountLabel}>Photos ajoutées</Text>
                     <View style={styles.photoCountPill}>
-                      <Text style={styles.photoCountPillText}>{photos.length}/10</Text>
+                      <Text style={styles.photoCountPillText}>{photos.length}/{MAX_PHOTO_COUNT}</Text>
                     </View>
                   </View>
                   <View style={[styles.photoGrid, isDesktop && styles.photoGridDesktop]}>
@@ -621,7 +665,7 @@ export default function CreateListingScreen() {
                         </TouchableOpacity>
                       </View>
                     ))}
-                    {photos.length < 10 && (
+                    {photos.length < MAX_PHOTO_COUNT && (
                       <TouchableOpacity style={[styles.photoAddCell, isDesktop && styles.photoCellDesktop]} onPress={handlePickPhoto} activeOpacity={0.7}>
                         <Ionicons name="add-outline" size={22} color={Colors.primary} />
                         <Text style={styles.photoAddText}>Ajouter</Text>
