@@ -81,70 +81,70 @@ function RootNavigator() {
   }, [session]);
 
   useEffect(() => {
-    const run = async () => {
-      if (loading || profileLoading) return;
+    if (loading || profileLoading) return;
 
-      const inAuthGroup = segments[0] === '(tabs)';
-      const inOnboarding = segments[0] === 'onboarding';
-      const inCategory = segments[0] === 'category';
-      const inCreateListing = segments[0] === 'create-listing';
-      const inSearch = segments[0] === 'search';
-      const inListing = segments[0] === 'listing';
-      const inOwner = segments[0] === 'owner';
-      const inEditAddress = segments[0] === 'edit-address';
-      const inChat = segments[0] === 'chat';
-      const inFavorites = segments[0] === 'favorites';
-      const inAccountSettings = segments[0] === 'account-settings';
-      const inDeals = segments[0] === 'deals';
-      const inPopular = segments[0] === 'popular';
-      const inRecent = segments[0] === 'recent';
-      const inNearby = segments[0] === 'nearby';
-      const inWallet = segments[0] === 'wallet';
-      const inHelpCenter = segments[0] === 'help-center';
-      const inHelp = segments[0] === 'help';
-      const inLegal = segments[0] === 'legal';
-      const inReport = segments[0] === 'report';
-      const inPayment = segments[0] === 'payment';
-      const inPaymentSuccess = segments[0] === 'payment-success';
-      const inDispute = segments[0] === 'dispute';
-      const inBook = segments[0] === 'book';
-      const inAdmin = segments[0] === 'admin';
+    const seg = segments[0];
 
-      const inLogin = segments[0] === 'login';
-      const inRegister = segments[0] === 'register';
-      const inVerifyEmail = segments[0] === 'verify-email';
-      const inEmailConfirmed = segments[0] === 'email-confirmed';
-      const inLinkGoogle = segments[0] === 'link-google-account';
-      const inAuthCallback = segments[0] === 'auth-callback';
+    const PUBLIC_ROUTES = new Set([
+      undefined,
+      '+not-found',
+      'login',
+      'register',
+      'verify-email',
+      'email-confirmed',
+      'auth-callback',
+      'legal',
+      'book',
+    ]);
 
-      if (!session && inAuthGroup) {
+    const AUTH_ROUTES = new Set([
+      'login',
+      'register',
+      'verify-email',
+      'email-confirmed',
+      'auth-callback',
+    ]);
+
+    const isPublicRoute = PUBLIC_ROUTES.has(seg);
+    const isAuthRoute = AUTH_ROUTES.has(seg);
+    const isAdminRoute = seg === 'admin';
+    const isOnboardingRoute = seg === 'onboarding';
+    const isPrivateRoute = !isPublicRoute;
+
+    if (!session) {
+      if (isPrivateRoute) {
         router.replace('/');
-      } else if (!session && !inAuthGroup && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLegal && !inBook && !inAuthCallback && segments[0] !== undefined && segments[0] !== '+not-found') {
-      } else if (session && !inOnboarding && !inLogin && !inRegister && !inVerifyEmail && !inEmailConfirmed && !inLinkGoogle && !inAuthCallback) {
-        if (inAdmin && profile?.role !== 'admin') {
-          router.replace('/(tabs)');
-        } else if (!profile?.onboarding_completed) {
-          router.replace('/onboarding/profile' as any);
-        } else if (!inAuthGroup && !inCategory && !inCreateListing && !inSearch && !inListing && !inOwner && !inEditAddress && !inChat && !inFavorites && !inAccountSettings && !inDeals && !inPopular && !inRecent && !inNearby && !inWallet && !inHelpCenter && !inHelp && !inLegal && !inReport && !inPayment && !inPaymentSuccess && !inDispute && !inBook && !inAdmin) {
-          if (pendingListingId) {
-            const id = pendingListingId;
-            setPendingListingId(null);
-            router.replace(`/listing/${id}` as any);
-          } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
-            const pendingUrl = window.sessionStorage.getItem('pending_book_url');
-            if (pendingUrl) {
-              window.sessionStorage.removeItem('pending_book_url');
-              router.replace(pendingUrl as any);
-              return;
-            }
-            router.replace('/(tabs)');
-          } else {
-            router.replace('/(tabs)');
-          }
-        }
       }
-    };
-    run();
+      return;
+    }
+
+    if (isAdminRoute && profile?.role !== 'admin') {
+      router.replace('/(tabs)');
+      return;
+    }
+
+    if (!profile?.onboarding_completed && !isOnboardingRoute) {
+      router.replace('/onboarding/profile' as any);
+      return;
+    }
+
+    if (profile?.onboarding_completed && isAuthRoute) {
+      if (pendingListingId) {
+        const id = pendingListingId;
+        setPendingListingId(null);
+        router.replace(`/listing/${id}` as any);
+      } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
+        const pendingUrl = window.sessionStorage.getItem('pending_book_url');
+        if (pendingUrl) {
+          window.sessionStorage.removeItem('pending_book_url');
+          router.replace(pendingUrl as any);
+          return;
+        }
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/(tabs)');
+      }
+    }
   }, [session, loading, profileLoading, segments, profile]);
 
   if (loading) {
