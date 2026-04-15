@@ -371,7 +371,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       return window.location.origin;
     }
-    return 'https://louetonbien-auth-nav-6fz1.bolt.host';
+    return 'https://app.louetonbien.fr';
   };
 
   const link = startDate && endDate

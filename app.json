@@ -23,7 +23,7 @@
       [
         "expo-router",
         {
-          "origin": "https://louetonbien.bolt.host"
+          "origin": "https://app.louetonbien.fr"
         }
       ],
       "expo-font",
