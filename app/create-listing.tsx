@@ -270,33 +270,46 @@ export default function CreateListingScreen() {
     for (const photo of photos) {
       if (photo.uploadedUrl) { urls.push(photo.uploadedUrl); continue; }
 
-      const ext = photo.file
-        ? (photo.file.name.split('.').pop() ?? 'jpg')
-        : (photo.uri.split('.').pop()?.split('?')[0] ?? 'jpg');
-      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      try {
+        let blob: Blob;
+        let contentType: string;
 
-      if (Platform.OS === 'web' && photo.file) {
+        if (Platform.OS === 'web' && photo.file) {
+          blob = photo.file;
+          contentType = photo.file.type || 'image/jpeg';
+        } else {
+          const response = await fetch(photo.uri);
+          blob = await response.blob();
+          contentType = blob.type && blob.type !== 'application/octet-stream'
+            ? blob.type
+            : 'image/jpeg';
+        }
+
+        const ALLOWED_EXTS: Record<string, string> = {
+          'image/jpeg': 'jpg',
+          'image/jpg': 'jpg',
+          'image/png': 'png',
+          'image/webp': 'webp',
+          'image/gif': 'gif',
+          'image/heic': 'heic',
+          'image/heif': 'heif',
+        };
+        const ext = ALLOWED_EXTS[contentType] ?? 'jpg';
+        const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
         const { data, error: upErr } = await supabase.storage
           .from('listing-photos')
-          .upload(path, photo.file, { contentType: photo.file.type });
-        if (!upErr && data) {
+          .upload(path, blob, { contentType });
+
+        if (upErr) throw upErr;
+
+        if (data) {
           const { data: urlData } = supabase.storage.from('listing-photos').getPublicUrl(data.path);
           urls.push(urlData.publicUrl);
         }
-      } else {
-        const formData = new FormData();
-        formData.append('file', {
-          uri: photo.uri,
-          name: `photo.${ext}`,
-          type: `image/${ext}`,
-        } as any);
-        const { data, error: upErr } = await supabase.storage
-          .from('listing-photos')
-          .upload(path, formData, { contentType: `image/${ext}` });
-        if (!upErr && data) {
-          const { data: urlData } = supabase.storage.from('listing-photos').getPublicUrl(data.path);
-          urls.push(urlData.publicUrl);
-        }
+      } catch {
+        setError('Une photo n\'a pas pu être téléchargée. Veuillez réessayer.');
+        return urls;
       }
     }
     return urls;
