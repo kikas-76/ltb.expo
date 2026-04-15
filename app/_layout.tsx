@@ -216,7 +216,18 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web') {
       const style = document.createElement('style');
-      style.textContent = '*, *:focus { outline: none !important; } input:focus, textarea:focus { outline: none !important; box-shadow: none !important; }';
+      style.textContent = [
+        'button:focus-visible,',
+        'a:focus-visible,',
+        'input:focus-visible,',
+        'textarea:focus-visible,',
+        '[role="button"]:focus-visible,',
+        '[tabindex]:focus-visible {',
+        '  outline: 2px solid #1A6B4A;',
+        '  outline-offset: 3px;',
+        '  border-radius: 4px;',
+        '}',
+      ].join('\n');
       document.head.appendChild(style);
 
       const appleTouchIcon = document.createElement('link');
