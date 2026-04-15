@@ -147,7 +147,7 @@ export default function DirectBookPage() {
           listing_id: listing.id,
           renter_id: user.id,
           owner_id: listing.owner!.id,
-          status: 'accepted',
+          status: 'pending_payment',
           start_date: new Date(startDate + 'T00:00:00').toISOString(),
           end_date: new Date(endDate + 'T23:59:59').toISOString(),
           total_price: totalPrice,

@@ -78,6 +78,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const ALREADY_PAID_STATUSES = ["active", "in_progress", "pending_return", "pending_owner_validation", "completed", "disputed", "cancelled"];
+    if (ALREADY_PAID_STATUSES.includes(booking.status)) {
+      return new Response(
+        JSON.stringify({ error: "Cette réservation a déjà été payée ou est dans un état qui ne permet pas le paiement." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
       return new Response(

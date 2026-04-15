@@ -13,8 +13,10 @@ export function getBookingBadge(status: string): BadgeConfig {
   switch (status) {
     case 'pending':
       return { label: 'En attente', backgroundColor: '#FFF3CD', textColor: '#856404', iconName: 'time-outline' };
+    case 'pending_payment':
+      return { label: 'Paiement en attente', backgroundColor: '#FFF3CD', textColor: '#856404', iconName: 'card-outline' };
     case 'accepted':
-      return { label: 'Acceptée', backgroundColor: '#D4EDDA', textColor: '#155724', iconName: 'checkmark-circle-outline' };
+      return { label: 'Paiement en attente', backgroundColor: '#FFF3CD', textColor: '#856404', iconName: 'card-outline' };
     case 'active':
       return { label: 'Prêt pour la remise', backgroundColor: Colors.primaryDark, textColor: '#FFFFFF', iconName: 'hand-left-outline' };
     case 'in_progress':
@@ -37,11 +39,10 @@ export function getBookingBadge(status: string): BadgeConfig {
   }
 }
 
-export type RentalStep = 'accepted' | 'active' | 'in_progress' | 'pending_return' | 'pending_owner_validation' | 'completed';
+export type RentalStep = 'active' | 'in_progress' | 'pending_return' | 'pending_owner_validation' | 'completed';
 
 const STEPS: { key: RentalStep; label: string }[] = [
-  { key: 'accepted', label: 'Payé' },
-  { key: 'active', label: 'Remise' },
+  { key: 'active', label: 'Payé' },
   { key: 'in_progress', label: 'En cours' },
   { key: 'pending_return', label: 'Retour' },
   { key: 'pending_owner_validation', label: 'Validation' },
@@ -49,12 +50,13 @@ const STEPS: { key: RentalStep; label: string }[] = [
 ];
 
 const STEP_ORDER: Record<string, number> = {
-  accepted: 0,
-  active: 1,
-  in_progress: 2,
-  pending_return: 3,
-  pending_owner_validation: 4,
-  completed: 5,
+  pending_payment: -1,
+  accepted: -1,
+  active: 0,
+  in_progress: 1,
+  pending_return: 2,
+  pending_owner_validation: 3,
+  completed: 4,
 };
 
 interface BookingProgressProps {

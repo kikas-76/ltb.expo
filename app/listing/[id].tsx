@@ -283,7 +283,7 @@ export default function ListingDetailScreen() {
           .from('bookings')
           .select('start_date, end_date, status')
           .eq('listing_id', id)
-          .in('status', ['accepted', 'active', 'in_progress', 'pending_return', 'pending_owner_validation']);
+          .in('status', ['pending_payment', 'accepted', 'active', 'in_progress', 'pending_return', 'pending_owner_validation']);
 
         const { data: pendingConvs } = await supabase
           .from('conversations')

@@ -28,7 +28,7 @@ export default function PaymentSuccessScreen() {
         .from('bookings')
         .update({ status: 'active', stripe_checkout_session_id: session_id })
         .eq('id', booking_id)
-        .eq('status', 'pending')
+        .in('status', ['pending_payment', 'accepted', 'pending'])
         .then(() => {});
     }
   }, [booking_id, session_id]);
