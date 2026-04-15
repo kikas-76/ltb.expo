@@ -95,6 +95,7 @@ function RootNavigator() {
       'auth-callback',
       'legal',
       'book',
+      'link-google-account',
     ]);
 
     const AUTH_ROUTES = new Set([
@@ -103,6 +104,7 @@ function RootNavigator() {
       'verify-email',
       'email-confirmed',
       'auth-callback',
+      'link-google-account',
     ]);
 
     const isPublicRoute = PUBLIC_ROUTES.has(seg);
