@@ -41,10 +41,8 @@ interface OwnerProfile {
   bio: string | null;
   avatar_url: string | null;
   photo_url: string | null;
-  location_data: any;
   created_at: string;
   is_pro: boolean;
-  business_address: string | null;
   business_hours: WeekHours | null;
   business_type: string | null;
   business_name: string | null;
@@ -63,17 +61,6 @@ function formatMemberSince(dateStr: string): string {
   return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 }
 
-function parseCity(address: string | undefined): string | null {
-  if (!address) return null;
-  const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
-  if (parts.length >= 2) {
-    const cityPart = parts[parts.length - 2];
-    const match = cityPart.match(/^\d{4,6}\s+(.+)$/);
-    if (match) return match[1].trim();
-    return cityPart;
-  }
-  return parts[0] ?? null;
-}
 
 function ListingMiniCard({ listing, cardWidth }: { listing: Listing; cardWidth: number }) {
   const photo = listing.photos_url?.[0];
@@ -133,7 +120,7 @@ export default function OwnerProfilePage() {
       const [profileRes, listingsRes] = await Promise.all([
         supabase
           .from('public_profiles')
-          .select('id, username, bio, avatar_url, photo_url, location_data, created_at, is_pro, business_address, business_hours, business_type, business_name')
+          .select('id, username, bio, avatar_url, photo_url, created_at, is_pro, business_hours, business_type, business_name')
           .eq('id', id)
           .maybeSingle(),
         supabase
@@ -151,10 +138,6 @@ export default function OwnerProfilePage() {
   const photo = owner?.avatar_url ?? owner?.photo_url;
   const name = owner?.username ? `@${owner.username}` : 'Utilisateur';
   const initials = name.slice(0, 2).toUpperCase();
-  const city =
-    owner?.location_data?.city ??
-    parseCity(owner?.location_data?.address) ??
-    null;
 
   const profilePanel = (
     <View style={[styles.profilePanel, isDesktop && styles.profilePanelDesktop]}>
@@ -185,12 +168,6 @@ export default function OwnerProfilePage() {
             </Text>
           </View>
         )}
-        {city && (
-          <View style={styles.metaChip}>
-            <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
-            <Text style={styles.metaChipText}>{city}</Text>
-          </View>
-        )}
       </View>
 
       {owner?.bio ? (
@@ -205,7 +182,7 @@ export default function OwnerProfilePage() {
         </View>
       )}
 
-      {owner?.is_pro && (owner.business_type || owner.business_address || owner.business_hours) && (
+      {owner?.is_pro && (owner.business_type || owner.business_hours) && (
         <View style={styles.proInfoCard}>
           {owner.business_name ? (
             <View style={styles.proInfoRow}>
@@ -219,12 +196,7 @@ export default function OwnerProfilePage() {
               <Text style={styles.proInfoText}>{owner.business_type}</Text>
             </View>
           ) : null}
-          {owner.business_address ? (
-            <View style={styles.proInfoRow}>
-              <Ionicons name="location-outline" size={14} color={Colors.primaryDark} />
-              <Text style={styles.proInfoText} numberOfLines={2}>{owner.business_address}</Text>
-            </View>
-          ) : null}
+
           {owner.business_hours && (
             <View style={styles.proHoursSection}>
               <View style={styles.proInfoRow}>
