@@ -14,7 +14,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const internalSecret = req.headers.get("x-internal-secret");
-    const expectedSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+    const expectedSecret = Deno.env.get("INTERNAL_EDGE_SECRET");
 
     if (!expectedSecret || internalSecret !== expectedSecret) {
       return new Response(
