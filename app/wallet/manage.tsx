@@ -122,6 +122,9 @@ export default function WalletManageScreen() {
     const fetchData = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('Session expirée. Reconnecte-toi pour accéder à ton compte paiement.');
+        }
         const response = await fetch(
           `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-account-details`,
           {
@@ -129,9 +132,9 @@ export default function WalletManageScreen() {
             headers: {
               'Content-Type': 'application/json',
               'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-              'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+              'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ access_token: session?.access_token }),
+            body: JSON.stringify({ access_token: session.access_token }),
           }
         );
         const data = await response.json();
