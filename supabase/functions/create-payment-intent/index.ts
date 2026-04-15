@@ -180,29 +180,37 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const depositBody = new URLSearchParams({
-      amount: String(depositAmount),
-      currency: "eur",
-      capture_method: "manual",
-      customer: customerId!,
-      "metadata[booking_id]": booking_id,
-      "metadata[type]": "deposit",
-    });
+    let deposit_client_secret: string | null = null;
+    let deposit_payment_intent_id: string | null = null;
 
-    const depositIntent = await stripePost("/payment_intents", depositBody, stripeKey);
-    if (depositIntent.error) {
-      return new Response(
-        JSON.stringify({ error: depositIntent.error.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (depositAmount > 0) {
+      const depositBody = new URLSearchParams({
+        amount: String(depositAmount),
+        currency: "eur",
+        capture_method: "manual",
+        customer: customerId!,
+        "metadata[booking_id]": booking_id,
+        "metadata[type]": "deposit",
+      });
+
+      const depositIntent = await stripePost("/payment_intents", depositBody, stripeKey);
+      if (depositIntent.error) {
+        return new Response(
+          JSON.stringify({ error: depositIntent.error.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      deposit_client_secret = depositIntent.client_secret;
+      deposit_payment_intent_id = depositIntent.id;
     }
 
     return new Response(
       JSON.stringify({
         rental_client_secret: rentalIntent.client_secret,
-        deposit_client_secret: depositIntent.client_secret,
+        deposit_client_secret,
         rental_payment_intent_id: rentalIntent.id,
-        deposit_payment_intent_id: depositIntent.id,
+        deposit_payment_intent_id,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
