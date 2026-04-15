@@ -204,7 +204,7 @@ export default function AccountSettingsScreen() {
     if (trimmed === profile?.username) { setSection('menu'); return; }
     setUsernameSaving(true);
     setUsernameError(null);
-    const { error } = await supabase.from('profiles').update({ username: trimmed }).eq('id', user!.id);
+    const { error } = await supabase.from('profiles').update({ username: trimmed, display_name: trimmed }).eq('id', user!.id);
     setUsernameSaving(false);
     if (error) {
       if (error.code === '23505' || error.message?.toLowerCase().includes('unique') || error.message?.toLowerCase().includes('already')) {

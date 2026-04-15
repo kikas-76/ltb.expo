@@ -173,6 +173,7 @@ export default function OnboardingProfileScreen() {
 
     const updates: Record<string, string | null> = {
       username: cleanUsername,
+      display_name: username.trim(),
       email: user.email ?? null,
       phone_number: phone.trim() || null,
       photo_url: photoUrl,
