@@ -314,7 +314,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
                 if (!subtext) return null;
                 return <Text style={styles.statusSubtext}>{subtext}</Text>;
               })()}
-              {item.isRequester && item.displayStatus === 'accepted' && item.bookingStatus !== 'active' && (
+              {item.isRequester && item.displayStatus === 'accepted' && item.bookingStatus !== 'active' && item.bookingStatus !== 'cancelled' && (
                 <PaymentDeadlineBanner
                   stripeReady={stripeReady}
                   bookingId={item.bookingId}
