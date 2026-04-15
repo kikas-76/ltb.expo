@@ -230,47 +230,38 @@ export default function CreateListingScreen() {
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = ALLOWED_IMAGE_TYPES.join(',');
+      input.accept = '.jpg,.jpeg,.png,.webp';
       input.multiple = true;
       input.onchange = (e: any) => {
+        setError(null);
         const files: File[] = Array.from(e.target.files ?? []);
-        const currentCount = photos.length;
-        const remaining = MAX_PHOTO_COUNT - currentCount;
+        const remaining = MAX_PHOTO_COUNT - photos.length;
 
         if (remaining <= 0) {
           setError(`Vous pouvez ajouter jusqu'à ${MAX_PHOTO_COUNT} photos maximum.`);
           return;
         }
 
-        const validItems: PhotoItem[] = [];
-        let hasFormatError = false;
-        let hasSizeError = false;
-
         for (const file of files) {
           if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-            hasFormatError = true;
-            continue;
+            setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
+            return;
           }
           if (file.size > MAX_PHOTO_SIZE_BYTES) {
-            hasSizeError = true;
-            continue;
+            setError('Chaque photo doit faire moins de 8 Mo.');
+            return;
           }
-          validItems.push({ uri: URL.createObjectURL(file), file });
         }
 
-        if (hasFormatError) {
-          setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
-          return;
-        }
-        if (hasSizeError) {
-          setError('Chaque photo doit faire moins de 8 Mo.');
-          return;
-        }
+        const toAdd = files.slice(0, remaining).map((file) => ({
+          uri: URL.createObjectURL(file),
+          file,
+        }));
 
-        const toAdd = validItems.slice(0, remaining);
-        if (files.length > remaining + (files.length - validItems.length)) {
+        if (files.length > remaining) {
           setError(`Vous pouvez ajouter jusqu'à ${MAX_PHOTO_COUNT} photos maximum.`);
         }
+
         setPhotos((prev) => [...prev, ...toAdd].slice(0, MAX_PHOTO_COUNT));
       };
       input.click();
@@ -312,24 +303,30 @@ export default function CreateListingScreen() {
         let contentType: string;
 
         if (Platform.OS === 'web' && photo.file) {
-          blob = photo.file;
           contentType = photo.file.type || 'image/jpeg';
+          if (!ALLOWED_IMAGE_TYPES.includes(contentType)) {
+            setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
+            return urls;
+          }
+          if (photo.file.size > MAX_PHOTO_SIZE_BYTES) {
+            setError('Chaque photo doit faire moins de 8 Mo.');
+            return urls;
+          }
+          blob = photo.file;
         } else {
           const response = await fetch(photo.uri);
           blob = await response.blob();
           contentType = blob.type && blob.type !== 'application/octet-stream'
             ? blob.type
             : 'image/jpeg';
-        }
-
-        if (!ALLOWED_IMAGE_TYPES.includes(contentType)) {
-          setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
-          return urls;
-        }
-
-        if (blob.size > MAX_PHOTO_SIZE_BYTES) {
-          setError('Chaque photo doit faire moins de 8 Mo.');
-          return urls;
+          if (!ALLOWED_IMAGE_TYPES.includes(contentType)) {
+            setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
+            return urls;
+          }
+          if (blob.size > MAX_PHOTO_SIZE_BYTES) {
+            setError('Chaque photo doit faire moins de 8 Mo.');
+            return urls;
+          }
         }
 
         const ALLOWED_EXTS: Record<string, string> = {
