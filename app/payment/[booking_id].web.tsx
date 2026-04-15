@@ -279,7 +279,7 @@ function StripeEmbedForm({
         try {
           const { data: { session } } = await supabase.auth.getSession();
 
-          await fetch(
+          const finalizeRes = await fetch(
             `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/finalize-booking-payment`,
             {
               method: 'POST',
@@ -295,6 +295,13 @@ function StripeEmbedForm({
               }),
             }
           );
+          const finalizeJson = await finalizeRes.json();
+          if (!finalizeRes.ok || finalizeJson.success !== true) {
+            throw new Error(
+              finalizeJson.error ??
+              "Le paiement a été traité mais la réservation n'a pas pu être finalisée. Contacte le support."
+            );
+          }
 
           router.replace(`/payment-success?booking_id=${msg.bookingId}` as any);
         } catch (err: any) {

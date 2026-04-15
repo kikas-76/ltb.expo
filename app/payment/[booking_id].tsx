@@ -136,7 +136,7 @@ export default function PaymentScreen() {
         if (depositError) throw new Error(depositError.message);
       }
 
-      await fetch(
+      const finalizeRes = await fetch(
         `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/finalize-booking-payment`,
         {
           method: 'POST',
@@ -152,6 +152,13 @@ export default function PaymentScreen() {
           }),
         }
       );
+      const finalizeJson = await finalizeRes.json();
+      if (!finalizeRes.ok || finalizeJson.success !== true) {
+        throw new Error(
+          finalizeJson.error ??
+          'Le paiement a été traité mais la réservation n\'a pas pu être finalisée. Contacte le support.'
+        );
+      }
 
       router.replace({
         pathname: '/payment-success',
