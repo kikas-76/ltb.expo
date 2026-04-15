@@ -15,6 +15,7 @@
       "bundler": "metro",
       "output": "spa",
       "favicon": "./assets/images/LTB_favicon.png",
+      "lang": "fr",
       "meta": {
         "viewport": "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
       }
