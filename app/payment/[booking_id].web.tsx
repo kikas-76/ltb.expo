@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { sendEmail } from '@/lib/sendEmail';
 import {
   View,
   Text,
@@ -278,79 +277,24 @@ function StripeEmbedForm({
       if (msg.type === 'stripe_success') {
         setLoading(true);
         try {
-          await supabase
-            .from('bookings')
-            .update({
-              status: 'active',
-              stripe_payment_intent_id: msg.depositPaymentIntentId,
-              stripe_transfer_id: msg.rentalPaymentIntentId,
-            })
-            .eq('id', msg.bookingId);
-
           const { data: { session } } = await supabase.auth.getSession();
-          if (msg.depositPaymentIntentId && session?.access_token) {
-            await fetch(
-              `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/manage-deposit`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-                  'Authorization': `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({
-                  action: 'authorize',
-                  booking_id: msg.bookingId,
-                  payment_intent_id: msg.depositPaymentIntentId,
-                }),
-              }
-            );
-          }
 
-          await supabase.functions.invoke('create-payment-intent', {
-            body: {
-              access_token: session?.access_token,
-              booking_id: msg.bookingId,
-              confirm_payment: true,
-            },
-          });
-
-          const { data: bookingDetails } = await supabase
-            .from('bookings')
-            .select('renter_id, owner_id, total_price, deposit_amount, start_date, end_date, listing:listings(name), owner:profiles!bookings_owner_id_fkey(username, id)')
-            .eq('id', msg.bookingId)
-            .maybeSingle();
-
-          if (bookingDetails) {
-            const { data: { user: currentUser } } = await supabase.auth.getUser();
-            const feePercent = 0.07;
-            const totalNowStr = (Math.round(bookingDetails.total_price * (1 + feePercent) * 100) / 100).toFixed(2);
-
-            if (currentUser?.email) {
-              sendEmail(currentUser.email, 'booking_paid_renter', {
-                listing_name: (bookingDetails.listing as any)?.name ?? 'Location',
-                owner_name: (bookingDetails.owner as any)?.username ?? 'le propriétaire',
-                start_date: formatDate(bookingDetails.start_date),
-                end_date: formatDate(bookingDetails.end_date),
-                total_price: totalNowStr,
-                deposit: bookingDetails.deposit_amount ?? 0,
+          await fetch(
+            `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/finalize-booking-payment`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+                'Authorization': `Bearer ${session?.access_token}`,
+              },
+              body: JSON.stringify({
                 booking_id: msg.bookingId,
-              });
+                rental_payment_intent_id: msg.rentalPaymentIntentId ?? null,
+                deposit_payment_intent_id: msg.depositPaymentIntentId ?? null,
+              }),
             }
-
-            const { data: ownerProfile } = await supabase.from('profiles').select('email, username').eq('id', bookingDetails.owner_id).maybeSingle();
-            if (ownerProfile?.email) {
-              const ownerEarnings = (bookingDetails.total_price * 0.92).toFixed(2);
-              sendEmail(ownerProfile.email, 'booking_paid_owner', {
-                listing_name: (bookingDetails.listing as any)?.name ?? 'Location',
-                renter_name: currentUser?.user_metadata?.username ?? 'un locataire',
-                start_date: formatDate(bookingDetails.start_date),
-                end_date: formatDate(bookingDetails.end_date),
-                owner_earnings: ownerEarnings,
-                booking_id: msg.bookingId,
-              });
-            }
-          }
+          );
 
           router.replace(`/payment-success?booking_id=${msg.bookingId}` as any);
         } catch (err: any) {

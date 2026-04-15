@@ -91,7 +91,7 @@ export default function AdminDisputes() {
     if (!session) return;
     setActionLoading(bookingId + '_' + action);
     try {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/manage-deposit`, {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-manage-deposit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

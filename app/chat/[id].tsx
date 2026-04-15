@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { sendEmail } from '@/lib/sendEmail';
 import {
   View,
   Text,
@@ -663,32 +662,21 @@ export default function ChatScreen() {
       });
       setMeta((prev) => prev ? { ...prev, status: newStatus } : prev);
 
-      const { data: renterProfile } = await supabase.from('profiles').select('email').eq('id', meta.requesterUserId).maybeSingle();
-      if (newStatus === 'accepted') {
-        const days = getDayCount(meta.startDate, meta.endDate);
-        const disc = days >= 7 ? 0.2 : days >= 3 ? 0.1 : 0;
-        const totalPrice = meta.listingPrice != null
-          ? Math.round(meta.listingPrice * days * (1 - disc))
-          : 0;
-        const { data: existingBooking } = await supabase.from('bookings').select('id, deposit_amount').eq('conversation_id', id).maybeSingle();
-        if (renterProfile?.email) {
-          sendEmail(renterProfile.email, 'booking_accepted_renter', {
-            listing_name: meta.listingTitle,
-            owner_name: meta.ownerUsername,
-            start_date: new Date(meta.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-            end_date: new Date(meta.endDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-            total_price: totalPrice,
-            deposit: existingBooking?.deposit_amount ?? 0,
-            booking_id: existingBooking?.id ?? '',
-          });
-        }
-      } else if (newStatus === 'refused') {
-        if (renterProfile?.email) {
-          sendEmail(renterProfile.email, 'booking_rejected_renter', {
-            listing_name: meta.listingTitle,
-            owner_name: meta.ownerUsername,
-          });
-        }
+      const { data: { session: notifySession } } = await supabase.auth.getSession();
+      if (notifySession?.access_token) {
+        const event = newStatus === 'accepted' ? 'booking_accepted' : 'booking_rejected';
+        fetch(
+          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat-notify`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${notifySession.access_token}`,
+            },
+            body: JSON.stringify({ event, conversation_id: id }),
+          }
+        ).catch(() => {});
       }
     }
     setStatusUpdating(false);
@@ -881,20 +869,20 @@ export default function ChatScreen() {
         is_system: true,
       });
 
-      const { data: bookingFull } = await supabase
-        .from('bookings')
-        .select('renter_id, total_price, deposit_amount, listing:listings(name)')
-        .eq('id', bookingId)
-        .maybeSingle();
-      if (bookingFull) {
-        const { data: renterEmail } = await supabase.from('profiles').select('email').eq('id', bookingFull.renter_id).maybeSingle();
-        if (renterEmail?.email) {
-          sendEmail(renterEmail.email, 'deposit_released', {
-            listing_name: (bookingFull.listing as any)?.name ?? 'Location',
-            deposit: bookingFull.deposit_amount ?? 0,
-            owner_name: meta?.ownerUsername ?? 'le propriétaire',
-          });
-        }
+      const { data: { session: depositSession } } = await supabase.auth.getSession();
+      if (depositSession?.access_token && bookingId) {
+        fetch(
+          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat-notify`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${depositSession.access_token}`,
+            },
+            body: JSON.stringify({ event: 'deposit_released', booking_id: bookingId }),
+          }
+        ).catch(() => {});
       }
 
       setShowValidationModal(false);
