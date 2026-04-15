@@ -691,25 +691,11 @@ export default function ChatScreen() {
     try {
       const { data: existingBooking } = await supabase
         .from('bookings')
-        .select('id, total_price, status, deposit_amount')
+        .select('id, total_price, status')
         .eq('conversation_id', id)
         .maybeSingle();
 
       if (existingBooking) {
-        if (!existingBooking.deposit_amount || existingBooking.deposit_amount === 0) {
-          const { data: listingData } = await supabase
-            .from('listings')
-            .select('deposit_amount')
-            .eq('id', meta.listingId)
-            .maybeSingle();
-          if (listingData?.deposit_amount) {
-            await supabase
-              .from('bookings')
-              .update({ deposit_amount: listingData.deposit_amount })
-              .eq('id', existingBooking.id)
-              .eq('renter_id', user.id);
-          }
-        }
         setBookingId(existingBooking.id);
         setBookingTotal(existingBooking.total_price ?? null);
         setBookingStatus(existingBooking.status ?? null);
