@@ -122,7 +122,7 @@ Deno.serve(async (req: Request) => {
           end_date: bookingRow?.end_date ? formatDate(bookingRow.end_date) : "",
           total_price: bookingRow?.total_price ?? 0,
           deposit: bookingRow?.deposit_amount ?? 0,
-          booking_id: bookingRow?.conversation_id ?? bookingRow?.id ?? "",
+          booking_id: bookingRow?.id ?? "",
         });
       } else {
         await dispatchEmail(renterEmail, "booking_rejected_renter", {
@@ -235,7 +235,7 @@ Deno.serve(async (req: Request) => {
         start_date: formatDate((bookingRow as any).start_date),
         end_date: formatDate((bookingRow as any).end_date),
         deposit: (bookingRow as any).deposit_amount ?? 0,
-        dispute_id: booking_id,
+        dispute_id: disputeRow.id,
       };
 
       const { data: renterP } = await supabaseAdmin

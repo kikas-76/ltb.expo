@@ -869,22 +869,6 @@ export default function ChatScreen() {
         is_system: true,
       });
 
-      const { data: { session: depositSession } } = await supabase.auth.getSession();
-      if (depositSession?.access_token && bookingId) {
-        fetch(
-          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat-notify`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-              'Authorization': `Bearer ${depositSession.access_token}`,
-            },
-            body: JSON.stringify({ event: 'deposit_released', booking_id: bookingId }),
-          }
-        ).catch(() => {});
-      }
-
       setShowValidationModal(false);
       setOwnerValidated(true);
       setBookingStatus('completed');
