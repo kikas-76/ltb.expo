@@ -26,7 +26,7 @@ interface BookingData {
   listing: {
     name: string;
     photos_url: string[] | null;
-    platform_fee_percent: number | null;
+    renter_fee_percent: number;
   };
   owner: {
     username: string | null;
@@ -80,7 +80,7 @@ export default function PaymentScreen() {
           listing:listings(
             name,
             photos_url,
-            platform_fee_percent
+            renter_fee_percent
           ),
           owner:profiles!bookings_owner_id_fkey(
             username
@@ -195,9 +195,9 @@ export default function PaymentScreen() {
     );
   }
 
-  const feePercent = 0.07;
+  const feePercent = (booking.listing?.renter_fee_percent ?? 7) / 100;
   const serviceFee = Math.round(booking.total_price * feePercent * 100) / 100;
-  const totalNow = Math.round(booking.total_price * (1 + feePercent) * 100) / 100;
+  const totalNow = Math.round((booking.total_price + serviceFee + booking.deposit_amount) * 100) / 100;
   const thumb = booking.listing?.photos_url?.[0] ?? null;
 
   return (
@@ -259,7 +259,7 @@ export default function PaymentScreen() {
             </View>
 
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabelMuted}>Frais de service (7%)</Text>
+              <Text style={styles.priceLabelMuted}>Frais de service ({booking.listing?.renter_fee_percent ?? 7}%)</Text>
               <Text style={styles.priceValueMuted}>{serviceFee} €</Text>
             </View>
 
