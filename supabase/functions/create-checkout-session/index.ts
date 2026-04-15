@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
       .from("bookings")
       .select(`
         *,
-        listing:listings(name, platform_fee_percent),
+        listing:listings(name, renter_fee_percent, owner_commission_percent),
         owner_profile:profiles!bookings_owner_id_fkey(stripe_account_id)
       `)
       .eq("id", booking_id)
@@ -61,11 +61,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const feePercent = 0.07;
+    const renterFeePercent = booking.listing?.renter_fee_percent ?? 7;
+    const ownerCommissionPercent = booking.listing?.owner_commission_percent ?? 8;
+
     const rentalAmount = Math.round(booking.total_price * 100);
-    const serviceFee = Math.round(booking.total_price * feePercent * 100);
+    const renterFee = Math.round(rentalAmount * renterFeePercent / 100);
+    const ownerCommission = Math.round(rentalAmount * ownerCommissionPercent / 100);
+    const applicationFee = renterFee + ownerCommission;
     const depositAmount = Math.round(booking.deposit_amount * 100);
-    const totalAmount = rentalAmount + serviceFee + depositAmount;
 
     const ownerStripeAccountId = booking.owner_profile?.stripe_account_id;
     const listingName = booking.listing?.name ?? "Location";
@@ -83,7 +86,7 @@ Deno.serve(async (req: Request) => {
       "payment_method_types[0]": "card",
       "line_items[0][price_data][currency]": "eur",
       "line_items[0][price_data][product_data][name]": `Location — ${listingName}`,
-      "line_items[0][price_data][unit_amount]": String(rentalAmount + serviceFee),
+      "line_items[0][price_data][unit_amount]": String(rentalAmount + renterFee),
       "line_items[0][quantity]": "1",
       "line_items[1][price_data][currency]": "eur",
       "line_items[1][price_data][product_data][name]": "Caution (bloquée et remboursée au retour)",
@@ -98,7 +101,7 @@ Deno.serve(async (req: Request) => {
 
     if (ownerStripeAccountId) {
       sessionBody.set("payment_intent_data[transfer_data][destination]", ownerStripeAccountId);
-      sessionBody.set("payment_intent_data[application_fee_amount]", String(serviceFee));
+      sessionBody.set("payment_intent_data[application_fee_amount]", String(applicationFee));
     }
 
     const sessionRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {

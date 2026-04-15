@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
       .from("bookings")
       .select(`
         *,
-        listing:listings(name, platform_fee_percent, deposit_amount),
+        listing:listings(name, renter_fee_percent, owner_commission_percent, deposit_amount),
         owner_profile:profiles!bookings_owner_id_fkey(stripe_account_id)
       `)
       .eq("id", booking_id)
@@ -141,9 +141,13 @@ Deno.serve(async (req: Request) => {
 
     const ownerStripeAccountId = booking.owner_profile?.stripe_account_id;
 
-    const feePercent = 0.07;
+    const renterFeePercent = booking.listing?.renter_fee_percent ?? 7;
+    const ownerCommissionPercent = booking.listing?.owner_commission_percent ?? 8;
+
     const rentalAmount = Math.round(booking.total_price * 100);
-    const serviceFee = Math.round(booking.total_price * feePercent * 100);
+    const renterFee = Math.round(rentalAmount * renterFeePercent / 100);
+    const ownerCommission = Math.round(rentalAmount * ownerCommissionPercent / 100);
+    const applicationFee = renterFee + ownerCommission;
 
     const rawDeposit = (!booking.deposit_amount || booking.deposit_amount === 0)
       ? (booking.listing?.deposit_amount ?? 0)
@@ -159,7 +163,7 @@ Deno.serve(async (req: Request) => {
     const depositAmount = Math.round(rawDeposit * 100);
 
     const rentalBody = new URLSearchParams({
-      amount: String(rentalAmount + serviceFee),
+      amount: String(rentalAmount + renterFee),
       currency: "eur",
       customer: customerId!,
       setup_future_usage: "off_session",
@@ -169,7 +173,7 @@ Deno.serve(async (req: Request) => {
 
     if (ownerStripeAccountId) {
       rentalBody.set("transfer_data[destination]", ownerStripeAccountId);
-      rentalBody.set("application_fee_amount", String(serviceFee));
+      rentalBody.set("application_fee_amount", String(applicationFee));
     }
 
     const rentalIntent = await stripePost("/payment_intents", rentalBody, stripeKey);
