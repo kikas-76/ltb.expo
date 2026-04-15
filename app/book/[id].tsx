@@ -13,6 +13,7 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { postSystemMessage } from '@/lib/postSystemMessage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
@@ -163,12 +164,10 @@ export default function DirectBookPage() {
         return;
       }
 
-      await supabase.from('chat_messages').insert({
-        conversation_id: conv.id,
-        sender_id: null,
-        content: `Réservation directe via lien — Du ${formatDate(startDate)} au ${formatDate(endDate)}`,
-        is_system: true,
-      });
+      await postSystemMessage(
+        conv.id,
+        `Réservation directe via lien — Du ${formatDate(startDate)} au ${formatDate(endDate)}`
+      );
 
       router.replace(`/payment/${bookingData.id}` as any);
     } catch {

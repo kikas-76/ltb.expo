@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
+import { updateBookingStatus } from '@/lib/updateBookingStatus';
+import { postSystemMessage } from '@/lib/postSystemMessage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
@@ -92,15 +94,13 @@ export default function DisputePage() {
       });
       if (insertErr) throw insertErr;
 
-      await supabase.from('bookings').update({ status: 'disputed' }).eq('id', booking_id);
+      await updateBookingStatus(booking_id, 'disputed');
 
       if (conversation_id) {
-        await supabase.from('chat_messages').insert({
+        await postSystemMessage(
           conversation_id,
-          sender_id: null,
-          content: 'Un litige a été ouvert par le propriétaire — La caution reste bloquée jusqu\'à résolution',
-          is_system: true,
-        });
+          "Un litige a été ouvert par le propriétaire — La caution reste bloquée jusqu'à résolution"
+        );
       }
 
       const { data: { session: disputeSession } } = await supabase.auth.getSession();

@@ -17,6 +17,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { postSystemMessage } from '@/lib/postSystemMessage';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -269,13 +270,14 @@ export default function MesAnnoncesScreen() {
       .eq('listing_id', listingId)
       .eq('status', 'pending');
     if (!convs || convs.length === 0) return;
-    const msgs = convs.map((c: any) => ({
-      conversation_id: c.id,
-      sender_id: null,
-      content: "L'annonce a été supprimée ou masquée — Cette demande n'est plus disponible",
-      is_system: true,
-    }));
-    await supabase.from('chat_messages').insert(msgs);
+    await Promise.all(
+      convs.map((c: any) =>
+        postSystemMessage(
+          c.id,
+          "L'annonce a été supprimée ou masquée — Cette demande n'est plus disponible"
+        )
+      )
+    );
   };
 
   const fetchListings = async () => {

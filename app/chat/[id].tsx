@@ -20,6 +20,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { postSystemMessage } from '@/lib/postSystemMessage';
+import { updateBookingStatus, updateBookingConfirmationFields } from '@/lib/updateBookingStatus';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
@@ -654,12 +656,7 @@ export default function ChatScreen() {
       const systemMsg = newStatus === 'accepted'
         ? `Demande acceptée par ${meta.ownerUsername}`
         : `Demande refusée par ${meta.ownerUsername}`;
-      await supabase.from('chat_messages').insert({
-        conversation_id: id,
-        sender_id: null,
-        content: systemMsg,
-        is_system: true,
-      });
+      await postSystemMessage(id as string, systemMsg);
       setMeta((prev) => prev ? { ...prev, status: newStatus } : prev);
 
       const { data: { session: notifySession } } = await supabase.auth.getSession();
@@ -709,7 +706,8 @@ export default function ChatScreen() {
             await supabase
               .from('bookings')
               .update({ deposit_amount: listingData.deposit_amount })
-              .eq('id', existingBooking.id);
+              .eq('id', existingBooking.id)
+              .eq('renter_id', user.id);
           }
         }
         setBookingId(existingBooking.id);
@@ -763,28 +761,17 @@ export default function ChatScreen() {
     setConfirmLoading(true);
     try {
       const isOwner = meta.isOwner;
-      const updateField = isOwner ? { handover_confirmed_owner: true } : { handover_confirmed_renter: true };
+      const confirmField = isOwner ? { owner_handover_confirmed: true } : { renter_handover_confirmed: true };
       const newOwnerVal = isOwner ? true : handoverConfirmedOwner;
       const newRenterVal = !isOwner ? true : handoverConfirmedRenter;
 
-      await supabase.from('bookings').update(updateField).eq('id', bookingId);
-
       if (newOwnerVal && newRenterVal) {
-        await supabase.from('bookings').update({ status: 'in_progress' }).eq('id', bookingId);
-        await supabase.from('chat_messages').insert({
-          conversation_id: id,
-          sender_id: null,
-          content: 'Remise confirmée par les deux parties — Location en cours',
-          is_system: true,
-        });
+        await updateBookingStatus(bookingId, 'in_progress', confirmField);
+        await postSystemMessage(id as string, 'Remise confirmée par les deux parties — Location en cours');
       } else {
+        await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'accepted', confirmField);
         const who = isOwner ? meta.ownerUsername : meta.requesterUsername;
-        await supabase.from('chat_messages').insert({
-          conversation_id: id,
-          sender_id: null,
-          content: `Remise confirmée par ${who} — En attente de l'autre partie`,
-          is_system: true,
-        });
+        await postSystemMessage(id as string, `Remise confirmée par ${who} — En attente de l'autre partie`);
       }
     } finally {
       setConfirmLoading(false);
@@ -796,32 +783,27 @@ export default function ChatScreen() {
     setConfirmLoading(true);
     try {
       const isOwner = meta.isOwner;
-      const updateField = isOwner ? { return_confirmed_owner: true } : { return_confirmed_renter: true };
+      const returnField = isOwner ? { owner_return_confirmed: true } : { renter_return_confirmed: true };
       const newOwnerVal = isOwner ? true : returnConfirmedOwner;
       const newRenterVal = !isOwner ? true : returnConfirmedRenter;
 
-      await supabase.from('bookings').update(updateField).eq('id', bookingId);
-
       if (newOwnerVal && newRenterVal) {
         const confirmedAt = new Date().toISOString();
-        await supabase.from('bookings').update({ status: 'pending_owner_validation', return_confirmed_at: confirmedAt }).eq('id', bookingId);
+        await updateBookingStatus(bookingId, 'pending_owner_validation', {
+          ...returnField,
+          return_confirmed_at: confirmedAt,
+        });
         setReturnConfirmedAt(confirmedAt);
         setValidationDeadlineMs(new Date(confirmedAt).getTime() + 24 * 3600 * 1000);
-        await supabase.from('chat_messages').insert({
-          conversation_id: id,
-          sender_id: null,
-          content: "Retour confirmé par les deux parties — Le propriétaire a 24h pour signaler un problème, sinon la location est validée automatiquement.",
-          is_system: true,
-        });
+        await postSystemMessage(
+          id as string,
+          "Retour confirmé par les deux parties — Le propriétaire a 24h pour signaler un problème, sinon la location est validée automatiquement."
+        );
         if (isOwner) setShowValidationModal(true);
       } else {
+        await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'in_progress', returnField);
         const who = isOwner ? meta.ownerUsername : meta.requesterUsername;
-        await supabase.from('chat_messages').insert({
-          conversation_id: id,
-          sender_id: null,
-          content: `Retour confirmé par ${who} — En attente de l'autre partie`,
-          is_system: true,
-        });
+        await postSystemMessage(id as string, `Retour confirmé par ${who} — En attente de l'autre partie`);
       }
     } finally {
       setConfirmLoading(false);
@@ -832,7 +814,7 @@ export default function ChatScreen() {
     if (!bookingId || !id || confirmLoading) return;
     setConfirmLoading(true);
     try {
-      await supabase.from('bookings').update({ status: 'completed', owner_validated: true }).eq('id', bookingId);
+      await updateBookingStatus(bookingId, 'completed', { owner_validated: true });
 
       const { data: bookingData } = await supabase
         .from('bookings')
@@ -862,12 +844,10 @@ export default function ChatScreen() {
         }
       }
 
-      await supabase.from('chat_messages').insert({
-        conversation_id: id,
-        sender_id: null,
-        content: "Location terminée — L'objet a été validé par le propriétaire. La caution a été libérée.",
-        is_system: true,
-      });
+      await postSystemMessage(
+        id as string,
+        "Location terminée — L'objet a été validé par le propriétaire. La caution a été libérée."
+      );
 
       setShowValidationModal(false);
       setOwnerValidated(true);

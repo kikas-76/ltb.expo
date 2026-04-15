@@ -18,6 +18,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { postSystemMessage } from '@/lib/postSystemMessage';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCityFromCoords } from '@/lib/googleMaps';
@@ -222,12 +223,20 @@ export default function ListingDetailScreen() {
         .from('listings')
         .select(
           `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
-           latitude, longitude, location_data, created_at,
-           owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, location_data, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number),
+           latitude, longitude, location_data, created_at, owner_id,
            category:categories!listings_category_id_fkey(value)`
         )
         .eq('id', id)
         .maybeSingle();
+
+      if (!error && data?.owner_id) {
+        const { data: ownerData } = await supabase
+          .from('public_profiles')
+          .select('id, username, photo_url, avatar_url, location_data, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number')
+          .eq('id', data.owner_id)
+          .maybeSingle();
+        if (ownerData) (data as any).owner = ownerData;
+      }
 
       if (!error && data) {
         const mapped: Listing = {
@@ -396,12 +405,7 @@ export default function ListingDetailScreen() {
     if (!convErr && conv) {
       const startLabel = selectedStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
       const endLabel = selectedEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-      await supabase.from('chat_messages').insert({
-        conversation_id: conv.id,
-        sender_id: null,
-        content: `Nouvelle demande du ${startLabel} au ${endLabel}`,
-        is_system: true,
-      });
+      await postSystemMessage(conv.id, `Nouvelle demande du ${startLabel} au ${endLabel}`);
       if (customMessage) {
         await supabase.from('chat_messages').insert({
           conversation_id: conv.id,

@@ -132,7 +132,7 @@ export default function OwnerProfilePage() {
     (async () => {
       const [profileRes, listingsRes] = await Promise.all([
         supabase
-          .from('profiles')
+          .from('public_profiles')
           .select('id, username, bio, avatar_url, photo_url, location_data, created_at, is_pro, business_address, business_hours, business_type, business_name')
           .eq('id', id)
           .maybeSingle(),
