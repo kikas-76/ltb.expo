@@ -366,7 +366,13 @@ export default function CreateListingScreen() {
       return;
     }
     let photoUrls: string[] = [];
-    if (photos.length > 0) photoUrls = await uploadPhotos();
+    if (photos.length > 0) {
+      photoUrls = await uploadPhotos();
+      if (photoUrls.length !== photos.length) {
+        setSubmitting(false);
+        return;
+      }
+    }
     const priceNum = parseFloat(price);
     const depositNum = parseFloat(deposit) || 0;
 
