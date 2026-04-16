@@ -39,17 +39,6 @@ interface Listing {
   } | null;
 }
 
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function formatDistance(km: number): string {
   if (km < 1) return `${Math.round(km * 1000)} m`;
@@ -69,7 +58,6 @@ export default function NearbyPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
-  const [allSorted, setAllSorted] = useState<Listing[]>([]);
 
   const userLat = profile?.location_data?.lat ?? null;
   const userLng = profile?.location_data?.lng ?? null;
@@ -79,75 +67,71 @@ export default function NearbyPage() {
 
   const { filters, selectedCategoryIds } = pageFilters;
 
-  const fetchAndSort = useCallback(async () => {
+  const fetchPage = useCallback(async (pageNum: number, replace: boolean) => {
     if (!hasLocation) {
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (replace) setLoading(true);
+    else setLoadingMore(true);
 
-    let query = supabase
-      .from('listings')
-      .select(
-        'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
-      )
-      .eq('is_active', true)
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null)
-      .limit(500);
+    const radiusKm = filters.locationMode === 'none' ? 9999 : filters.radiusKm;
 
-    if (filters.ownerType !== 'all') query = (query as any).eq('owner_type', filters.ownerType);
-    if (filters.priceMin !== '') query = (query as any).gte('price', Number(filters.priceMin));
-    if (filters.priceMax !== '') query = (query as any).lte('price', Number(filters.priceMax));
-    if (selectedCategoryIds.length > 0) query = (query as any).in('category_id', selectedCategoryIds);
-
-    const { data } = await query;
+    const { data } = await supabase.rpc('get_nearby_listings', {
+      user_lat: userLat!,
+      user_lng: userLng!,
+      radius_km: radiusKm,
+      lim: PAGE_SIZE,
+      offset_val: pageNum * PAGE_SIZE,
+    });
 
     if (data) {
-      const radiusKm = filters.locationMode === 'none' ? 9999 : filters.radiusKm;
+      let filtered = data as any[];
 
-      const mapped: Listing[] = data
-        .map((l: any) => {
-          const dist =
-            l.latitude != null && l.longitude != null
-              ? haversineKm(userLat!, userLng!, l.latitude, l.longitude)
-              : null;
-          return {
-            ...l,
-            owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
-            distanceKm: dist,
-          };
-        })
-        .filter((l: Listing) => l.distanceKm === null || l.distanceKm <= radiusKm)
-        .sort((a: Listing, b: Listing) => {
-          if (a.distanceKm === null) return 1;
-          if (b.distanceKm === null) return -1;
-          return a.distanceKm - b.distanceKm;
-        });
+      if (filters.ownerType !== 'all') filtered = filtered.filter((l) => l.owner_type === filters.ownerType);
+      if (filters.priceMin !== '') filtered = filtered.filter((l) => l.price >= Number(filters.priceMin));
+      if (filters.priceMax !== '') filtered = filtered.filter((l) => l.price <= Number(filters.priceMax));
+      if (selectedCategoryIds.length > 0) filtered = filtered.filter((l) => selectedCategoryIds.includes(l.category_id));
 
-      setAllSorted(mapped);
-      setListings(mapped.slice(0, PAGE_SIZE));
-      setHasMore(mapped.length > PAGE_SIZE);
+      const mapped: Listing[] = filtered.map((l: any) => ({
+        id: l.id,
+        name: l.name,
+        price: l.price,
+        photos_url: l.photos_url,
+        category_name: l.category_name,
+        category_id: l.category_id,
+        latitude: l.latitude,
+        longitude: l.longitude,
+        location_data: l.location_data,
+        owner_type: l.owner_type,
+        distanceKm: l.distance_km ?? null,
+        owner: null,
+      }));
+
+      if (replace) {
+        setListings(mapped);
+      } else {
+        setListings((prev) => [...prev, ...mapped]);
+      }
+      setHasMore(data.length === PAGE_SIZE);
     }
 
-    setLoading(false);
+    if (replace) setLoading(false);
+    else setLoadingMore(false);
   }, [userLat, userLng, hasLocation, filters, selectedCategoryIds]);
 
   useEffect(() => {
     setPage(0);
-    fetchAndSort();
-  }, [fetchAndSort]);
+    setListings([]);
+    fetchPage(0, true);
+  }, [fetchPage]);
 
   const loadMore = () => {
     if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
     const next = page + 1;
-    const nextBatch = allSorted.slice(0, (next + 1) * PAGE_SIZE);
-    setListings(nextBatch);
-    setHasMore(allSorted.length > (next + 1) * PAGE_SIZE);
     setPage(next);
-    setLoadingMore(false);
+    fetchPage(next, false);
   };
 
   const activeCount = pageFilters.activeFilterCount;
