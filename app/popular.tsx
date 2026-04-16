@@ -31,8 +31,8 @@ interface Listing {
   category_id: string | null;
   latitude: number | null;
   longitude: number | null;
-  view_count: number;
-  favorite_count: number;
+  views_count: number;
+  saves_count: number;
   score: number;
   owner_type: string | null;
   owner: {
@@ -87,52 +87,42 @@ export default function PopularPage() {
       if (pageNum === 0) setLoading(true);
       else setLoadingMore(true);
 
+      const orderCol = sort === 'views' ? 'views_count' : sort === 'favorites' ? 'saves_count' : 'views_count';
+
       let query = supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, views_count, saves_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
         )
         .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .order(orderCol, { ascending: false });
 
       if (filters.ownerType !== 'all') query = query.eq('owner_type', filters.ownerType);
       if (filters.priceMin !== '') query = query.gte('price', Number(filters.priceMin));
       if (filters.priceMax !== '') query = query.lte('price', Number(filters.priceMax));
       if (selectedCategoryIds.length > 0) query = query.in('category_id', selectedCategoryIds);
 
-      const fetchSize = PAGE_SIZE * 3;
-      query = query.range(pageNum * fetchSize, (pageNum + 1) * fetchSize - 1);
+      if (filters.locationMode !== 'none') {
+        let refLat: number | null = null;
+        let refLng: number | null = null;
+        if (filters.locationMode === 'around_me') { refLat = userLat; refLng = userLng; }
+        else if (filters.locationMode === 'city') {
+          const city = CITIES.find((c) => c.value === filters.selectedCity);
+          if (city) { refLat = city.lat; refLng = city.lng; }
+        }
+        if (refLat !== null && refLng !== null) {
+          query = query
+            .not('latitude', 'is', null)
+            .not('longitude', 'is', null);
+        }
+      }
+
+      query = query.range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
       const { data } = await query;
 
       if (data && data.length > 0) {
-        const ids = data.map((l: any) => l.id);
-
-        const [viewsRes, favsRes] = await Promise.all([
-          supabase.from('listing_views').select('listing_id').in('listing_id', ids),
-          supabase.from('saved_listings').select('listing_id').in('listing_id', ids),
-        ]);
-
-        const viewCounts: Record<string, number> = {};
-        (viewsRes.data ?? []).forEach((v: any) => {
-          viewCounts[v.listing_id] = (viewCounts[v.listing_id] ?? 0) + 1;
-        });
-        const favCounts: Record<string, number> = {};
-        (favsRes.data ?? []).forEach((v: any) => {
-          favCounts[v.listing_id] = (favCounts[v.listing_id] ?? 0) + 1;
-        });
-
-        let mapped: Listing[] = data.map((l: any) => {
-          const views = viewCounts[l.id] ?? 0;
-          const favs = favCounts[l.id] ?? 0;
-          return {
-            ...l,
-            owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
-            view_count: views,
-            favorite_count: favs,
-            score: views + favs * 3,
-          };
-        });
+        let filtered = data as any[];
 
         if (filters.locationMode !== 'none') {
           let refLat: number | null = null;
@@ -143,21 +133,27 @@ export default function PopularPage() {
             if (city) { refLat = city.lat; refLng = city.lng; }
           }
           if (refLat !== null && refLng !== null) {
-            mapped = mapped
-              .filter((l) => l.latitude != null && l.longitude != null)
-              .filter((l) => haversineKm(refLat!, refLng!, l.latitude!, l.longitude!) <= filters.radiusKm);
+            filtered = filtered.filter(
+              (l) => l.latitude != null && l.longitude != null &&
+                haversineKm(refLat!, refLng!, l.latitude, l.longitude) <= filters.radiusKm
+            );
           }
         }
 
-        const sorted = [...mapped].sort((a, b) => {
-          if (sort === 'views') return b.view_count - a.view_count;
-          if (sort === 'favorites') return b.favorite_count - a.favorite_count;
-          return b.score - a.score;
-        });
+        const mapped: Listing[] = filtered.map((l: any) => ({
+          ...l,
+          owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
+          views_count: l.views_count ?? 0,
+          saves_count: l.saves_count ?? 0,
+          score: (l.views_count ?? 0) + (l.saves_count ?? 0) * 3,
+        }));
 
-        const paged = sorted.slice(0, PAGE_SIZE);
-        setListings((prev) => (reset || pageNum === 0 ? paged : [...prev, ...paged]));
-        setHasMore(sorted.length >= PAGE_SIZE);
+        const sorted = sort === 'score'
+          ? [...mapped].sort((a, b) => b.score - a.score)
+          : mapped;
+
+        setListings((prev) => (reset || pageNum === 0 ? sorted : [...prev, ...sorted]));
+        setHasMore(data.length === PAGE_SIZE);
       } else if (reset || pageNum === 0) {
         setListings([]);
         setHasMore(false);
