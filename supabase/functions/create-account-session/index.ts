@@ -117,6 +117,7 @@ function buildCreateParams(
 function buildUpdateParams(
   userEmail: string | undefined,
   profile: ProfileRow | null,
+  detailsSubmitted: boolean,
 ): Stripe.AccountUpdateParams {
   const phone = normalizePhone(profile?.phone_number);
   const { firstName, lastName } = splitName(profile?.username);
@@ -124,8 +125,6 @@ function buildUpdateParams(
   const isProValue = isProfessional(profile);
 
   const payload: Stripe.AccountUpdateParams = {
-    ...(userEmail ? { email: userEmail } : {}),
-    business_type: isProValue ? "company" : "individual",
     business_profile: buildBusinessProfile(
       userEmail,
       phone,
@@ -134,20 +133,25 @@ function buildUpdateParams(
     ) as Stripe.AccountUpdateParams.BusinessProfile,
   };
 
-  if (isProValue) {
-    payload.company = {
-      name: profile?.business_name ?? undefined,
-      ...(phone ? { phone } : {}),
-      ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-    };
-  } else {
-    payload.individual = {
-      ...(firstName ? { first_name: firstName } : {}),
-      ...(lastName ? { last_name: lastName } : {}),
-      ...(userEmail ? { email: userEmail } : {}),
-      ...(phone ? { phone } : {}),
-      ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-    };
+  if (!detailsSubmitted) {
+    if (userEmail) payload.email = userEmail;
+    payload.business_type = isProValue ? "company" : "individual";
+
+    if (isProValue) {
+      payload.company = {
+        name: profile?.business_name ?? undefined,
+        ...(phone ? { phone } : {}),
+        ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+      };
+    } else {
+      payload.individual = {
+        ...(firstName ? { first_name: firstName } : {}),
+        ...(lastName ? { last_name: lastName } : {}),
+        ...(userEmail ? { email: userEmail } : {}),
+        ...(phone ? { phone } : {}),
+        ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+      };
+    }
   }
 
   return payload;
@@ -232,7 +236,7 @@ Deno.serve(async (req: Request) => {
         try {
           await stripe.accounts.update(
             accountId,
-            buildUpdateParams(user.email ?? undefined, profile),
+            buildUpdateParams(user.email ?? undefined, profile, existingAccount.details_submitted ?? false),
           );
         } catch (updateError) {
           const canReplaceAccount =
