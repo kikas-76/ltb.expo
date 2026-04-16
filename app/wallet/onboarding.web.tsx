@@ -10,84 +10,131 @@ import {
   ConnectAccountOnboarding,
 } from '@stripe/react-connect-js';
 import { Colors } from '@/constants/colors';
+import { PreOnboardingForm } from '@/components/wallet/PreOnboardingForm';
 
+type Step = 'checking' | 'pre-onboarding' | 'stripe' | 'error';
+
+interface ProfileData {
+  username: string | null;
+  phone_number: string | null;
+  location_data: Record<string, string> | null;
+  is_pro: boolean;
+  business_name: string | null;
+}
+
+function profileIsComplete(p: ProfileData | null): boolean {
+  if (!p) return false;
+  const hasName = Boolean(p.username?.trim());
+  const hasPhone = Boolean(p.phone_number?.trim());
+  const hasCity = Boolean((p.location_data as any)?.city?.trim());
+  return hasName && hasPhone && hasCity;
+}
 
 export default function WalletOnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const [step, setStep] = useState<Step>('checking');
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [stripeConnectInstance, setStripeConnectInstance] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showExitModal, setShowExitModal] = useState(false);
   const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          setError('Session expirée. Reconnecte-toi.');
-          setLoading(false);
-          return;
-        }
-
-        const instance = loadConnectAndInitialize({
-          publishableKey,
-          locale: 'fr',
-          fetchClientSecret: async () => {
-            const { data: { session: freshSession } } = await supabase.auth.getSession();
-            if (!freshSession?.access_token) throw new Error('Session expirée');
-            const response = await fetch(
-              `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-account-session`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-                  'Authorization': `Bearer ${freshSession.access_token}`,
-                },
-                body: JSON.stringify({}),
-              }
-            );
-            const data = await response.json();
-            if (data.error) throw new Error(data.error);
-            return data.client_secret;
-          },
-          appearance: {
-            overlays: 'dialog',
-            variables: {
-              colorPrimary: '#8E9878',
-              colorBackground: '#FFFFFF',
-              colorText: '#2C2C2C',
-              colorSecondaryText: '#6B6B6B',
-              colorBorder: '#E8E5D8',
-              colorDanger: '#C25450',
-              fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-              fontSizeBase: '15px',
-              borderRadius: '12px',
-              spacingUnit: '12px',
-              buttonPrimaryColorBackground: '#8E9878',
-              buttonPrimaryColorText: '#FFFFFF',
-              buttonPrimaryColorBorder: '#8E9878',
-              buttonSecondaryColorBackground: '#FFFFFF',
-              buttonSecondaryColorText: '#2C2C2C',
-              buttonSecondaryColorBorder: '#D9D5C8',
-              formBackgroundColor: '#FAFAF5',
-              formHighlightColorBorder: '#8E9878',
-            },
-          },
-        });
-
-        setStripeConnectInstance(instance);
-        setLoading(false);
-      } catch (err: any) {
-        setError(err.message ?? 'Erreur lors du chargement');
-        setLoading(false);
-      }
-    };
-
-    init();
+    checkProfileAndDecideStep();
   }, []);
+
+  const checkProfileAndDecideStep = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token || !session.user) {
+        setErrorMessage('Session expirée. Reconnecte-toi.');
+        setStep('error');
+        return;
+      }
+
+      setUserId(session.user.id);
+
+      const { data: p } = await supabase
+        .from('profiles')
+        .select('username, phone_number, location_data, is_pro, business_name')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      setProfile(p);
+
+      if (mode === 'edit' || profileIsComplete(p)) {
+        await initStripe();
+      } else {
+        setStep('pre-onboarding');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message ?? 'Erreur lors du chargement');
+      setStep('error');
+    }
+  };
+
+  const initStripe = async () => {
+    try {
+      const instance = loadConnectAndInitialize({
+        publishableKey,
+        locale: 'fr',
+        fetchClientSecret: async () => {
+          const { data: { session: freshSession } } = await supabase.auth.getSession();
+          if (!freshSession?.access_token) throw new Error('Session expirée');
+          const response = await fetch(
+            `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-account-session`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+                'Authorization': `Bearer ${freshSession.access_token}`,
+              },
+              body: JSON.stringify({}),
+            }
+          );
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          return data.client_secret;
+        },
+        appearance: {
+          overlays: 'dialog',
+          variables: {
+            colorPrimary: '#8E9878',
+            colorBackground: '#FFFFFF',
+            colorText: '#2C2C2C',
+            colorSecondaryText: '#6B6B6B',
+            colorBorder: '#E8E5D8',
+            colorDanger: '#C25450',
+            fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            fontSizeBase: '15px',
+            borderRadius: '12px',
+            spacingUnit: '12px',
+            buttonPrimaryColorBackground: '#8E9878',
+            buttonPrimaryColorText: '#FFFFFF',
+            buttonPrimaryColorBorder: '#8E9878',
+            buttonSecondaryColorBackground: '#FFFFFF',
+            buttonSecondaryColorText: '#2C2C2C',
+            buttonSecondaryColorBorder: '#D9D5C8',
+            formBackgroundColor: '#FAFAF5',
+            formHighlightColorBorder: '#8E9878',
+          },
+        },
+      });
+
+      setStripeConnectInstance(instance);
+      setStep('stripe');
+    } catch (err: any) {
+      setErrorMessage(err?.message ?? 'Erreur lors du chargement');
+      setStep('error');
+    }
+  };
+
+  const handlePreOnboardingComplete = async () => {
+    await initStripe();
+  };
 
   const handleOnboardingExit = async () => {
     try {
@@ -115,21 +162,21 @@ export default function WalletOnboardingScreen() {
     }
   };
 
-  if (loading) {
+  if (step === 'checking') {
     return (
       <View style={[styles.root, styles.center, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={Colors.primaryDark} />
-        <Text style={styles.loadingText}>Chargement de l'inscription Stripe...</Text>
+        <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
   }
 
-  if (error) {
+  if (step === 'error') {
     return (
       <View style={[styles.root, styles.center, { paddingTop: insets.top }]}>
         <Ionicons name="warning-outline" size={48} color="#D97706" />
         <Text style={styles.errorTitle}>Erreur</Text>
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.errorText}>{errorMessage}</Text>
         <TouchableOpacity style={styles.retryBtn} onPress={() => router.replace('/wallet')}>
           <Text style={styles.retryBtnText}>Retour au portefeuille</Text>
         </TouchableOpacity>
@@ -140,11 +187,15 @@ export default function WalletOnboardingScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setShowExitModal(true)} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={() => step === 'stripe' ? setShowExitModal(true) : router.replace('/wallet')}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+        >
           <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {mode === 'edit' ? 'Modifier mes informations' : 'Activer les paiements'}
+          {mode === 'edit' ? 'Modifier mes informations' : 'Active tes virements'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
@@ -162,14 +213,14 @@ export default function WalletOnboardingScreen() {
             </View>
             <Text style={styles.modalTitle}>Reprendre plus tard ?</Text>
             <Text style={styles.modalText}>
-              Ta progression est sauvegardée. Tu pourras reprendre l'activation de ton compte Stripe à tout moment depuis ton portefeuille.
+              Ta progression est sauvegardée. Tu pourras reprendre à tout moment depuis ton portefeuille.
             </Text>
             <TouchableOpacity
               style={styles.modalBtnSecondary}
               onPress={() => setShowExitModal(false)}
               activeOpacity={0.8}
             >
-              <Text style={styles.modalBtnSecondaryText}>Continuer l'inscription</Text>
+              <Text style={styles.modalBtnSecondaryText}>Continuer la vérification</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.modalBtnPrimary}
@@ -191,36 +242,83 @@ export default function WalletOnboardingScreen() {
 
       <View style={styles.scrollOuter}>
         <View style={styles.contentWrapper}>
-          <View style={styles.infoCard}>
-            <View style={styles.infoIconWrap}>
-              <Ionicons name="shield-checkmark-outline" size={22} color="#8E9878" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.infoTitle}>
-                {mode === 'edit' ? 'Mise à jour sécurisée par Stripe' : 'Inscription sécurisée par Stripe'}
-              </Text>
-              <Text style={styles.infoSubtitle}>
-                Tes données bancaires sont gérées par Stripe, leader mondial du paiement en ligne. LoueTonBien n'y a jamais accès.
-              </Text>
-            </View>
-          </View>
 
-          <View style={styles.stripeCard}>
-            {stripeConnectInstance && (
-              <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
-                <ConnectAccountOnboarding
-                  onExit={handleOnboardingExit}
-                />
-              </ConnectComponentsProvider>
-            )}
-          </View>
+          {step === 'pre-onboarding' && userId && (
+            <>
+              <View style={styles.reassureCard}>
+                <View style={styles.reassureIconWrap}>
+                  <Ionicons name="person-circle-outline" size={22} color={Colors.primaryDark} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reassureTitle}>Tu ne crées pas une entreprise</Text>
+                  <Text style={styles.reassureSubtitle}>
+                    Pour recevoir tes gains, Stripe doit vérifier ton identité. C'est une obligation réglementaire, même pour les particuliers. LoueTonBien ne voit jamais tes données bancaires.
+                  </Text>
+                </View>
+              </View>
 
-          <View style={styles.footerInfo}>
-            <Ionicons name="lock-closed-outline" size={14} color="#9B9B9B" />
-            <Text style={styles.footerText}>
-              Connexion chiffrée de bout en bout · Données hébergées en Europe
-            </Text>
-          </View>
+              <PreOnboardingForm
+                userId={userId}
+                initialData={{
+                  username: profile?.username ?? undefined,
+                  phone_number: profile?.phone_number ?? undefined,
+                  city: (profile?.location_data as any)?.city ?? undefined,
+                  is_pro: profile?.is_pro ?? false,
+                  business_name: profile?.business_name ?? undefined,
+                }}
+                onComplete={handlePreOnboardingComplete}
+              />
+
+              <View style={styles.footerInfo}>
+                <Ionicons name="lock-closed-outline" size={14} color="#9B9B9B" />
+                <Text style={styles.footerText}>
+                  Connexion chiffrée · Données hébergées en Europe
+                </Text>
+              </View>
+            </>
+          )}
+
+          {step === 'stripe' && (
+            <>
+              <View style={styles.infoCard}>
+                <View style={styles.infoIconWrap}>
+                  <Ionicons name="shield-checkmark-outline" size={22} color="#8E9878" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoTitle}>
+                    {mode === 'edit' ? 'Mise à jour sécurisée' : 'Vérifie ton identité pour recevoir tes gains'}
+                  </Text>
+                  <Text style={styles.infoSubtitle}>
+                    Stripe peut utiliser un vocabulaire professionnel même pour les particuliers — c'est normal. Tu n'as rien à déclarer en tant qu'entreprise.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.stripeCard}>
+                {stripeConnectInstance && (
+                  <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
+                    <ConnectAccountOnboarding
+                      onExit={handleOnboardingExit}
+                    />
+                  </ConnectComponentsProvider>
+                )}
+                {!stripeConnectInstance && (
+                  <View style={styles.stripeLoading}>
+                    <ActivityIndicator size="large" color={Colors.primaryDark} />
+                    <Text style={styles.loadingText}>Chargement du formulaire Stripe...</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.footerInfo}>
+                <Ionicons name="lock-closed-outline" size={14} color="#9B9B9B" />
+                <Text style={styles.footerText}>
+                  Connexion chiffrée de bout en bout · Données hébergées en Europe
+                </Text>
+              </View>
+            </>
+          )}
+
         </View>
       </View>
     </View>
@@ -272,6 +370,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 40,
+    gap: 20,
+  },
+  reassureCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    backgroundColor: '#EEF3E8',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#D4E0C4',
+  },
+  reassureIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  reassureTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: Colors.primaryDark,
+    marginBottom: 4,
+  },
+  reassureSubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: '#4A5E38',
+    lineHeight: 19,
   },
   infoCard: {
     flexDirection: 'row',
@@ -280,7 +410,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primarySurface,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 24,
   },
   infoIconWrap: {
     width: 40,
@@ -314,12 +443,18 @@ const styles = StyleSheet.create({
     borderColor: '#E8E5D8',
     minHeight: 400,
   },
+  stripeLoading: {
+    flex: 1,
+    minHeight: 350,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
   footerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 20,
     paddingVertical: 12,
   },
   footerText: {
