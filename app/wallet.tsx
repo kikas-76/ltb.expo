@@ -345,9 +345,9 @@ export default function WalletScreen() {
         headers: {
           'Content-Type': 'application/json',
           'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ access_token: accessToken }),
+        body: JSON.stringify({}),
       });
       const data = await response.json();
       setAccountComplete(data.complete === true);
