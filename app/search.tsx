@@ -160,7 +160,6 @@ export default function SearchScreen() {
   const [localHistory, setLocalHistory] = useState<string[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [page, setPage] = useState(0);
-  const [allListingNames, setAllListingNames] = useState<string[]>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(12)).current;
@@ -189,17 +188,11 @@ export default function SearchScreen() {
 
   useEffect(() => {
     loadCategories();
-    loadAllListingNames();
   }, []);
 
   const loadCategories = async () => {
     const { data } = await supabase.from('categories').select('id, name, value').order('order');
     setCategories(data ?? []);
-  };
-
-  const loadAllListingNames = async () => {
-    const { data } = await supabase.from('listings').select('name').eq('is_active', true).limit(500);
-    setAllListingNames((data ?? []).map((l: any) => l.name.toLowerCase()));
   };
 
   useEffect(() => {
@@ -216,9 +209,8 @@ export default function SearchScreen() {
   }, [debouncedQuery]);
 
   const queryMatchesListingName = (q: string): boolean => {
-    const lower = q.trim().toLowerCase();
-    if (lower.length < 3) return false;
-    return allListingNames.some((name) => name.includes(lower));
+    if (q.trim().length < 3) return false;
+    return suggestions.length > 0;
   };
 
   const fetchSuggestions = async (q: string) => {

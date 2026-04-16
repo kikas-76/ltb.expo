@@ -223,20 +223,12 @@ export default function ListingDetailScreen() {
         .from('listings')
         .select(
           `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
-           latitude, longitude, location_data, created_at, owner_id,
+           latitude, longitude, location_data, created_at, owner_id, views_count, saves_count,
+           owner:public_profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, location_data, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number),
            category:categories!listings_category_id_fkey(value)`
         )
         .eq('id', id)
         .maybeSingle();
-
-      if (!error && data?.owner_id) {
-        const { data: ownerData } = await supabase
-          .from('public_profiles')
-          .select('id, username, photo_url, avatar_url, location_data, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number')
-          .eq('id', data.owner_id)
-          .maybeSingle();
-        if (ownerData) (data as any).owner = ownerData;
-      }
 
       if (!error && data) {
         const mapped: Listing = {
@@ -245,15 +237,11 @@ export default function ListingDetailScreen() {
           category: Array.isArray(data.category) ? (data.category[0] ?? null) : data.category,
         } as any;
         setListing(mapped);
+        setLikeCount((data as any).saves_count ?? 0);
+        setViewCount((data as any).views_count ?? 0);
         trackRecentlyViewed(id!);
 
-        const { count: favCount } = await supabase
-          .from('saved_listings')
-          .select('*', { count: 'exact', head: true })
-          .eq('listing_id', id);
-        setLikeCount(favCount ?? 0);
-
-        const ownerId = Array.isArray(data.owner) ? data.owner[0]?.id : (data.owner as any)?.id;
+        const ownerId = mapped.owner?.id ?? null;
         const isOwnListing = !!(userId && ownerId && userId === ownerId);
 
         const listingLatRaw = mapped.latitude ?? mapped.owner?.location_data?.lat ?? null;
@@ -264,48 +252,45 @@ export default function ListingDetailScreen() {
           });
         }
 
-        const { count: vCount } = await supabase
-          .from('listing_views')
-          .select('*', { count: 'exact', head: true })
-          .eq('listing_id', id);
-        setViewCount(vCount ?? 0);
-
         if (!isOwnListing) {
-          await supabase.from('listing_views').insert({
+          supabase.from('listing_views').insert({
             listing_id: id,
             viewer_id: userId ?? null,
-          });
+          }).then(() => {});
 
           if (userId) {
-            const { data: existingConv } = await supabase
+            supabase
               .from('conversations')
               .select('id')
               .eq('listing_id', id)
               .eq('requester_id', userId)
               .in('status', ['pending', 'accepted'])
-              .maybeSingle();
-            setExistingConvId(existingConv?.id ?? null);
+              .maybeSingle()
+              .then(({ data: existingConv }) => {
+                setExistingConvId(existingConv?.id ?? null);
+              });
           }
         }
 
-        const { data: activeBookings } = await supabase
-          .from('bookings')
-          .select('start_date, end_date, status')
-          .eq('listing_id', id)
-          .in('status', ['pending_payment', 'accepted', 'active', 'in_progress', 'pending_return', 'pending_owner_validation']);
-
-        const { data: pendingConvs } = await supabase
-          .from('conversations')
-          .select('start_date, end_date')
-          .eq('listing_id', id)
-          .eq('status', 'pending');
+        const [bookingsRes, convsRes] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select('start_date, end_date, status')
+            .eq('listing_id', id)
+            .in('status', ['pending_payment', 'accepted', 'active', 'in_progress', 'pending_return', 'pending_owner_validation']),
+          supabase
+            .from('conversations')
+            .select('start_date, end_date')
+            .eq('listing_id', id)
+            .eq('status', 'pending'),
+        ]);
 
         const allBookedRanges = [
-          ...(activeBookings ?? []).map((b: any) => ({
+          ...(bookingsRes.data ?? []).map((b: any) => ({
             start: new Date(b.start_date.split('T')[0] + 'T00:00:00'),
             end: new Date(b.end_date.split('T')[0] + 'T00:00:00'),
           })),
-          ...(pendingConvs ?? []).map((c: any) => ({
+          ...(convsRes.data ?? []).map((c: any) => ({
             start: new Date(c.start_date + 'T00:00:00'),
             end: new Date(c.end_date + 'T00:00:00'),
           })),

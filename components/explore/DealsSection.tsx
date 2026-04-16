@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -29,7 +29,7 @@ interface Props {
   userId?: string | null;
 }
 
-export default function DealsSection({ userLat, userLng, userId }: Props) {
+function DealsSection({ userLat, userLng, userId }: Props) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -234,3 +234,5 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 });
+
+export default memo(DealsSection);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, useWindowDimensions, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -30,7 +30,7 @@ interface Props {
   userId?: string | null;
 }
 
-export default function PopularSection({ userLat, userLng, userId }: Props) {
+function PopularSection({ userLat, userLng, userId }: Props) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -50,45 +50,18 @@ export default function PopularSection({ userLat, userLng, userId }: Props) {
       const { data } = await supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, views_count, saves_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
         )
         .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('views_count', { ascending: false })
+        .limit(10);
 
       if (data && data.length > 0) {
-        const ids = data.map((l: any) => l.id);
-
-        const [viewsRes, favsRes] = await Promise.all([
-          supabase.from('listing_views').select('listing_id').in('listing_id', ids),
-          supabase.from('saved_listings').select('listing_id').in('listing_id', ids),
-        ]);
-
-        const viewCounts: Record<string, number> = {};
-        (viewsRes.data ?? []).forEach((v: any) => {
-          viewCounts[v.listing_id] = (viewCounts[v.listing_id] ?? 0) + 1;
-        });
-
-        const favCounts: Record<string, number> = {};
-        (favsRes.data ?? []).forEach((v: any) => {
-          favCounts[v.listing_id] = (favCounts[v.listing_id] ?? 0) + 1;
-        });
-
-        const mapped: Listing[] = data
-          .map((l: any) => {
-            const views = viewCounts[l.id] ?? 0;
-            const favs = favCounts[l.id] ?? 0;
-            return {
-              ...l,
-              owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
-              view_count: views,
-              favorite_count: favs,
-              score: views + favs * 3,
-            };
-          })
-          .sort((a: any, b: any) => b.score - a.score)
-          .slice(0, 10);
-
+        const mapped: Listing[] = data.map((l: any) => ({
+          ...l,
+          owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
+          view_count: l.views_count ?? 0,
+        }));
         setListings(mapped);
       }
       setLoading(false);
@@ -263,3 +236,5 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 });
+
+export default memo(PopularSection);

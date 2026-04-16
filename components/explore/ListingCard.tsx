@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,7 +85,7 @@ function FavoriteButton({ listingId, userId, listingName }: { listingId: string;
   );
 }
 
-export default function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: ListingCardProps) {
+function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: ListingCardProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -99,13 +100,10 @@ export default function ListingCard({ listing, variant = 'grid', userLat, userLn
     ? listing.owner.username.slice(0, 2).toUpperCase()
     : '?';
 
-  const distanceText =
-    userLat != null &&
-    userLng != null &&
-    listing.latitude != null &&
-    listing.longitude != null
-      ? formatDistance(haversineKm(userLat, userLng, listing.latitude, listing.longitude))
-      : null;
+  const distanceText = useMemo(() => {
+    if (userLat == null || userLng == null || listing.latitude == null || listing.longitude == null) return null;
+    return formatDistance(haversineKm(userLat, userLng, listing.latitude, listing.longitude));
+  }, [userLat, userLng, listing.latitude, listing.longitude]);
 
   const cityText =
     listing.location_data?.city ||
@@ -125,7 +123,16 @@ export default function ListingCard({ listing, variant = 'grid', userLat, userLn
     >
       <View style={styles.imageContainer}>
         {photo ? (
-          <Image source={{ uri: photo }} style={styles.image} resizeMode="cover" />
+          Platform.OS === 'web' ? (
+            <img
+              src={photo}
+              loading="lazy"
+              decoding="async"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            <Image source={{ uri: photo }} style={styles.image} resizeMode="cover" />
+          )
         ) : (
           <View style={styles.imageFallback} />
         )}
@@ -287,3 +294,5 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+
+export default memo(ListingCard);

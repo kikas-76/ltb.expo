@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
@@ -39,7 +39,7 @@ function getRecentIds(): string[] {
   return [];
 }
 
-export default function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
+function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [ids, setIds] = useState<string[]>([]);
@@ -230,3 +230,5 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 });
+
+export default memo(RecentlyViewedSection);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -29,7 +29,7 @@ interface Props {
   userLng?: number | null;
 }
 
-export default function FavoritesSection({ userId, userLat, userLng }: Props) {
+function FavoritesSection({ userId, userLat, userLng }: Props) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const { refreshKey } = useFavoritesContext();
@@ -178,3 +178,5 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 });
+
+export default memo(FavoritesSection);
