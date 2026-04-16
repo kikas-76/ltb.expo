@@ -8,6 +8,166 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://louetonbien.fr";
+
+type ProfileRow = {
+  stripe_account_id?: string | null;
+  username?: string | null;
+  phone_number?: string | null;
+  business_type?: string | null;
+  business_name?: string | null;
+  siren_number?: string | null;
+  location_data?: Record<string, string> | null;
+  is_pro?: boolean | null;
+  bio?: string | null;
+};
+
+function normalizePhone(rawPhone?: string | null): string | undefined {
+  const digits = (rawPhone ?? "").replace(/\D/g, "");
+  if (!digits) return undefined;
+  if (digits.length === 11 && digits.startsWith("330")) return "+33" + digits.slice(3);
+  if (digits.length === 10 && digits.startsWith("0")) return "+33" + digits.slice(1);
+  if (digits.length === 11 && digits.startsWith("33")) return "+" + digits;
+  if (digits.length === 12 && digits.startsWith("033")) return "+" + digits.slice(1);
+  if (digits.length >= 9) return "+" + digits;
+  return undefined;
+}
+
+function splitName(username?: string | null): { firstName?: string; lastName?: string } {
+  const trimmed = (username ?? "").trim();
+  if (!trimmed) return {};
+  const nameParts = trimmed.split(/\s+/);
+  const firstName = nameParts[0] ?? undefined;
+  const lastName = nameParts.slice(1).join(" ") || firstName;
+  return { firstName, lastName };
+}
+
+function isProfessional(profile: ProfileRow | null): boolean {
+  return Boolean(profile?.is_pro && profile?.business_name);
+}
+
+function buildBusinessProfile(
+  userEmail?: string,
+  phone?: string,
+  isProValue = false,
+  businessName?: string,
+) {
+  const payload: Record<string, string> = {
+    url: APP_BASE_URL,
+    support_email: userEmail ?? "",
+    product_description: isProValue
+      ? "Mise en location d'objets via LoueTonBien"
+      : "Location d'objets entre particuliers via LoueTonBien",
+  };
+
+  if (!payload.support_email) delete payload.support_email;
+  if (phone) payload.support_phone = phone;
+  if (isProValue && businessName) payload.name = businessName;
+
+  return payload;
+}
+
+function buildCreateParams(
+  userEmail: string | undefined,
+  profile: ProfileRow | null,
+): Stripe.AccountCreateParams {
+  const phone = normalizePhone(profile?.phone_number);
+  const { firstName, lastName } = splitName(profile?.username);
+  const locationData = profile?.location_data ?? null;
+  const isProValue = isProfessional(profile);
+
+  const payload: Stripe.AccountCreateParams = {
+    type: "express",
+    email: userEmail,
+    country: "FR",
+    default_currency: "eur",
+    capabilities: {
+      card_payments: { requested: true },
+      transfers: { requested: true },
+    },
+    business_profile: buildBusinessProfile(
+      userEmail,
+      phone,
+      isProValue,
+      profile?.business_name,
+    ) as Stripe.AccountCreateParams.BusinessProfile,
+  };
+
+  if (isProValue) {
+    payload.business_type = "company";
+    payload.company = {
+      name: profile?.business_name ?? undefined,
+      ...(phone ? { phone } : {}),
+      ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+    };
+  } else {
+    payload.business_type = "individual";
+    payload.individual = {
+      ...(firstName ? { first_name: firstName } : {}),
+      ...(lastName ? { last_name: lastName } : {}),
+      ...(userEmail ? { email: userEmail } : {}),
+      ...(phone ? { phone } : {}),
+      ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+    };
+  }
+
+  return payload;
+}
+
+function buildUpdateParams(
+  userEmail: string | undefined,
+  profile: ProfileRow | null,
+): Stripe.AccountUpdateParams {
+  const phone = normalizePhone(profile?.phone_number);
+  const { firstName, lastName } = splitName(profile?.username);
+  const locationData = profile?.location_data ?? null;
+  const isProValue = isProfessional(profile);
+
+  const payload: Stripe.AccountUpdateParams = {
+    ...(userEmail ? { email: userEmail } : {}),
+    business_type: isProValue ? "company" : "individual",
+    business_profile: buildBusinessProfile(
+      userEmail,
+      phone,
+      isProValue,
+      profile?.business_name,
+    ) as Stripe.AccountUpdateParams.BusinessProfile,
+  };
+
+  if (isProValue) {
+    payload.company = {
+      name: profile?.business_name ?? undefined,
+      ...(phone ? { phone } : {}),
+      ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+    };
+  } else {
+    payload.individual = {
+      ...(firstName ? { first_name: firstName } : {}),
+      ...(lastName ? { last_name: lastName } : {}),
+      ...(userEmail ? { email: userEmail } : {}),
+      ...(phone ? { phone } : {}),
+      ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+    };
+  }
+
+  return payload;
+}
+
+async function createFreshAccount(
+  stripe: Stripe,
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  userEmail: string | undefined,
+  profile: ProfileRow | null,
+): Promise<string> {
+  const account = await stripe.accounts.create(buildCreateParams(userEmail, profile));
+  await supabase
+    .from("profiles")
+    .update({ stripe_account_id: account.id })
+    .eq("id", userId);
+  return account.id;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -20,7 +180,7 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     const authHeader = req.headers.get("Authorization");
@@ -47,72 +207,50 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     let accountId: string = profile?.stripe_account_id ?? "";
-
-    const username: string = profile?.username ?? "";
-    const nameParts = username.trim().split(" ");
-    const firstName = nameParts[0] ?? "";
-    const lastName = nameParts.slice(1).join(" ") || firstName;
-    const rawPhone: string = profile?.phone_number ?? "";
-    const digits = rawPhone.replace(/\D/g, "");
-    let phone = "";
-    if (digits.length === 11 && digits.startsWith("330")) {
-      phone = "+33" + digits.slice(3);
-    } else if (digits.length === 10 && digits.startsWith("0")) {
-      phone = "+33" + digits.slice(1);
-    } else if (digits.length === 11 && digits.startsWith("33")) {
-      phone = "+" + digits;
-    } else if (digits.length === 12 && digits.startsWith("033")) {
-      phone = "+" + digits.slice(1);
-    } else if (digits.length >= 9) {
-      phone = "+" + digits;
-    }
-    const locationData = profile?.location_data as Record<string, string> | null;
-    const isPro = profile?.is_pro && profile?.business_name;
+    const desiredBusinessType = isProfessional(profile) ? "company" : "individual";
 
     if (!accountId) {
-      const createParams: Stripe.AccountCreateParams = {
-        type: "express",
-        email: user.email,
-        country: "FR",
-        default_currency: "eur",
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
-        },
-      };
+      accountId = await createFreshAccount(
+        stripe,
+        supabase,
+        user.id,
+        user.email ?? undefined,
+        profile,
+      );
+    } else {
+      const existingAccount = await stripe.accounts.retrieve(accountId);
 
-      if (isPro) {
-        createParams.business_type = "company";
-        createParams.company = {
-          name: profile!.business_name,
-          ...(phone ? { phone } : {}),
-          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-        };
-        createParams.business_profile = {
-          ...(profile?.business_name ? { name: profile.business_name } : {}),
-          support_email: user.email,
-        };
+      if ("deleted" in existingAccount && existingAccount.deleted) {
+        accountId = await createFreshAccount(
+          stripe,
+          supabase,
+          user.id,
+          user.email ?? undefined,
+          profile,
+        );
       } else {
-        createParams.business_type = "individual";
-        createParams.individual = {
-          ...(firstName ? { first_name: firstName } : {}),
-          ...(lastName ? { last_name: lastName } : {}),
-          email: user.email ?? "",
-          ...(phone ? { phone } : {}),
-          ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-        };
-        createParams.business_profile = {
-          support_email: user.email,
-        };
+        try {
+          await stripe.accounts.update(
+            accountId,
+            buildUpdateParams(user.email ?? undefined, profile),
+          );
+        } catch (updateError) {
+          const canReplaceAccount =
+            !existingAccount.details_submitted &&
+            existingAccount.business_type !== null &&
+            existingAccount.business_type !== desiredBusinessType;
+
+          if (!canReplaceAccount) throw updateError;
+
+          accountId = await createFreshAccount(
+            stripe,
+            supabase,
+            user.id,
+            user.email ?? undefined,
+            profile,
+          );
+        }
       }
-
-      const account = await stripe.accounts.create(createParams);
-      accountId = account.id;
-
-      await supabase
-        .from("profiles")
-        .update({ stripe_account_id: accountId })
-        .eq("id", user.id);
     }
 
     if (!accountId) {
