@@ -224,7 +224,7 @@ export default function ListingDetailScreen() {
         .select(
           `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
            latitude, longitude, location_data, created_at, owner_id, views_count, saves_count,
-           owner:public_profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, location_data, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number),
+           owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, location_data, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number),
            category:categories!listings_category_id_fkey(value)`
         )
         .eq('id', id)
