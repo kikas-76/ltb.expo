@@ -21,6 +21,7 @@ export default function EmailConfirmedScreen() {
   const checkScale = useRef(new Animated.Value(0)).current;
 
   const [sessionReady, setSessionReady] = useState(false);
+  const [restoreFailed, setRestoreFailed] = useState(false);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -31,10 +32,14 @@ export default function EmailConfirmedScreen() {
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
           if (accessToken && refreshToken) {
-            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+            const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
             // Strip tokens from URL so a refresh doesn't replay them.
             window.history.replaceState(null, '', window.location.pathname);
-            setSessionReady(true);
+            if (error) {
+              setRestoreFailed(true);
+            } else {
+              setSessionReady(true);
+            }
             return;
           }
         }
@@ -46,12 +51,18 @@ export default function EmailConfirmedScreen() {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
         setSessionReady(true);
+      } else {
+        setRestoreFailed(true);
       }
     };
     restoreSession();
   }, []);
 
   const handleContinue = () => {
+    if (restoreFailed) {
+      router.replace('/login');
+      return;
+    }
     // Brand-new accounts always need to complete the onboarding flow,
     // and the global guard sends already-onboarded users to the right
     // tab (mes-annonces in prelaunch, the marketplace otherwise).
@@ -83,20 +94,27 @@ export default function EmailConfirmedScreen() {
         </Animated.View>
 
         <Animated.View style={[styles.textBlock, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <Text style={styles.title}>Email vérifié !</Text>
+          <Text style={styles.title}>{restoreFailed ? 'Lien expiré' : 'Email vérifié !'}</Text>
           <Text style={styles.subtitle}>
-            Ton adresse email a bien été confirmée. Tu peux maintenant accéder à ton compte.
+            {restoreFailed
+              ? "Le lien a expiré ou a déjà été utilisé. Connecte-toi pour accéder à ton compte."
+              : 'Ton adresse email a bien été confirmée. Tu peux maintenant accéder à ton compte.'}
           </Text>
         </Animated.View>
 
         <Animated.View style={[styles.actionsBlock, { opacity: fadeAnim }]}>
           <TouchableOpacity
-            style={[styles.loginBtn, !sessionReady && styles.loginBtnDisabled]}
+            style={[styles.loginBtn, !sessionReady && !restoreFailed && styles.loginBtnDisabled]}
             onPress={handleContinue}
-            disabled={!sessionReady}
+            disabled={!sessionReady && !restoreFailed}
             activeOpacity={0.85}
           >
-            {sessionReady ? (
+            {restoreFailed ? (
+              <>
+                <Ionicons name="log-in-outline" size={18} color="#fff" />
+                <Text style={styles.loginBtnText}>Aller à la connexion</Text>
+              </>
+            ) : sessionReady ? (
               <>
                 <Ionicons name="arrow-forward-outline" size={18} color="#fff" />
                 <Text style={styles.loginBtnText}>Continuer</Text>
