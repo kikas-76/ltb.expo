@@ -16,7 +16,6 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
-const GREEN_PALE = '#F4F5EF';
 const { width } = Dimensions.get('window');
 
 const STEPS = [
@@ -206,9 +205,6 @@ export default function OnboardingWelcomeScreen() {
                 <View style={styles.stepText}>
                   <Text style={styles.stepTitle}>{step.title}</Text>
                   <Text style={styles.stepDesc}>{step.desc}</Text>
-                </View>
-                <View style={styles.stepArrow}>
-                  <Text style={styles.stepArrowText}>›</Text>
                 </View>
               </Animated.View>
             );
@@ -431,20 +427,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B6B60',
     lineHeight: 18,
-  },
-  stepArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: GREEN_PALE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  stepArrowText: {
-    fontSize: 18,
-    color: Colors.primary,
-    lineHeight: 22,
   },
   btnWrap: {
     width: '100%',
