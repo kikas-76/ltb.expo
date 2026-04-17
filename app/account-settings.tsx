@@ -313,7 +313,32 @@ export default function AccountSettingsScreen() {
     setDeleteLoading(true);
     setDeleteError(null);
     try {
-      await supabase.from('profiles').delete().eq('id', user!.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setDeleteError('Session expirée. Reconnecte-toi pour supprimer ton compte.');
+        setDeleteLoading(false);
+        return;
+      }
+
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/delete-user-account`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        },
+      );
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        setDeleteError(json.error ?? 'Une erreur est survenue. Contactez le support.');
+        setDeleteLoading(false);
+        return;
+      }
+
       await supabase.auth.signOut();
       router.replace('/');
     } catch {
