@@ -518,7 +518,7 @@ export default function ListingDetailScreen() {
           >
             <ImageGallery
               photos={photos}
-              height={Math.min(windowWidth * 0.25, 340)}
+              height={Math.min(Math.max(windowWidth * 0.42, 460), 620)}
               containerWidth={Math.min(windowWidth, 1280) - 380}
               onPhotoChange={(i) => setActivePhoto(i)}
             />
@@ -770,20 +770,20 @@ export default function ListingDetailScreen() {
               {!isOwner && (
                 existingConvId ? (
                   <TouchableOpacity
-                    style={[styles.ctaBtn, { flex: undefined, width: '100%' }]}
+                    style={[styles.ctaBtn, desktopStyles.ctaBtnTall, { flex: undefined, width: '100%' }]}
                     activeOpacity={0.85}
                     onPress={() => router.push(`/chat/${existingConvId}` as any)}
                   >
-                    <Text style={styles.ctaBtnText}>Voir ma demande</Text>
+                    <Text style={[styles.ctaBtnText, desktopStyles.ctaBtnTextLarge]}>Voir ma demande</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
-                    style={[styles.ctaBtn, { flex: undefined, width: '100%' }, !selectedDays && styles.ctaBtnDisabled]}
+                    style={[styles.ctaBtn, desktopStyles.ctaBtnTall, { flex: undefined, width: '100%' }, !selectedDays && styles.ctaBtnDisabled]}
                     activeOpacity={0.85}
                     onPress={handleRequestPress}
                     disabled={!selectedDays}
                   >
-                    <Text style={styles.ctaBtnText}>{selectedDays > 0 ? 'Faire une demande' : 'Choisir des dates'}</Text>
+                    <Text style={[styles.ctaBtnText, desktopStyles.ctaBtnTextLarge]}>{selectedDays > 0 ? 'Faire une demande' : 'Choisir des dates'}</Text>
                   </TouchableOpacity>
                 )
               )}
@@ -2502,5 +2502,14 @@ const desktopStyles = StyleSheet.create({
     ...Platform.select({
       web: { position: 'sticky', top: 0, alignSelf: 'flex-start', height: '100vh', overflowY: 'auto' } as any,
     }),
+  },
+  ctaBtnTall: {
+    height: 60,
+    borderRadius: 14,
+  },
+  ctaBtnTextLarge: {
+    fontSize: 17,
+    fontFamily: 'Inter-Bold',
+    letterSpacing: 0.3,
   },
 });
