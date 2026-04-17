@@ -20,9 +20,12 @@ npm run typecheck
 
 # Lint
 npm run lint
+
+# Unit tests (Vitest, pure helpers only)
+npm test
 ```
 
-No test suite is present.
+Tests cover pure helpers (`lib/pricing.ts`) only. There is no E2E or integration test suite — feature correctness on UI flows must be verified manually.
 
 ## Environment variables
 
