@@ -9,6 +9,10 @@ const corsHeaders = {
 };
 
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://louetonbien.fr";
+// MCC 7394 = Equipment, Tool, Furniture, and Appliance Rental and Leasing.
+// Pre-filling this on account creation so the owner doesn't have to pick
+// the activity sector during the hosted onboarding.
+const LTB_MCC = "7394";
 
 type ProfileRow = {
   stripe_account_id?: string | null;
@@ -57,6 +61,7 @@ function buildBusinessProfile(
   businessName?: string,
 ) {
   const payload: Record<string, string> = {
+    mcc: LTB_MCC,
     url: APP_BASE_URL,
     support_email: userEmail ?? "",
     product_description: isProValue

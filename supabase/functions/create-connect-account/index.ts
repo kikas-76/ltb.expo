@@ -9,6 +9,8 @@ const corsHeaders = {
 };
 
 const APP_BASE_URL = "https://app.louetonbien.fr";
+// MCC 7394 = Equipment, Tool, Furniture, and Appliance Rental and Leasing.
+const LTB_MCC = "7394";
 
 function normalizePhone(raw: string | null | undefined): string | undefined {
   if (!raw) return undefined;
@@ -86,6 +88,7 @@ Deno.serve(async (req: Request) => {
           transfers: { requested: true },
         },
         business_profile: {
+          mcc: LTB_MCC,
           url: APP_BASE_URL,
           support_email: user.email ?? undefined,
           product_description: isPro
