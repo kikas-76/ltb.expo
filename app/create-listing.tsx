@@ -179,6 +179,7 @@ export default function CreateListingScreen() {
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
 
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
 
   const [price, setPrice] = useState('');
   const [deposit, setDeposit] = useState('');
@@ -284,6 +285,11 @@ export default function CreateListingScreen() {
   };
 
   const handlePickPhoto = async () => {
+    // Anti double-tap: a second tap while we're still processing the first
+    // selection (HEIC conversion can take 1-3s on iPhone) opens a second
+    // picker and overwrites the first selection.
+    if (photoProcessing) return;
+
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
       input.type = 'file';
@@ -291,43 +297,82 @@ export default function CreateListingScreen() {
       // fall short with HEIC (the default iPhone format).
       input.accept = 'image/*';
       input.multiple = true;
+      // iOS Safari (and some Android browsers) silently fail to open the
+      // file picker when input.click() is called on an element detached
+      // from the DOM. Attach + hide it.
+      input.style.position = 'fixed';
+      input.style.left = '-9999px';
+      input.style.top = '-9999px';
+      input.style.opacity = '0';
+      input.style.pointerEvents = 'none';
+      document.body.appendChild(input);
+
+      const cleanup = () => {
+        if (input.parentNode) input.parentNode.removeChild(input);
+      };
+
       input.onchange = async (e: any) => {
         setError(null);
         const rawFiles: File[] = Array.from(e.target.files ?? []);
-        const remaining = MAX_PHOTO_COUNT - photos.length;
 
-        if (remaining <= 0) {
-          setError(`Vous pouvez ajouter jusqu'à ${MAX_PHOTO_COUNT} photos maximum.`);
+        if (rawFiles.length === 0) {
+          cleanup();
           return;
         }
 
-        const accepted: File[] = [];
-        for (const raw of rawFiles) {
-          const inferredType = raw.type || inferMimeFromName(raw.name);
-          if (!ALLOWED_IMAGE_TYPES.includes(inferredType)) {
-            setError(`Format non pris en charge (${inferredType || raw.name}). Utilisez JPG, PNG, WEBP ou HEIC.`);
-            return;
-          }
-          if (raw.size > MAX_PHOTO_SIZE_BYTES) {
-            setError(`"${raw.name}" dépasse 8 Mo. Réduis la taille de la photo.`);
-            return;
-          }
-          // Convert HEIC → JPEG where possible so every browser can display it.
-          const converted = await convertHeicToJpegIfPossible(raw);
-          accepted.push(converted);
-        }
-
-        const toAdd = accepted.slice(0, remaining).map((file) => ({
-          uri: URL.createObjectURL(file),
-          file,
-        }));
-
-        if (accepted.length > remaining) {
+        const remaining = MAX_PHOTO_COUNT - photos.length;
+        if (remaining <= 0) {
           setError(`Vous pouvez ajouter jusqu'à ${MAX_PHOTO_COUNT} photos maximum.`);
+          cleanup();
+          return;
         }
 
-        setPhotos((prev) => [...prev, ...toAdd].slice(0, MAX_PHOTO_COUNT));
+        setPhotoProcessing(true);
+        try {
+          const accepted: File[] = [];
+          for (const raw of rawFiles) {
+            const inferredType = raw.type || inferMimeFromName(raw.name);
+            if (!ALLOWED_IMAGE_TYPES.includes(inferredType)) {
+              setError(`Format non pris en charge (${inferredType || raw.name}). Utilisez JPG, PNG, WEBP ou HEIC.`);
+              return;
+            }
+            if (raw.size > MAX_PHOTO_SIZE_BYTES) {
+              setError(`"${raw.name}" dépasse 8 Mo. Réduis la taille de la photo.`);
+              return;
+            }
+            // Convert HEIC → JPEG where possible so every browser can display it.
+            const converted = await convertHeicToJpegIfPossible(raw);
+            accepted.push(converted);
+          }
+
+          const toAdd = accepted.slice(0, remaining).map((file) => ({
+            uri: URL.createObjectURL(file),
+            file,
+          }));
+
+          if (accepted.length > remaining) {
+            setError(`Vous pouvez ajouter jusqu'à ${MAX_PHOTO_COUNT} photos maximum.`);
+          }
+
+          setPhotos((prev) => [...prev, ...toAdd].slice(0, MAX_PHOTO_COUNT));
+        } finally {
+          setPhotoProcessing(false);
+          cleanup();
+        }
       };
+
+      // If the user cancels the picker, no 'change' event fires. Fall back
+      // to a one-shot focus listener to remove the orphan input.
+      const onWindowFocus = () => {
+        setTimeout(() => {
+          if (input.parentNode && (!input.files || input.files.length === 0)) {
+            cleanup();
+          }
+        }, 500);
+        window.removeEventListener('focus', onWindowFocus);
+      };
+      window.addEventListener('focus', onWindowFocus);
+
       input.click();
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -690,14 +735,27 @@ export default function CreateListingScreen() {
           {/* STEP 3: PHOTOS */}
           {step === 'PHOTOS' && (
             <View style={styles.formSection}>
-              <TouchableOpacity style={[styles.photoDropZone, isDesktop && styles.photoDropZoneDesktop]} onPress={handlePickPhoto} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={[styles.photoDropZone, isDesktop && styles.photoDropZoneDesktop, photoProcessing && styles.photoDropZoneProcessing]}
+                onPress={handlePickPhoto}
+                activeOpacity={0.8}
+                disabled={photoProcessing}
+              >
                 <View style={styles.photoDropIcon}>
-                  <Ionicons name="image-outline" size={28} color={Colors.textMuted} />
+                  {photoProcessing ? (
+                    <ActivityIndicator size="small" color={Colors.primaryDark} />
+                  ) : (
+                    <Ionicons name="image-outline" size={28} color={Colors.textMuted} />
+                  )}
                 </View>
-                <Text style={styles.photoDropText}>Ajoutez vos photos</Text>
-                <View style={styles.photoDropBtn}>
-                  <Text style={styles.photoDropBtnText}>Ajouter des photos</Text>
-                </View>
+                <Text style={styles.photoDropText}>
+                  {photoProcessing ? 'Traitement en cours…' : 'Ajoutez vos photos'}
+                </Text>
+                {!photoProcessing && (
+                  <View style={styles.photoDropBtn}>
+                    <Text style={styles.photoDropBtnText}>Ajouter des photos</Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
               <View style={styles.photoInfoBox}>
@@ -734,9 +792,20 @@ export default function CreateListingScreen() {
                       </View>
                     ))}
                     {photos.length < MAX_PHOTO_COUNT && (
-                      <TouchableOpacity style={[styles.photoAddCell, isDesktop && styles.photoCellDesktop]} onPress={handlePickPhoto} activeOpacity={0.7}>
-                        <Ionicons name="add-outline" size={22} color={Colors.primary} />
-                        <Text style={styles.photoAddText}>Ajouter</Text>
+                      <TouchableOpacity
+                        style={[styles.photoAddCell, isDesktop && styles.photoCellDesktop]}
+                        onPress={handlePickPhoto}
+                        activeOpacity={0.7}
+                        disabled={photoProcessing}
+                      >
+                        {photoProcessing ? (
+                          <ActivityIndicator size="small" color={Colors.primary} />
+                        ) : (
+                          <>
+                            <Ionicons name="add-outline" size={22} color={Colors.primary} />
+                            <Text style={styles.photoAddText}>Ajouter</Text>
+                          </>
+                        )}
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1299,6 +1368,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 36,
     gap: 6,
+  },
+  photoDropZoneProcessing: {
+    opacity: 0.7,
   },
   photoDropIcon: {
     width: 56,
