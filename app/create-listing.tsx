@@ -27,7 +27,64 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const MAX_PHOTO_COUNT = 10;
 const MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+];
+
+// Some mobile browsers (especially iOS Safari) leave file.type empty or
+// return a generic value. Fall back to the filename extension.
+function inferMimeFromName(name: string | undefined | null): string {
+  const ext = (name ?? '').toLowerCase().split('.').pop() ?? '';
+  switch (ext) {
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'png': return 'image/png';
+    case 'webp': return 'image/webp';
+    case 'heic': return 'image/heic';
+    case 'heif': return 'image/heif';
+    default: return 'image/jpeg';
+  }
+}
+
+// Best-effort HEIC → JPEG conversion using a canvas. Works on Safari
+// (native HEIC support). On other browsers the Image load fails and we
+// upload the HEIC as-is; Supabase accepts any blob, and the target
+// viewer may still render it.
+async function convertHeicToJpegIfPossible(file: File): Promise<File> {
+  const type = (file.type || inferMimeFromName(file.name)).toLowerCase();
+  if (type !== 'image/heic' && type !== 'image/heif') return file;
+  try {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('heic decode failed'));
+      el.src = dataUrl;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0);
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.9));
+    if (!blob) return file;
+    const newName = file.name.replace(/\.hei[cf]$/i, '.jpg');
+    return new File([blob], newName, { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
 
 type Step = 'DETAILS' | 'CATEGORY' | 'PHOTOS' | 'PRICING';
 const STEPS: Step[] = ['DETAILS', 'CATEGORY', 'PHOTOS', 'PRICING'];
@@ -230,11 +287,13 @@ export default function CreateListingScreen() {
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = '.jpg,.jpeg,.png,.webp';
+      // image/* gives the widest support on iOS Safari; explicit extensions
+      // fall short with HEIC (the default iPhone format).
+      input.accept = 'image/*';
       input.multiple = true;
-      input.onchange = (e: any) => {
+      input.onchange = async (e: any) => {
         setError(null);
-        const files: File[] = Array.from(e.target.files ?? []);
+        const rawFiles: File[] = Array.from(e.target.files ?? []);
         const remaining = MAX_PHOTO_COUNT - photos.length;
 
         if (remaining <= 0) {
@@ -242,23 +301,28 @@ export default function CreateListingScreen() {
           return;
         }
 
-        for (const file of files) {
-          if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-            setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
+        const accepted: File[] = [];
+        for (const raw of rawFiles) {
+          const inferredType = raw.type || inferMimeFromName(raw.name);
+          if (!ALLOWED_IMAGE_TYPES.includes(inferredType)) {
+            setError(`Format non pris en charge (${inferredType || raw.name}). Utilisez JPG, PNG, WEBP ou HEIC.`);
             return;
           }
-          if (file.size > MAX_PHOTO_SIZE_BYTES) {
-            setError('Chaque photo doit faire moins de 8 Mo.');
+          if (raw.size > MAX_PHOTO_SIZE_BYTES) {
+            setError(`"${raw.name}" dépasse 8 Mo. Réduis la taille de la photo.`);
             return;
           }
+          // Convert HEIC → JPEG where possible so every browser can display it.
+          const converted = await convertHeicToJpegIfPossible(raw);
+          accepted.push(converted);
         }
 
-        const toAdd = files.slice(0, remaining).map((file) => ({
+        const toAdd = accepted.slice(0, remaining).map((file) => ({
           uri: URL.createObjectURL(file),
           file,
         }));
 
-        if (files.length > remaining) {
+        if (accepted.length > remaining) {
           setError(`Vous pouvez ajouter jusqu'à ${MAX_PHOTO_COUNT} photos maximum.`);
         }
 
@@ -303,9 +367,9 @@ export default function CreateListingScreen() {
         let contentType: string;
 
         if (Platform.OS === 'web' && photo.file) {
-          contentType = photo.file.type || 'image/jpeg';
+          contentType = photo.file.type || inferMimeFromName(photo.file.name);
           if (!ALLOWED_IMAGE_TYPES.includes(contentType)) {
-            setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
+            setError('Format non pris en charge. Utilisez JPG, PNG, WEBP ou HEIC.');
             return urls;
           }
           if (photo.file.size > MAX_PHOTO_SIZE_BYTES) {
@@ -334,6 +398,8 @@ export default function CreateListingScreen() {
           'image/jpg': 'jpg',
           'image/png': 'png',
           'image/webp': 'webp',
+          'image/heic': 'heic',
+          'image/heif': 'heif',
         };
         const ext = ALLOWED_EXTS[contentType] ?? 'jpg';
         const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
