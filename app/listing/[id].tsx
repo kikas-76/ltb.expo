@@ -537,12 +537,12 @@ export default function ListingDetailScreen() {
             contentContainerStyle={{ paddingBottom: 64 }}
           >
             {(() => {
-              const galleryWidth = Math.min(windowWidth, 1280) - 380;
-              // Adapt the height to the first photo's aspect, clamped so the
-              // section stays close to its previous compact size.
+              const galleryWidth = Math.min(windowWidth, 1280) - 360;
+              // Adapt the height to the first photo's aspect, clamped between
+              // 380 and 600 so the image gets real room with contain mode.
               const adaptiveHeight = Math.max(
-                300,
-                Math.min(540, galleryWidth / firstPhotoAspect),
+                380,
+                Math.min(600, galleryWidth / firstPhotoAspect),
               );
               return (
                 <ImageGallery
@@ -2528,26 +2528,25 @@ const desktopStyles = StyleSheet.create({
     borderRightColor: Colors.borderLight,
   },
   rightCol: {
-    width: 380,
+    width: 360,
     backgroundColor: Colors.white,
     ...Platform.select({
       web: { position: 'sticky', top: 0, alignSelf: 'flex-start', height: '100vh', overflowY: 'auto' } as any,
     }),
   },
   ctaBtnTall: {
-    height: 72,
-    minHeight: 72,
-    borderRadius: 16,
-    paddingHorizontal: 28,
-    paddingVertical: 20,
-    marginTop: 12,
+    height: 52,
+    minHeight: 52,
+    borderRadius: 14,
+    paddingHorizontal: 24,
+    marginTop: 8,
     ...Platform.select({
-      web: { boxShadow: '0 6px 22px rgba(183,191,156,0.55)' } as any,
+      web: { boxShadow: '0 4px 16px rgba(183,191,156,0.45)' } as any,
     }),
   },
   ctaBtnTextLarge: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: 'Inter-Bold',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 });
