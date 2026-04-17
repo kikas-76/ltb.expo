@@ -22,7 +22,7 @@ interface MonthStat {
 
 interface TopListing {
   id: string;
-  title: string;
+  name: string;
   bookingCount: number;
   revenue: number;
 }
@@ -115,7 +115,7 @@ export default function AdminAnalytics() {
         .gte('created_at', sixMonthsAgo),
       supabase
         .from('bookings')
-        .select('listing_id, total_price, listing:listings(title)')
+        .select('listing_id, total_price, listing:listings(name)')
         .eq('status', 'completed'),
       supabase
         .from('bookings')
@@ -159,15 +159,15 @@ export default function AdminAnalytics() {
       });
     }
 
-    const listingMap: Record<string, { title: string; count: number; revenue: number }> = {};
+    const listingMap: Record<string, { name: string; count: number; revenue: number }> = {};
     (listingBookings ?? []).forEach((b: any) => {
       const lid = b.listing_id;
-      if (!listingMap[lid]) listingMap[lid] = { title: b.listing?.title ?? '—', count: 0, revenue: 0 };
+      if (!listingMap[lid]) listingMap[lid] = { name: b.listing?.name ?? '—', count: 0, revenue: 0 };
       listingMap[lid].count++;
       listingMap[lid].revenue += b.total_price ?? 0;
     });
     const topListings: TopListing[] = Object.entries(listingMap)
-      .map(([id, v]) => ({ id, title: v.title, bookingCount: v.count, revenue: v.revenue }))
+      .map(([id, v]) => ({ id, name: v.name, bookingCount: v.count, revenue: v.revenue }))
       .sort((a, b) => b.bookingCount - a.bookingCount)
       .slice(0, 5);
 
@@ -230,7 +230,7 @@ export default function AdminAnalytics() {
     ] = await Promise.all([
       supabase
         .from('bookings')
-        .select('id, status, total_price, deposit_amount, start_date, end_date, created_at, listing:listings(title), renter:profiles!bookings_renter_id_fkey(username, email), owner:profiles!bookings_owner_id_fkey(username, email)')
+        .select('id, status, total_price, deposit_amount, start_date, end_date, created_at, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username, email), owner:profiles!bookings_owner_id_fkey(username, email)')
         .gte('created_at', monthStart)
         .lte('created_at', monthEnd)
         .order('created_at', { ascending: false }),
@@ -256,7 +256,7 @@ export default function AdminAnalytics() {
         [
           b.id,
           b.status,
-          `"${b.listing?.title ?? ''}"`,
+          `"${b.listing?.name ?? ''}"`,
           b.renter?.username ?? '',
           b.owner?.username ?? '',
           b.total_price,
@@ -377,7 +377,7 @@ export default function AdminAnalytics() {
               <View style={styles.rankRow}>
                 <Text style={styles.rankNumber}>{i + 1}</Text>
                 <View style={styles.rankInfo}>
-                  <Text style={styles.rankTitle} numberOfLines={1}>{l.title}</Text>
+                  <Text style={styles.rankTitle} numberOfLines={1}>{l.name}</Text>
                   <Text style={styles.rankSub}>{l.bookingCount} rés. · {l.revenue.toFixed(0)}€ générés</Text>
                 </View>
               </View>

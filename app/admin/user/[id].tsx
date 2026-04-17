@@ -56,16 +56,16 @@ interface Booking {
   total_price: number;
   start_date: string;
   end_date: string;
-  listing: { title: string } | null;
+  listing: { name: string } | null;
   renter: { username: string | null } | null;
   owner: { username: string | null } | null;
 }
 
 interface Listing {
   id: string;
-  title: string;
-  status: string | null;
-  price_per_day: number;
+  name: string;
+  is_active: boolean;
+  price: number;
   created_at: string;
 }
 
@@ -74,7 +74,7 @@ interface Dispute {
   status: string;
   description: string;
   created_at: string;
-  booking: { listing: { title: string } | null } | null;
+  booking: { listing: { name: string } | null } | null;
 }
 
 interface Report {
@@ -124,25 +124,25 @@ export default function AdminUserDetail() {
         .limit(20),
       supabase
         .from('bookings')
-        .select('id, status, total_price, start_date, end_date, listing:listings(title), owner:profiles!bookings_owner_id_fkey(username)')
+        .select('id, status, total_price, start_date, end_date, listing:listings(name), owner:profiles!bookings_owner_id_fkey(username)')
         .eq('renter_id', id)
         .order('created_at', { ascending: false })
         .limit(20),
       supabase
         .from('bookings')
-        .select('id, status, total_price, start_date, end_date, listing:listings(title), renter:profiles!bookings_renter_id_fkey(username)')
+        .select('id, status, total_price, start_date, end_date, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username)')
         .eq('owner_id', id)
         .order('created_at', { ascending: false })
         .limit(20),
       supabase
         .from('listings')
-        .select('id, title, status, price_per_day, created_at')
+        .select('id, name, is_active, price, created_at')
         .eq('owner_id', id)
         .order('created_at', { ascending: false })
         .limit(20),
       supabase
         .from('disputes')
-        .select('id, status, description, created_at, booking:bookings(listing:listings(title))')
+        .select('id, status, description, created_at, booking:bookings(listing:listings(name))')
         .eq('reporter_id', id)
         .order('created_at', { ascending: false })
         .limit(10),
@@ -424,7 +424,7 @@ export default function AdminUserDetail() {
             <View key={b.id}>
               <View style={styles.listRow}>
                 <View style={styles.listRowContent}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.title ?? '—'}</Text>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.name ?? '—'}</Text>
                   <Text style={styles.listRowSub}>
                     {new Date(b.start_date).toLocaleDateString('fr-FR')} → {new Date(b.end_date).toLocaleDateString('fr-FR')} · {b.total_price}€
                   </Text>
@@ -445,7 +445,7 @@ export default function AdminUserDetail() {
             <View key={b.id}>
               <View style={styles.listRow}>
                 <View style={styles.listRowContent}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.title ?? '—'}</Text>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.name ?? '—'}</Text>
                   <Text style={styles.listRowSub}>
                     @{(b as any).renter?.username ?? '?'} · {new Date(b.start_date).toLocaleDateString('fr-FR')} · {b.total_price}€
                   </Text>
@@ -466,10 +466,10 @@ export default function AdminUserDetail() {
             <View key={l.id}>
               <View style={styles.listRow}>
                 <View style={styles.listRowContent}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{l.title}</Text>
-                  <Text style={styles.listRowSub}>{l.price_per_day}€/jour · {new Date(l.created_at).toLocaleDateString('fr-FR')}</Text>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{l.name}</Text>
+                  <Text style={styles.listRowSub}>{l.price}€/jour · {new Date(l.created_at).toLocaleDateString('fr-FR')}</Text>
                 </View>
-                <StatusBadge status={l.status ?? 'active'} small />
+                <StatusBadge status={l.is_active ? 'active' : 'inactive'} small />
               </View>
               {i < listings.length - 1 && <View style={styles.rowDivider} />}
             </View>
@@ -485,7 +485,7 @@ export default function AdminUserDetail() {
             <View key={d.id}>
               <View style={styles.listRow}>
                 <View style={styles.listRowContent}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{d.booking?.listing?.title ?? 'Annonce inconnue'}</Text>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{d.booking?.listing?.name ?? 'Annonce inconnue'}</Text>
                   <Text style={styles.listRowSub} numberOfLines={2}>{d.description}</Text>
                 </View>
                 <StatusBadge status={d.status} small />

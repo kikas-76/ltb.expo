@@ -107,7 +107,7 @@ export default function PaymentScreen() {
           headers: {
             'Content-Type': 'application/json',
             'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+            'Authorization': `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({
             access_token: session?.access_token,
@@ -129,12 +129,8 @@ export default function PaymentScreen() {
       });
       if (rentalError) throw new Error(rentalError.message);
 
-      if (data.deposit_client_secret && booking.deposit_amount > 0) {
-        const { error: depositError } = await confirmPayment(data.deposit_client_secret, {
-          paymentMethodType: 'Card',
-        });
-        if (depositError) throw new Error(depositError.message);
-      }
+      // Deposit is NOT charged at payment time — it will be held automatically
+      // 2 days before the rental ends via the hold-deposit cron function.
 
       const finalizeRes = await fetch(
         `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/finalize-booking-payment`,
@@ -148,7 +144,6 @@ export default function PaymentScreen() {
           body: JSON.stringify({
             booking_id,
             rental_payment_intent_id: data.rental_payment_intent_id ?? null,
-            deposit_payment_intent_id: data.deposit_payment_intent_id ?? null,
           }),
         }
       );

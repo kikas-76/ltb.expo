@@ -59,12 +59,19 @@ Deno.serve(async (req: Request) => {
     }
 
     const account = await stripe.accounts.retrieve(profile.stripe_account_id);
-    const complete = account.charges_enabled === true && account.details_submitted === true;
+    const complete =
+      account.charges_enabled === true &&
+      account.payouts_enabled === true &&
+      account.details_submitted === true;
 
     if (complete) {
       await supabase
         .from("profiles")
-        .update({ stripe_onboarding_complete: true })
+        .update({
+          stripe_onboarding_complete: true,
+          stripe_charges_enabled: true,
+          stripe_payouts_enabled: true,
+        })
         .eq("id", user.id);
     }
 

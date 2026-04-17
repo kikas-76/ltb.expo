@@ -30,7 +30,7 @@ interface Dispute {
     stripe_payment_intent_id: string | null;
     deposit_amount: number | null;
     total_price: number;
-    listing: { title: string } | null;
+    listing: { name: string } | null;
     renter: { username: string | null } | null;
     owner: { username: string | null } | null;
   } | null;
@@ -64,7 +64,7 @@ export default function AdminDisputes() {
         reporter:profiles!disputes_reporter_id_fkey(username, email),
         booking:bookings(
           id, stripe_payment_intent_id, deposit_amount, total_price,
-          listing:listings(title),
+          listing:listings(name),
           renter:profiles!bookings_renter_id_fkey(username),
           owner:profiles!bookings_owner_id_fkey(username)
         )
@@ -163,7 +163,7 @@ export default function AdminDisputes() {
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
-                  {d.booking?.listing?.title ?? 'Annonce inconnue'}
+                  {d.booking?.listing?.name ?? 'Annonce inconnue'}
                 </Text>
                 <Text style={styles.cardMeta}>
                   Signalé par @{d.reporter?.username ?? '?'} · {new Date(d.created_at).toLocaleDateString('fr-FR')}

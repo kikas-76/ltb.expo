@@ -23,19 +23,21 @@ interface AdminBooking {
   end_date: string;
   created_at: string;
   stripe_payment_intent_id: string | null;
-  listing: { title: string } | null;
+  listing: { name: string } | null;
   renter: { username: string | null } | null;
   owner: { username: string | null } | null;
 }
 
-const TABS = ['Tous', 'En attente', 'Confirmées', 'Actives', 'Terminées', 'Annulées'];
+const TABS = ['Tous', 'En attente', 'Paiement', 'Actives', 'Validation', 'Terminées', 'Litiges', 'Annulées'];
 const TAB_FILTERS: Record<string, string[]> = {
   'Tous': [],
   'En attente': ['pending'],
-  'Confirmées': ['confirmed'],
+  'Paiement': ['pending_payment'],
   'Actives': ['active', 'in_progress'],
+  'Validation': ['pending_owner_validation'],
   'Terminées': ['completed'],
-  'Annulées': ['cancelled', 'refused'],
+  'Litiges': ['disputed'],
+  'Annulées': ['cancelled', 'expired'],
 };
 
 export default function AdminBookings() {
@@ -53,7 +55,7 @@ export default function AdminBookings() {
       .from('bookings')
       .select(`
         id, status, total_price, deposit_amount, start_date, end_date, created_at, stripe_payment_intent_id,
-        listing:listings(title),
+        listing:listings(name),
         renter:profiles!bookings_renter_id_fkey(username),
         owner:profiles!bookings_owner_id_fkey(username)
       `)
@@ -112,7 +114,7 @@ export default function AdminBookings() {
           <View key={b.id} style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle} numberOfLines={1}>
-                {b.listing?.title ?? 'Annonce inconnue'}
+                {b.listing?.name ?? 'Annonce inconnue'}
               </Text>
               <StatusBadge status={b.status} small />
             </View>

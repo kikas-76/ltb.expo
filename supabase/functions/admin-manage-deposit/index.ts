@@ -51,11 +51,11 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("is_admin")
+      .select("role")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!profile?.is_admin) {
+    if (profile?.role !== "admin") {
       return new Response(
         JSON.stringify({ error: "Accès refusé" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -119,7 +119,10 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      await supabaseAdmin.from("bookings").update({ status: "disputed" }).eq("id", booking_id);
+      await supabaseAdmin.from("bookings").update({
+        deposit_action: "capture",
+        deposit_captured_at: new Date().toISOString(),
+      }).eq("id", booking_id);
       return new Response(
         JSON.stringify({ success: true, action: "capture", payment_intent: result.id }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -138,7 +141,11 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      await supabaseAdmin.from("bookings").update({ status: "completed" }).eq("id", booking_id);
+      await supabaseAdmin.from("bookings").update({
+        status: "completed",
+        deposit_action: "release",
+        deposit_released_at: new Date().toISOString(),
+      }).eq("id", booking_id);
       return new Response(
         JSON.stringify({ success: true, action: "release", payment_intent: result.id }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,20 +19,24 @@ export default function EmailConfirmedScreen() {
   const iconScale = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(0)).current;
 
+  const [sessionSet, setSessionSet] = useState(false);
+
   useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const hash = window.location.hash;
-      if (hash) {
-        const params = new URLSearchParams(hash.slice(1));
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        if (accessToken && refreshToken) {
-          supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(() => {
-            supabase.auth.signOut();
-          });
+    const restoreSession = async () => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const hash = window.location.hash;
+        if (hash) {
+          const params = new URLSearchParams(hash.slice(1));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+            setSessionSet(true);
+          }
         }
       }
-    }
+    };
+    restoreSession();
   }, []);
 
   useEffect(() => {
@@ -62,25 +66,25 @@ export default function EmailConfirmedScreen() {
         <Animated.View style={[styles.textBlock, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <Text style={styles.title}>Email vérifié !</Text>
           <Text style={styles.subtitle}>
-            Ton adresse email a bien été confirmée. Tu peux maintenant te connecter à ton compte.
+            Ton adresse email a bien été confirmée. Tu peux maintenant accéder à ton compte.
           </Text>
         </Animated.View>
 
         <Animated.View style={[styles.actionsBlock, { opacity: fadeAnim }]}>
           <TouchableOpacity
             style={styles.loginBtn}
-            onPress={() => router.replace('/login')}
+            onPress={() => router.replace('/(tabs)')}
             activeOpacity={0.85}
           >
-            <Ionicons name="log-in-outline" size={18} color="#fff" />
-            <Text style={styles.loginBtnText}>Se connecter</Text>
+            <Ionicons name="arrow-forward-outline" size={18} color="#fff" />
+            <Text style={styles.loginBtnText}>Continuer</Text>
           </TouchableOpacity>
         </Animated.View>
 
         <Animated.View style={[styles.helpRow, { opacity: fadeAnim }]}>
           <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
           <Text style={styles.helpText}>
-            Une fois connecté, tu pourras compléter ton profil et commencer à utiliser l'application.
+            Tu seras redirigé vers la complétion de ton profil si ce n'est pas encore fait.
           </Text>
         </Animated.View>
       </View>

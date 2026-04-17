@@ -43,21 +43,15 @@ function formatDate(iso: string): string {
 
 interface StripeEmbedProps {
   rentalClientSecret: string;
-  depositClientSecret: string | null;
-  depositAmount: number;
   bookingId: string;
   rentalPaymentIntentId: string | null;
-  depositPaymentIntentId: string | null;
   totalNow: number;
 }
 
 function StripeEmbedForm({
   rentalClientSecret,
-  depositClientSecret,
-  depositAmount,
   bookingId,
   rentalPaymentIntentId,
-  depositPaymentIntentId,
   totalNow,
 }: StripeEmbedProps) {
   const iframeRef = useRef<any>(null);
@@ -226,31 +220,12 @@ function StripeEmbedForm({
       var rentalPI = rentalResult.paymentIntent;
       if (!rentalPI || rentalPI.status !== 'succeeded') throw new Error('Paiement location échoué');
 
-      var depositSecret = ${JSON.stringify(depositClientSecret)};
-      var depositAmt = ${depositAmount};
-      if (depositSecret && depositAmt > 0) {
-        var pmId = typeof rentalPI.payment_method === 'string'
-          ? rentalPI.payment_method
-          : (rentalPI.payment_method && rentalPI.payment_method.id);
-
-        var depositElements = stripe.elements({
-          clientSecret: depositSecret,
-          locale: 'fr',
-        });
-
-        var depositResult = await stripe.confirmCardPayment(depositSecret, {
-          payment_method: pmId,
-        });
-        if (depositResult.error) throw new Error(depositResult.error.message);
-        var ds = depositResult.paymentIntent && depositResult.paymentIntent.status;
-        if (ds !== 'requires_capture' && ds !== 'succeeded') throw new Error('Autorisation caution échouée');
-      }
+      // Deposit is NOT charged at payment time — held automatically 2 days before rental ends
 
       window.parent.postMessage({
         type: 'stripe_success',
         bookingId: ${JSON.stringify(bookingId)},
         rentalPaymentIntentId: ${JSON.stringify(rentalPaymentIntentId)},
-        depositPaymentIntentId: ${JSON.stringify(depositPaymentIntentId)},
       }, '*');
     } catch(err) {
       errDiv.textContent = err.message || 'Une erreur est survenue';
@@ -266,6 +241,8 @@ function StripeEmbedForm({
 
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
+      // Only accept messages from our own srcdoc iframe (event.source is unforgeable)
+      if (iframeRef.current && event.source !== iframeRef.current.contentWindow) return;
       const msg = event.data;
       if (!msg || typeof msg !== 'object') return;
 
@@ -291,7 +268,6 @@ function StripeEmbedForm({
               body: JSON.stringify({
                 booking_id: msg.bookingId,
                 rental_payment_intent_id: msg.rentalPaymentIntentId ?? null,
-                deposit_payment_intent_id: msg.depositPaymentIntentId ?? null,
               }),
             }
           );
@@ -302,6 +278,8 @@ function StripeEmbedForm({
               "Le paiement a été traité mais la réservation n'a pas pu être finalisée. Contacte le support."
             );
           }
+
+          // Deposit is NOT charged at payment time — hold-deposit cron handles it
 
           router.replace(`/payment-success?booking_id=${msg.bookingId}` as any);
         } catch (err: any) {
@@ -357,9 +335,7 @@ export default function PaymentScreen() {
   const [loadingBooking, setLoadingBooking] = useState(true);
   const [loadingIntent, setLoadingIntent] = useState(false);
   const [rentalClientSecret, setRentalClientSecret] = useState<string | null>(null);
-  const [depositClientSecret, setDepositClientSecret] = useState<string | null>(null);
   const [rentalPaymentIntentId, setRentalPaymentIntentId] = useState<string | null>(null);
-  const [depositPaymentIntentId, setDepositPaymentIntentId] = useState<string | null>(null);
   const [intentError, setIntentError] = useState<string | null>(null);
   const [stripeAccountError, setStripeAccountError] = useState(false);
 
@@ -421,9 +397,7 @@ export default function PaymentScreen() {
         }
         if (!data.rental_client_secret) throw new Error('Client secret manquant');
         setRentalClientSecret(data.rental_client_secret);
-        setDepositClientSecret(data.deposit_client_secret ?? null);
         setRentalPaymentIntentId(data.rental_payment_intent_id ?? null);
-        setDepositPaymentIntentId(data.deposit_payment_intent_id ?? null);
       } catch (err: any) {
         setIntentError(err.message);
       } finally {
@@ -584,11 +558,8 @@ export default function PaymentScreen() {
             {rentalClientSecret && !loadingIntent && (
               <StripeEmbedForm
                 rentalClientSecret={rentalClientSecret}
-                depositClientSecret={depositClientSecret}
-                depositAmount={booking.deposit_amount}
                 bookingId={booking_id!}
                 rentalPaymentIntentId={rentalPaymentIntentId}
-                depositPaymentIntentId={depositPaymentIntentId}
                 totalNow={totalNow}
               />
             )}

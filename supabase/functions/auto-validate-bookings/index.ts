@@ -42,9 +42,19 @@ Deno.serve(async (req: Request) => {
         .eq("id", booking.id)
         .maybeSingle();
 
+      const updateData: Record<string, any> = {
+        status: "completed",
+        owner_validated: true,
+      };
+
+      if (bookingDetail?.stripe_payment_intent_id) {
+        updateData.deposit_action = "release";
+        updateData.deposit_released_at = new Date().toISOString();
+      }
+
       const { error: updateError } = await supabase
         .from("bookings")
-        .update({ status: "completed", owner_validated: true })
+        .update(updateData)
         .eq("id", booking.id);
 
       if (!updateError) {
@@ -70,6 +80,7 @@ Deno.serve(async (req: Request) => {
             sender_id: null,
             content: "Location validée automatiquement — Le délai de 24h est écoulé sans signalement de problème. La caution a été libérée.",
             is_system: true,
+            is_read: false,
           });
           results.push({ id: booking.id, status: "auto_completed" });
         }

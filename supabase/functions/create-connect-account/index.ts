@@ -8,6 +8,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+const APP_BASE_URL = "https://app.louetonbien.fr";
+
+function normalizePhone(raw: string | null | undefined): string | undefined {
+  if (!raw) return undefined;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("330")) return `+${digits.slice(1)}`;
+  if (digits.length === 10 && digits.startsWith("0")) return `+33${digits.slice(1)}`;
+  if (digits.length === 11 && digits.startsWith("33")) return `+${digits}`;
+  if (digits.length >= 9) return `+${digits}`;
+  return undefined;
+}
+
+function splitName(username: string | null | undefined) {
+  const parts = (username ?? "").trim().split(/\s+/);
+  const firstName = parts[0] || undefined;
+  const lastName = parts.length > 1 ? parts.slice(1).join(" ") : firstName;
+  return { firstName, lastName };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -42,21 +61,72 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_account_id")
+      .select("stripe_account_id, username, phone_number, is_pro, business_name, siren_number, location_data, business_address")
       .eq("id", user.id)
       .maybeSingle();
 
     let accountId: string = profile?.stripe_account_id ?? "";
 
     if (!accountId) {
-      const account = await stripe.accounts.create({
+      const phone = normalizePhone(profile?.phone_number);
+      const { firstName, lastName } = splitName(profile?.username);
+      const locationData = profile?.location_data;
+      const isPro = Boolean(profile?.is_pro && profile?.business_name);
+
+      const accountParams: Stripe.AccountCreateParams = {
         type: "express",
+        country: "FR",
+        default_currency: "eur",
         email: user.email,
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
-      });
+        business_profile: {
+          url: APP_BASE_URL,
+          support_email: user.email ?? undefined,
+          product_description: isPro
+            ? "Mise en location d'objets via LoueTonBien"
+            : "Location d'objets entre particuliers via LoueTonBien",
+          ...(phone ? { support_phone: phone } : {}),
+          ...(isPro && profile?.business_name ? { name: profile.business_name } : {}),
+        },
+        settings: {
+          payouts: {
+            schedule: {
+              delay_days: 14,
+              interval: "daily",
+            },
+          },
+        },
+      };
+
+      if (isPro) {
+        accountParams.business_type = "company";
+        accountParams.company = {
+          name: profile?.business_name ?? undefined,
+          ...(phone ? { phone } : {}),
+          ...(profile?.business_address
+            ? { address: { line1: profile.business_address, city: locationData?.city, country: "FR" } }
+            : locationData?.city
+              ? { address: { city: locationData.city, country: "FR" } }
+              : {}),
+          ...(profile?.siren_number ? { tax_id: profile.siren_number } : {}),
+        };
+      } else {
+        accountParams.business_type = "individual";
+        accountParams.individual = {
+          ...(firstName ? { first_name: firstName } : {}),
+          ...(lastName ? { last_name: lastName } : {}),
+          email: user.email ?? undefined,
+          ...(phone ? { phone } : {}),
+          ...(locationData?.city
+            ? { address: { city: locationData.city, country: "FR" } }
+            : {}),
+        };
+      }
+
+      const account = await stripe.accounts.create(accountParams);
       accountId = account.id;
 
       await supabase
@@ -65,12 +135,12 @@ Deno.serve(async (req: Request) => {
         .eq("id", user.id);
     }
 
-    const origin = req.headers.get("origin") ?? "https://mpqwdschdxbavxjvorvj.supabase.co";
+    const origin = req.headers.get("origin") ?? APP_BASE_URL;
 
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: `${origin}/?stripe_return=1`,
-      return_url: `${origin}/?stripe_return=1`,
+      refresh_url: `${origin}/wallet/refresh`,
+      return_url: `${origin}/wallet/success`,
       type: "account_onboarding",
     });
 

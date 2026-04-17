@@ -68,7 +68,8 @@ export default function DirectBookPage() {
   const basePrice = listing ? listing.price * days : 0;
   const discountAmt = Math.round(basePrice * discount);
   const totalPrice = Math.round(basePrice * (1 - discount));
-  const serviceFee = Math.round(totalPrice * 0.07 * 100) / 100;
+  const feePercent = (listing?.renter_fee_percent ?? 7) / 100;
+  const serviceFee = Math.round(totalPrice * feePercent * 100) / 100;
   const totalWithFee = (totalPrice + serviceFee);
   const depositAmount = listing?.deposit_amount ?? 0;
 
@@ -76,7 +77,7 @@ export default function DirectBookPage() {
     if (!id) return;
     const { data } = await supabase
       .from('listings')
-      .select('id, name, description, price, deposit_amount, photos_url, category_name, owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url)')
+      .select('id, name, description, price, deposit_amount, renter_fee_percent, photos_url, category_name, owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url)')
       .eq('id', id)
       .maybeSingle();
 
@@ -99,6 +100,20 @@ export default function DirectBookPage() {
 
   const handleBook = async () => {
     if (!listing || !startDate || !endDate || !days) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start_d = new Date(startDate);
+    const end_d = new Date(endDate);
+
+    if (start_d < today) {
+      setError("La date de début ne peut pas être dans le passé.");
+      return;
+    }
+    if (end_d <= start_d) {
+      setError("La date de fin doit être après la date de début.");
+      return;
+    }
 
     if (!session) {
       savePendingUrl();

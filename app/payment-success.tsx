@@ -24,11 +24,13 @@ export default function PaymentSuccessScreen() {
 
   useEffect(() => {
     if (booking_id && session_id) {
+      // Only store the checkout session ID — the actual status transition
+      // to "active" is handled securely by the stripe-webhook on payment_intent.succeeded
       supabase
         .from('bookings')
-        .update({ status: 'active', stripe_checkout_session_id: session_id })
+        .update({ stripe_checkout_session_id: session_id })
         .eq('id', booking_id)
-        .in('status', ['pending_payment', 'accepted', 'pending'])
+        .eq('status', 'pending_payment')
         .then(() => {});
     }
   }, [booking_id, session_id]);

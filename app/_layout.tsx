@@ -93,6 +93,8 @@ function RootNavigator() {
       'verify-email',
       'email-confirmed',
       'auth-callback',
+      'forgot-password',
+      'reset-password',
       'legal',
       'book',
       'link-google-account',
@@ -214,7 +216,7 @@ export default function RootLayout() {
   useFrameworkReady();
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const style = document.createElement('style');
       style.textContent = [
         'button:focus-visible,',

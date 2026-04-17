@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,7 +37,7 @@ export default function WalletRefreshScreen() {
             headers: {
               'Content-Type': 'application/json',
               'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-              'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+              'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({ access_token: session.access_token }),
           }
@@ -69,14 +70,15 @@ export default function WalletRefreshScreen() {
             headers: {
               'Content-Type': 'application/json',
               'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-              'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!}`,
+              'Authorization': `Bearer ${accessToken}`,
             },
             body: JSON.stringify({ access_token: accessToken }),
           }
         );
         const data = await response.json();
         if (data.url) {
-          window.location.href = data.url;
+          await WebBrowser.openAuthSessionAsync(data.url, 'louetonbien://wallet/success');
+          router.replace('/wallet');
         } else {
           Alert.alert('Erreur', data.error || 'URL manquante');
         }

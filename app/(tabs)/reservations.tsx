@@ -50,7 +50,7 @@ function isReadInStorage(id: string): boolean {
 const moduleReadIds = new Set<string>();
 const pendingMarkReadIds = new Set<string>();
 
-type ConvDisplayStatus = 'pending' | 'accepted' | 'refused' | 'in_progress' | 'completed' | 'active' | 'pending_return' | 'pending_owner_validation' | 'disputed' | 'cancelled';
+type ConvDisplayStatus = 'pending' | 'accepted' | 'refused' | 'pending_payment' | 'in_progress' | 'completed' | 'active' | 'pending_return' | 'pending_owner_validation' | 'disputed' | 'cancelled';
 
 interface ConversationItem {
   id: string;
@@ -76,6 +76,7 @@ interface ConversationItem {
   isRequester: boolean;
   listingCity: string | null;
   listingUnavailable: boolean;
+  ownerStripeReady: boolean;
 }
 
 function formatTime(isoString: string): string {
@@ -102,6 +103,10 @@ function getConvSubtext(displayStatus: ConvDisplayStatus, isRequester: boolean):
       return isRequester
         ? 'Finalise ta réservation en payant'
         : 'En attente du paiement du locataire';
+    case 'pending_payment':
+      return isRequester
+        ? 'Paiement en cours de traitement'
+        : 'Paiement du locataire en cours';
     case 'active':
       return isRequester
         ? 'Confirme la remise sur place avec le loueur'
@@ -150,19 +155,14 @@ function PaymentDeadlineBanner({
 
   if (!stripeReady) {
     return (
-      <TouchableOpacity
-        style={styles.payBannerOrange}
-        onPress={() => router.push('/wallet' as any)}
-        activeOpacity={0.85}
-      >
+      <View style={styles.payBannerOrange}>
         <View style={styles.payBannerIconWrap}>
-          <Ionicons name="wallet-outline" size={13} color="#92400E" />
+          <Ionicons name="alert-circle-outline" size={13} color="#92400E" />
         </View>
         <Text style={styles.payBannerTextOrange} numberOfLines={2}>
-          Active ton compte pour procéder au paiement
+          Le propri\u00e9taire n'a pas encore activ\u00e9 son compte de paiement
         </Text>
-        <Text style={styles.payBannerArrow}>→</Text>
-      </TouchableOpacity>
+      </View>
     );
   }
 
@@ -196,7 +196,6 @@ interface ConversationRowProps {
   onPress: (id: string) => void | Promise<void>;
   onUserPress: (userId: string) => void;
   onDeleteRequest: (id: string) => void;
-  stripeReady: boolean;
 }
 
 function formatDateShort(dateStr: string): string {
@@ -215,7 +214,7 @@ function extractCityFromAddress(address?: string | null): string | null {
   return null;
 }
 
-function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, stripeReady }: ConversationRowProps) {
+function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }: ConversationRowProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
 
@@ -316,7 +315,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest, s
               })()}
               {item.isRequester && item.displayStatus === 'accepted' && item.bookingStatus !== 'active' && item.bookingStatus !== 'cancelled' && (
                 <PaymentDeadlineBanner
-                  stripeReady={stripeReady}
+                  stripeReady={item.ownerStripeReady}
                   bookingId={item.bookingId}
                   totalPrice={item.totalPrice}
                   convId={item.id}
@@ -366,7 +365,7 @@ export default function MessagesScreen() {
   const { refresh: refreshUnread } = useUnread();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stripeReady, setStripeReady] = useState(false);
+  // stripeReady removed — now computed per-item as ownerStripeReady in buildConversationItem
   const insets = useSafeAreaInsets();
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -426,7 +425,7 @@ export default function MessagesScreen() {
     const bookingStatusRaw = booking?.status ?? null;
 
     let displayStatus: ConvDisplayStatus;
-    if (bookingStatusRaw && ['active', 'in_progress', 'pending_return', 'pending_owner_validation', 'completed', 'disputed', 'cancelled'].includes(bookingStatusRaw)) {
+    if (bookingStatusRaw && ['pending_payment', 'active', 'in_progress', 'pending_return', 'pending_owner_validation', 'completed', 'disputed', 'cancelled'].includes(bookingStatusRaw)) {
       displayStatus = bookingStatusRaw as ConvDisplayStatus;
     } else if (rawStatus === 'refused' || rawStatus === 'rejected') {
       displayStatus = 'refused';
@@ -440,6 +439,19 @@ export default function MessagesScreen() {
       listing?.location_data?.city ||
       extractCityFromAddress(listing?.location_data?.address) ||
       null;
+
+    // Check OWNER's Stripe readiness (not renter's — renters don't need Stripe accounts)
+    let ownerStripeReady = true;
+    if (isRequester && displayStatus === 'accepted') {
+      const { data: ownerProfile } = await supabase
+        .from('profiles')
+        .select('stripe_onboarding_complete, stripe_charges_enabled')
+        .eq('id', conv.owner_id)
+        .maybeSingle();
+      ownerStripeReady =
+        ownerProfile?.stripe_onboarding_complete === true &&
+        ownerProfile?.stripe_charges_enabled === true;
+    }
 
     return {
       id: conv.id,
@@ -465,18 +477,11 @@ export default function MessagesScreen() {
       isRequester,
       listingCity,
       listingUnavailable: rawStatus === 'pending' && (!listing || listing.is_active === false),
+      ownerStripeReady,
     };
   }, []);
 
-  const fetchStripeStatus = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('profiles')
-      .select('stripe_onboarding_complete')
-      .eq('id', user.id)
-      .maybeSingle();
-    setStripeReady(data?.stripe_onboarding_complete === true);
-  }, [user]);
+  // fetchStripeStatus removed — stripe readiness is now per-owner in buildConversationItem
 
   const fetchConversations = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -514,8 +519,7 @@ export default function MessagesScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchConversations();
-      fetchStripeStatus();
-    }, [fetchConversations, fetchStripeStatus])
+    }, [fetchConversations])
   );
 
   useEffect(() => {
@@ -641,7 +645,6 @@ export default function MessagesScreen() {
             key={item.id}
             item={item}
             index={index}
-            stripeReady={stripeReady}
             onPress={handleConvPress}
             onUserPress={(userId) => router.push(`/owner/${userId}` as any)}
             onDeleteRequest={(id) => setDeleteModalId(id)}

@@ -7,7 +7,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const PAYABLE_STATUSES = ["pending_payment", "accepted"];
+const PAYABLE_STATUSES = ["pending_payment"];
+
+async function stripeGet(path: string, key: string) {
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    headers: {
+      "Authorization": `Bearer ${key}`,
+      "Stripe-Version": "2024-06-20",
+    },
+  });
+  return res.json();
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
@@ -42,7 +52,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { booking_id, rental_payment_intent_id, deposit_payment_intent_id } = await req.json();
+    const { booking_id, rental_payment_intent_id } = await req.json();
 
     if (!booking_id) {
       return new Response(
@@ -56,7 +66,7 @@ Deno.serve(async (req: Request) => {
       .select(`
         id, status, total_price, deposit_amount, start_date, end_date,
         renter_id, owner_id, conversation_id,
-        listing:listings(name),
+        listing:listings(name, renter_fee_percent, owner_commission_percent),
         owner:profiles!bookings_owner_id_fkey(username, email),
         renter:profiles!bookings_renter_id_fkey(email, username)
       `)
@@ -71,6 +81,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // If webhook already set booking to "active", return success (idempotent)
+    if (booking.status === "active") {
+      return new Response(
+        JSON.stringify({ success: true, booking_id, status: "active" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!PAYABLE_STATUSES.includes(booking.status)) {
       return new Response(
         JSON.stringify({ error: "Cette réservation a déjà été finalisée ou ne peut pas être payée." }),
@@ -78,14 +96,47 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // ── Stripe verification: confirm payment actually succeeded ──
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) {
+      return new Response(
+        JSON.stringify({ error: "Stripe non configuré" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!rental_payment_intent_id) {
+      return new Response(
+        JSON.stringify({ error: "rental_payment_intent_id requis" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const rentalPI = await stripeGet(`/payment_intents/${rental_payment_intent_id}`, stripeKey);
+    if (rentalPI.error || rentalPI.status !== "succeeded") {
+      return new Response(
+        JSON.stringify({ error: "Le paiement de la location n'a pas été confirmé par Stripe." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (rentalPI.metadata?.booking_id !== booking_id) {
+      return new Response(
+        JSON.stringify({ error: "Le paiement ne correspond pas à cette réservation." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Deposit is no longer verified here — it will be held later by hold-deposit cron
+
     const updateData: Record<string, any> = { status: "active" };
-    if (deposit_payment_intent_id) updateData.stripe_payment_intent_id = deposit_payment_intent_id;
     if (rental_payment_intent_id) updateData.stripe_transfer_id = rental_payment_intent_id;
 
-    const { error: updateError } = await supabaseAdmin
+    // Atomic: only update if still pending_payment (webhook may have already set active)
+    const { error: updateError, count } = await supabaseAdmin
       .from("bookings")
       .update(updateData)
-      .eq("id", booking_id);
+      .eq("id", booking_id)
+      .eq("status", "pending_payment");
 
     if (updateError) {
       return new Response(
@@ -94,9 +145,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const feePercent = 0.07;
-    const totalNow = (Math.round(booking.total_price * (1 + feePercent) * 100) / 100).toFixed(2);
-    const ownerEarnings = (booking.total_price * 0.92).toFixed(2);
+    // If count is 0, webhook already handled it — still success
+    if (count === 0) {
+      return new Response(
+        JSON.stringify({ success: true, booking_id, status: "active" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const renterFeePercent = ((booking.listing as any)?.renter_fee_percent ?? 7) / 100;
+    const ownerCommissionPercent = ((booking.listing as any)?.owner_commission_percent ?? 8) / 100;
+    const totalNow = (Math.round(booking.total_price * (1 + renterFeePercent) * 100) / 100).toFixed(2);
+    const ownerEarnings = (Math.round(booking.total_price * (1 - ownerCommissionPercent) * 100) / 100).toFixed(2);
     const listingName = (booking.listing as any)?.name ?? "Location";
     const ownerName = (booking.owner as any)?.username ?? "le propriétaire";
     const ownerEmail = (booking.owner as any)?.email ?? null;
@@ -150,6 +210,19 @@ Deno.serve(async (req: Request) => {
         });
       } catch (emailErr) {
         console.error("Owner email failed:", emailErr);
+      }
+    }
+
+    // For short rentals (end_date within 2 days), trigger deposit hold immediately
+    const twoDaysFromNow = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    if (booking.deposit_amount > 0 && new Date(booking.end_date) <= twoDaysFromNow) {
+      try {
+        await supabaseAdmin.functions.invoke("hold-deposit", {
+          headers: internalSecret ? { "x-internal-secret": internalSecret } : {},
+          body: { booking_ids: [booking_id], internal_secret: internalSecret },
+        });
+      } catch (holdErr) {
+        console.error("Short-rental hold-deposit trigger failed:", holdErr);
       }
     }
 

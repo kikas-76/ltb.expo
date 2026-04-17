@@ -28,18 +28,19 @@ interface Booking {
   end_date: string;
   created_at: string;
   stripe_payment_intent_id: string | null;
-  listing: { title: string } | null;
+  listing: { name: string } | null;
   renter: { username: string | null; email: string | null } | null;
   owner: { username: string | null; email: string | null } | null;
   flagged?: boolean;
 }
 
-type StatusFilter = 'all' | 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled' | 'refused';
+type StatusFilter = 'all' | 'pending' | 'accepted' | 'pending_payment' | 'active' | 'completed' | 'cancelled';
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Tous' },
   { key: 'pending', label: 'En attente' },
-  { key: 'confirmed', label: 'Confirmés' },
+  { key: 'accepted', label: 'Acceptés' },
+  { key: 'pending_payment', label: 'Paiement' },
   { key: 'active', label: 'Actifs' },
   { key: 'completed', label: 'Terminés' },
   { key: 'cancelled', label: 'Annulés' },
@@ -79,7 +80,7 @@ export default function AdminTransactions() {
     let query = supabase
       .from('bookings')
       .select(
-        'id, status, total_price, deposit_amount, start_date, end_date, created_at, stripe_payment_intent_id, listing:listings(title), renter:profiles!bookings_renter_id_fkey(username, email), owner:profiles!bookings_owner_id_fkey(username, email)',
+        'id, status, total_price, deposit_amount, start_date, end_date, created_at, stripe_payment_intent_id, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username, email), owner:profiles!bookings_owner_id_fkey(username, email)',
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
@@ -98,7 +99,7 @@ export default function AdminTransactions() {
         (b) =>
           (b.renter?.username ?? '').toLowerCase().includes(q) ||
           (b.owner?.username ?? '').toLowerCase().includes(q) ||
-          (b.listing?.title ?? '').toLowerCase().includes(q)
+          (b.listing?.name ?? '').toLowerCase().includes(q)
       );
     }
 
@@ -234,7 +235,7 @@ export default function AdminTransactions() {
                   </View>
                 )}
                 <View style={styles.cardTopRow}>
-                  <Text style={styles.listingTitle} numberOfLines={1}>{b.listing?.title ?? '—'}</Text>
+                  <Text style={styles.listingTitle} numberOfLines={1}>{b.listing?.name ?? '—'}</Text>
                   <StatusBadge status={b.status} small />
                 </View>
                 <View style={styles.cardRow}>
@@ -258,7 +259,7 @@ export default function AdminTransactions() {
                     <TouchableOpacity
                       style={styles.flagBtn}
                       onPress={() => {
-                        setFlagModal({ bookingId: b.id, title: b.listing?.title ?? '—' });
+                        setFlagModal({ bookingId: b.id, title: b.listing?.name ?? '—' });
                         setFlagReason('');
                         setFlagError(null);
                       }}

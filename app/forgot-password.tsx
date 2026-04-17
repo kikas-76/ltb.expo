@@ -89,8 +89,8 @@ export default function ForgotPasswordScreen() {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: Platform.OS === 'web'
-          ? `${window.location.origin}/login`
-          : 'louetonbien://login',
+          ? `${window.location.origin}/reset-password`
+          : 'louetonbien://reset-password',
       });
       if (error) {
         setError(error.message);

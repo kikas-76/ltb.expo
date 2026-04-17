@@ -38,7 +38,7 @@ interface RecentBooking {
   total_price: number;
   start_date: string;
   end_date: string;
-  listing: { title: string } | null;
+  listing: { name: string } | null;
   renter: { username: string | null } | null;
 }
 
@@ -72,17 +72,17 @@ export default function AdminDashboard() {
       { count: flagged },
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
-      supabase.from('bookings').select('*', { count: 'exact', head: true }).in('status', ['confirmed', 'active', 'in_progress']),
+      supabase.from('bookings').select('*', { count: 'exact', head: true }).in('status', ['pending_payment', 'active', 'in_progress']),
       supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'open'),
       supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).in('account_status', ['suspended', 'banned']),
       supabase.from('bookings').select('total_price, status').gte('created_at', monthStart).lte('created_at', monthEnd),
       supabase.from('disputes')
-        .select('id, status, created_at, description, reporter:profiles!disputes_reporter_id_fkey(username), booking:bookings(listing:listings(title))')
+        .select('id, status, created_at, description, reporter:profiles!disputes_reporter_id_fkey(username), booking:bookings(listing:listings(name))')
         .order('created_at', { ascending: false })
         .limit(5),
       supabase.from('bookings')
-        .select('id, status, total_price, start_date, end_date, listing:listings(title), renter:profiles!bookings_renter_id_fkey(username)')
+        .select('id, status, total_price, start_date, end_date, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username)')
         .order('created_at', { ascending: false })
         .limit(8),
       supabase.from('admin_audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'flag_transaction'),
@@ -198,7 +198,7 @@ export default function AdminDashboard() {
             >
               <View style={styles.listRowContent}>
                 <Text style={styles.listRowTitle} numberOfLines={1}>
-                  {d.booking?.listing?.title ?? 'Annonce inconnue'}
+                  {d.booking?.listing?.name ?? 'Annonce inconnue'}
                 </Text>
                 <Text style={styles.listRowSub} numberOfLines={1}>
                   Par @{d.reporter?.username ?? '?'} · {new Date(d.created_at).toLocaleDateString('fr-FR')}
@@ -224,7 +224,7 @@ export default function AdminDashboard() {
             >
               <View style={styles.listRowContent}>
                 <Text style={styles.listRowTitle} numberOfLines={1}>
-                  {b.listing?.title ?? 'Annonce inconnue'}
+                  {b.listing?.name ?? 'Annonce inconnue'}
                 </Text>
                 <Text style={styles.listRowSub} numberOfLines={1}>
                   @{b.renter?.username ?? '?'} · {b.total_price}€

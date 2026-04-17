@@ -126,8 +126,8 @@ export default function ProfilScreen() {
     setEditingUsername(false);
   };
 
-  const memberSince = profile
-    ? new Date().getFullYear().toString()
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
     : null;
 
   const profileCity = (() => {

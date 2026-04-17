@@ -628,8 +628,7 @@ export default function CreateListingScreen() {
                 <View style={styles.photoDropIcon}>
                   <Ionicons name="image-outline" size={28} color={Colors.textMuted} />
                 </View>
-                <Text style={styles.photoDropText}>Glissez-déposez vos photos</Text>
-                <Text style={styles.photoDropOr}>ou</Text>
+                <Text style={styles.photoDropText}>Ajoutez vos photos</Text>
                 <View style={styles.photoDropBtn}>
                   <Text style={styles.photoDropBtnText}>Ajouter des photos</Text>
                 </View>

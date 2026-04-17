@@ -91,23 +91,47 @@ function buildCreateParams(
       isProValue,
       profile?.business_name,
     ) as Stripe.AccountCreateParams.BusinessProfile,
+    settings: {
+      payouts: {
+        schedule: {
+          delay_days: 14,
+          interval: "daily",
+        },
+      },
+    },
+  };
+
+  // Build address from location_data (individuals) or business_address (pros)
+  const buildAddress = (useBusiness: boolean) => {
+    const addr: Record<string, string> = { country: "FR" };
+    if (useBusiness && profile?.business_address) {
+      addr.line1 = profile.business_address;
+    } else if (locationData?.address) {
+      addr.line1 = locationData.address;
+    }
+    if (locationData?.city) addr.city = locationData.city;
+    if (locationData?.postal_code) addr.postal_code = locationData.postal_code;
+    return Object.keys(addr).length > 1 ? addr : undefined;
   };
 
   if (isProValue) {
     payload.business_type = "company";
+    const address = buildAddress(true);
     payload.company = {
       name: profile?.business_name ?? undefined,
       ...(phone ? { phone } : {}),
-      ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+      ...(address ? { address } : {}),
+      ...(profile?.siren_number ? { tax_id: profile.siren_number } : {}),
     };
   } else {
     payload.business_type = "individual";
+    const address = buildAddress(false);
     payload.individual = {
       ...(firstName ? { first_name: firstName } : {}),
       ...(lastName ? { last_name: lastName } : {}),
       ...(userEmail ? { email: userEmail } : {}),
       ...(phone ? { phone } : {}),
-      ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
+      ...(address ? { address } : {}),
     };
   }
 
@@ -206,7 +230,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_account_id, username, phone_number, business_type, business_name, siren_number, location_data, is_pro, bio")
+      .select("stripe_account_id, username, phone_number, business_type, business_name, siren_number, location_data, is_pro, bio, business_address")
       .eq("id", user.id)
       .maybeSingle();
 

@@ -183,6 +183,7 @@ export default function ChatScreen() {
         status: (conv.status as 'pending' | 'accepted' | 'refused') ?? 'pending',
       });
 
+      // Fetch booking data whenever conversation is accepted (booking exists)
       if (conv.status === 'accepted') {
         const queries: Promise<any>[] = [
           supabase
@@ -191,16 +192,17 @@ export default function ChatScreen() {
             .eq('conversation_id', id)
             .maybeSingle(),
         ];
-        if (!isRequester) {
-          queries.push(Promise.resolve({ data: null }));
-        } else {
+        // Check OWNER's Stripe status (not renter's — renters don't need Stripe accounts)
+        if (isRequester) {
           queries.push(
             supabase
               .from('profiles')
-              .select('stripe_onboarding_complete')
-              .eq('id', user.id)
+              .select('stripe_onboarding_complete, stripe_charges_enabled')
+              .eq('id', conv.owner_id)
               .maybeSingle()
           );
+        } else {
+          queries.push(Promise.resolve({ data: null }));
         }
         const [{ data: booking }, { data: profile }] = await Promise.all(queries);
         if (booking) {
@@ -218,27 +220,10 @@ export default function ChatScreen() {
           }
         }
         if (isRequester) {
-          setStripeReady(profile?.stripe_onboarding_complete === true);
-        }
-      } else if (['active', 'in_progress', 'pending_return', 'completed', 'pending_owner_validation', 'disputed'].some(s => conv.status === s)) {
-        const { data: booking } = await supabase
-          .from('bookings')
-          .select('id, total_price, status, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter, owner_validated, return_confirmed_at')
-          .eq('conversation_id', id)
-          .maybeSingle();
-        if (booking) {
-          setBookingId(booking.id);
-          setBookingTotal(booking.total_price ?? null);
-          setBookingStatus(booking.status ?? null);
-          setHandoverConfirmedOwner(booking.handover_confirmed_owner ?? false);
-          setHandoverConfirmedRenter(booking.handover_confirmed_renter ?? false);
-          setReturnConfirmedOwner(booking.return_confirmed_owner ?? false);
-          setReturnConfirmedRenter(booking.return_confirmed_renter ?? false);
-          setOwnerValidated(booking.owner_validated ?? false);
-          if (booking.return_confirmed_at) {
-            setReturnConfirmedAt(booking.return_confirmed_at);
-            setValidationDeadlineMs(new Date(booking.return_confirmed_at).getTime() + 24 * 3600 * 1000);
-          }
+          setStripeReady(
+            profile?.stripe_onboarding_complete === true &&
+            profile?.stripe_charges_enabled === true
+          );
         }
       }
     }
@@ -367,12 +352,32 @@ export default function ChatScreen() {
             if (alreadyConfirmed) return prev;
             const hasPending = isOwn && prev.some((msg) => msg.pending);
             if (hasPending) return prev;
+            // Parse file/image content the same way as initial load
+            let content = m.content;
+            let imageUrl: string | null = null;
+            let fileUrl: string | null = null;
+            let fileName: string | null = null;
+            try {
+              const parsed = JSON.parse(m.content);
+              if (parsed?.type === 'file') {
+                fileUrl = parsed.url;
+                fileName = parsed.name;
+                content = '';
+              }
+            } catch {}
+            const looksLikeImage = !fileUrl && /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(m.content);
+            if (looksLikeImage) {
+              imageUrl = m.content;
+              content = '';
+            }
             return [
               ...prev,
               {
                 id: m.id,
-                content: m.content,
-                imageUrl: null,
+                content,
+                imageUrl,
+                fileUrl,
+                fileName,
                 senderId: m.sender_id,
                 isSystem: m.is_system,
                 createdAt: m.created_at,
@@ -567,7 +572,7 @@ export default function ChatScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.85,
       allowsEditing: false,
       allowsMultipleSelection: true,
@@ -585,7 +590,7 @@ export default function ChatScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.85,
       allowsEditing: false,
     });
@@ -747,7 +752,7 @@ export default function ChatScreen() {
     setConfirmLoading(true);
     try {
       const isOwner = meta.isOwner;
-      const confirmField = isOwner ? { owner_handover_confirmed: true } : { renter_handover_confirmed: true };
+      const confirmField = isOwner ? { handover_confirmed_owner: true } : { handover_confirmed_renter: true };
       const newOwnerVal = isOwner ? true : handoverConfirmedOwner;
       const newRenterVal = !isOwner ? true : handoverConfirmedRenter;
 
@@ -769,7 +774,7 @@ export default function ChatScreen() {
     setConfirmLoading(true);
     try {
       const isOwner = meta.isOwner;
-      const returnField = isOwner ? { owner_return_confirmed: true } : { renter_return_confirmed: true };
+      const returnField = isOwner ? { return_confirmed_owner: true } : { return_confirmed_renter: true };
       const newOwnerVal = isOwner ? true : returnConfirmedOwner;
       const newRenterVal = !isOwner ? true : returnConfirmedRenter;
 
@@ -1313,24 +1318,13 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity
-            style={styles.payBannerOrange}
-            activeOpacity={0.88}
-            onPress={() => router.push('/wallet' as any)}
-          >
+          <View style={styles.payBannerOrange}>
             <View style={styles.payBannerOrangeLeft}>
               <Text style={styles.payBannerOrangeTitle}>
-                Active ton compte Stripe pour payer
+                Le propri\u00e9taire n'a pas encore activ\u00e9 son compte de paiement
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.payBannerOrangeBtn}
-              activeOpacity={0.85}
-              onPress={() => router.push('/wallet' as any)}
-            >
-              <Text style={styles.payBannerOrangeBtnText}>Activer →</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
+          </View>
         )
       )}
 

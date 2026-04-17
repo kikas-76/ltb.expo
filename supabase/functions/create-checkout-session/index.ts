@@ -78,8 +78,8 @@ Deno.serve(async (req: Request) => {
       "Content-Type": "application/x-www-form-urlencoded",
     };
 
-    const baseSuccessUrl = success_url || "https://loueton bien.app/payment-success";
-    const baseCancelUrl = cancel_url || "https://loueton bien.app/";
+    const baseSuccessUrl = success_url || "https://app.louetonbien.fr/payment-success";
+    const baseCancelUrl = cancel_url || "https://app.louetonbien.fr/";
 
     const sessionBody = new URLSearchParams({
       "mode": "payment",

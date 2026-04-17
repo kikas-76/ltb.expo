@@ -257,7 +257,7 @@ export default function MesAnnoncesScreen() {
       .from('bookings')
       .select('id')
       .eq('listing_id', listingId)
-      .not('status', 'in', '("completed","cancelled","refused")')
+      .not('status', 'in', '("completed","cancelled","expired","disputed")')
       .limit(1)
       .maybeSingle();
     return !!data;
@@ -286,7 +286,7 @@ export default function MesAnnoncesScreen() {
 
     const { data } = await supabase
       .from('listings')
-      .select('id, name, price, photos_url, category_name, location_data, is_active, created_at')
+      .select('id, name, price, photos_url, category_name, location_data, is_active, created_at, views_count, saves_count')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -296,27 +296,11 @@ export default function MesAnnoncesScreen() {
       return;
     }
 
-    const ids = data.map((l: any) => l.id);
-
-    const [viewsRes, favsRes] = await Promise.all([
-      supabase.from('listing_views').select('listing_id').in('listing_id', ids),
-      supabase.from('saved_listings').select('listing_id').in('listing_id', ids),
-    ]);
-
-    const viewCounts: Record<string, number> = {};
-    (viewsRes.data ?? []).forEach((v: any) => {
-      viewCounts[v.listing_id] = (viewCounts[v.listing_id] ?? 0) + 1;
-    });
-    const favCounts: Record<string, number> = {};
-    (favsRes.data ?? []).forEach((v: any) => {
-      favCounts[v.listing_id] = (favCounts[v.listing_id] ?? 0) + 1;
-    });
-
     setListings(
       data.map((l: any) => ({
         ...l,
-        view_count: viewCounts[l.id] ?? 0,
-        favorite_count: favCounts[l.id] ?? 0,
+        view_count: l.views_count ?? 0,
+        favorite_count: l.saves_count ?? 0,
       }))
     );
     setLoading(false);

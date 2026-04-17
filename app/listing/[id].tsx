@@ -339,7 +339,7 @@ export default function ListingDetailScreen() {
         : 'Découvre cette annonce sur LoueTonBien !';
 
       if (Platform.OS === 'web') {
-        const webUrl = typeof window !== 'undefined' ? window.location.href : `https://louetonnbien.com/listing/${id}`;
+        const webUrl = typeof window !== 'undefined' ? window.location.href : `https://app.louetonbien.fr/listing/${id}`;
         if (navigator?.share) {
           await navigator.share({ title, text, url: webUrl });
         } else {

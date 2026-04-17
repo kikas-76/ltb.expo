@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
       .select(`
         *,
         listing:listings(name, renter_fee_percent, owner_commission_percent, deposit_amount),
-        owner_profile:profiles!bookings_owner_id_fkey(stripe_account_id)
+        owner_profile:profiles!bookings_owner_id_fkey(stripe_account_id, stripe_charges_enabled)
       `)
       .eq("id", booking_id)
       .eq("renter_id", user.id)
@@ -78,12 +78,29 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const ALREADY_PAID_STATUSES = ["active", "in_progress", "pending_return", "pending_owner_validation", "completed", "disputed", "cancelled"];
-    if (ALREADY_PAID_STATUSES.includes(booking.status)) {
+    if (booking.status !== "pending_payment") {
       return new Response(
-        JSON.stringify({ error: "Cette réservation a déjà été payée ou est dans un état qui ne permet pas le paiement." }),
+        JSON.stringify({ error: "Cette réservation ne peut pas être payée (statut actuel : " + booking.status + ")." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Idempotency: if a rental PI already exists for this booking, return it instead of creating a new one
+    if (booking.stripe_transfer_id) {
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (stripeKey) {
+        const existingPI = await stripeGet(`/payment_intents/${booking.stripe_transfer_id}`, stripeKey);
+        if (existingPI && !existingPI.error && existingPI.client_secret) {
+          return new Response(
+            JSON.stringify({
+              rental_client_secret: existingPI.client_secret,
+              rental_payment_intent_id: existingPI.id,
+              deposit_amount: booking.deposit_amount ?? 0,
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
     }
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -141,6 +158,20 @@ Deno.serve(async (req: Request) => {
 
     const ownerStripeAccountId = booking.owner_profile?.stripe_account_id;
 
+    if (!ownerStripeAccountId) {
+      return new Response(
+        JSON.stringify({ error: "Le propriétaire n'a pas encore configuré son compte de paiement. Impossible de procéder au paiement." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!booking.owner_profile?.stripe_charges_enabled) {
+      return new Response(
+        JSON.stringify({ error: "Le compte de paiement du propriétaire n'est pas encore activé. Impossible de procéder au paiement." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const renterFeePercent = booking.listing?.renter_fee_percent ?? 7;
     const ownerCommissionPercent = booking.listing?.owner_commission_percent ?? 8;
 
@@ -184,37 +215,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    let deposit_client_secret: string | null = null;
-    let deposit_payment_intent_id: string | null = null;
-
-    if (depositAmount > 0) {
-      const depositBody = new URLSearchParams({
-        amount: String(depositAmount),
-        currency: "eur",
-        capture_method: "manual",
-        customer: customerId!,
-        "metadata[booking_id]": booking_id,
-        "metadata[type]": "deposit",
-      });
-
-      const depositIntent = await stripePost("/payment_intents", depositBody, stripeKey);
-      if (depositIntent.error) {
-        return new Response(
-          JSON.stringify({ error: depositIntent.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      deposit_client_secret = depositIntent.client_secret;
-      deposit_payment_intent_id = depositIntent.id;
-    }
+    // Deposit is NOT charged at payment time — it will be held 2 days before
+    // the rental ends via the hold-deposit cron function. The renter's card is
+    // saved via setup_future_usage: "off_session" on the rental intent.
 
     return new Response(
       JSON.stringify({
         rental_client_secret: rentalIntent.client_secret,
-        deposit_client_secret,
         rental_payment_intent_id: rentalIntent.id,
-        deposit_payment_intent_id,
+        deposit_amount: rawDeposit,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUnread } from '@/contexts/UnreadContext';
 import { supabase } from '@/lib/supabase';
 import HomeHeader from '@/components/explore/HomeHeader';
 import SearchBar from '@/components/explore/SearchBar';
@@ -56,6 +57,7 @@ interface Listing {
 export default function ExploreScreen() {
   const router = useRouter();
   const { profile, session, loading: authLoading } = useAuth();
+  const { incomingRequestCount } = useUnread();
   const { width } = useWindowDimensions();
   const { isDesktop, isTablet, isTabletOrDesktop, isMobile } = useResponsive();
 
@@ -151,7 +153,7 @@ export default function ExploreScreen() {
           <HomeHeader
             username={profile?.username ?? null}
             photoUrl={profile?.photo_url ?? null}
-            notificationCount={0}
+            notificationCount={incomingRequestCount}
           />
           <SearchBar
             value={searchQuery}
