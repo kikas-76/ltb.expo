@@ -104,7 +104,7 @@ function baseLayout(content: string, preheader = ""): string {
           <a href="mailto:${escapeHtml(SUPPORT)}" style="color:#ccd5ae; text-decoration:none; font-weight:600;">${escapeHtml(SUPPORT)}</a>
         </p>
         <p style="margin:0 0 6px; font-size:12px; color:#D1D5DB; text-align:center;">
-          LoueTonBien SAS — SIREN 988 872 081 — Grand-Couronne, France
+          LoueTonBien SAS · SIREN 988 872 081 · Grand-Couronne, France
         </p>
         <p style="margin:0; font-size:12px; color:#D1D5DB; text-align:center;">
           <a href="${APP_URL}/legal" style="color:#9CA3AF; text-decoration:underline;">Mentions légales</a>
@@ -172,7 +172,7 @@ function alertBox(text: string, borderColor = "#ccd5ae", bgColor = "#f0f4e8"): s
     </div>`;
 }
 
-// FIX: removed /(tabs)/ from URLs — expo-router strips group segments on web
+// FIX: removed /(tabs)/ from URLs. Expo-router strips group segments on web
 function reservationsUrl() {
   return `${APP_URL}/reservations`;
 }
@@ -204,7 +204,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
   }),
 
   email_verification: (d) => ({
-    subject: `Confirme ton adresse email — LoueTonBien`,
+    subject: `Confirme ton adresse email · LoueTonBien`,
     html: baseLayout(`
       ${heading("Confirme ton inscription")}
       ${paragraph(`Bienvenue sur <strong>LoueTonBien</strong>. Pour activer ton compte et commencer à louer ou proposer des objets, confirme ton adresse e-mail.`)}
@@ -218,7 +218,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
   }),
 
   reset_password: (d) => ({
-    subject: `Réinitialise ton mot de passe — LoueTonBien`,
+    subject: `Réinitialise ton mot de passe · LoueTonBien`,
     html: baseLayout(`
       ${heading("Nouveau mot de passe")}
       ${paragraph("Tu as demandé à réinitialiser ton mot de passe. Clique sur le bouton ci-dessous pour en choisir un nouveau.")}
@@ -248,7 +248,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
         </div>` : ""}
       ${alertBox(`<strong>Tu as 24h pour répondre.</strong> Passé ce délai, la demande expire automatiquement.`)}
       ${ctaButton("Voir la demande →", conversationUrl(d))}
-    `, `${asText(d.renter_name, "Un locataire")} veut louer "${asText(d.listing_name, "ton objet")}" — réponds vite !`)
+    `, `${asText(d.renter_name, "Un locataire")} veut louer "${asText(d.listing_name, "ton objet")}", réponds vite !`)
   }),
 
   booking_request_renter: (d) => ({
@@ -269,7 +269,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
   }),
 
   booking_accepted_renter: (d) => ({
-    subject: `Demande acceptée — "${asText(d.listing_name, "ta réservation")}"`,
+    subject: `Demande acceptée · "${asText(d.listing_name, "ta réservation")}"`,
     html: baseLayout(`
       ${heading("C'est accepté !")}
       ${paragraph(`<strong>${asText(d.owner_name, "Le propriétaire")}</strong> a accepté ta demande. Procède au paiement pour confirmer.`)}
@@ -282,22 +282,22 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
       ])}
       ${alertBox(`<strong>Paiement requis sous 2h</strong> pour confirmer ta réservation.`)}
       ${ctaButton("Payer maintenant →", paymentUrl(d))}
-    `, `${asText(d.owner_name, "Le propriétaire")} a accepté — confirme vite !`)
+    `, `${asText(d.owner_name, "Le propriétaire")} a accepté, confirme vite !`)
   }),
 
   booking_rejected_renter: (d) => ({
-    subject: `Demande pour "${asText(d.listing_name, "cet objet")}" — Réponse reçue`,
+    subject: `Demande pour "${asText(d.listing_name, "cet objet")}" · Réponse reçue`,
     html: baseLayout(`
       ${heading("Ta demande n'a pas abouti")}
       ${paragraph(`${asText(d.owner_name, "Le propriétaire")} n'est pas disponible pour cette période. Aucun paiement n'a été effectué.`)}
       ${d.owner_reason ? alertBox(`Message de ${asText(d.owner_name, "Le propriétaire")} : <em>"${asText(d.owner_reason)}"</em>`, "#F59E0B", "#FEF3C7") : ""}
-      ${paragraph("Ne t'inquiète pas — il y a sûrement d'autres objets similaires près de chez toi !")}
+      ${paragraph("Ne t'inquiète pas, il y a sûrement d'autres objets similaires près de chez toi !")}
       ${ctaButton("Chercher un objet similaire →", `${APP_URL}/search`)}
     `, "D'autres options t'attendent sur LoueTonBien.")
   }),
 
   booking_paid_renter: (d) => ({
-    subject: `Paiement confirmé — "${asText(d.listing_name, "ta location")}"`,
+    subject: `Paiement confirmé · "${asText(d.listing_name, "ta location")}"`,
     html: baseLayout(`
       ${heading("Réservation confirmée !")}
       ${paragraph("Ton paiement a bien été reçu. La location est active.")}
@@ -311,11 +311,11 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
       ])}
       ${alertBox(`La caution de <strong>${asNumber(d.deposit)} €</strong> sera bloquée sur ta carte <strong>2 jours avant la fin</strong> de la location, puis libérée après le retour en bon état.`)}
       ${ctaButton("Voir ma réservation →", conversationUrl(d))}
-    `, `Ta réservation est active — ${asText(d.listing_name, "ton objet")} t'attend !`)
+    `, `Ta réservation est active · ${asText(d.listing_name, "ton objet")} t'attend !`)
   }),
 
   booking_paid_owner: (d) => ({
-    subject: `Réservation confirmée — "${asText(d.listing_name, "ta location")}"`,
+    subject: `Réservation confirmée · "${asText(d.listing_name, "ta location")}"`,
     html: baseLayout(`
       ${heading("C'est parti !")}
       ${paragraph(`<strong>${asText(d.renter_name, "Le locataire")}</strong> a finalisé sa réservation. Tout est confirmé.`)}
@@ -328,11 +328,11 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
       ])}
       ${alertBox(`Le virement sur ton compte sera effectué <strong>14 jours après le paiement</strong>.`)}
       ${ctaButton("Gérer la réservation →", conversationUrl(d))}
-    `, `${asText(d.renter_name, "Le locataire")} a confirmé — tout est bon !`)
+    `, `${asText(d.renter_name, "Le locataire")} a confirmé, tout est bon !`)
   }),
 
   return_reminder: (d) => ({
-    subject: `Rappel — Retour de "${asText(d.listing_name, "ta location")}" demain`,
+    subject: `Rappel · Retour de "${asText(d.listing_name, "ta location")}" demain`,
     html: baseLayout(`
       ${heading("Retour demain !")}
       ${paragraph(`Pense à rendre <strong>"${asText(d.listing_name, "cet objet")}"</strong> à ${asText(d.owner_name, "son propriétaire")} avant le ${asText(d.end_date)}.`)}
@@ -344,11 +344,11 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
       ])}
       ${paragraph(`Une fois l'objet rendu, clique sur "J'ai rendu l'objet" dans l'app pour libérer ta caution.`)}
       ${ctaButton("Confirmer le retour →", conversationUrl(d))}
-    `, `N'oublie pas — "${asText(d.listing_name, "cet objet")}" doit être rendu demain !`)
+    `, `N'oublie pas, "${asText(d.listing_name, "cet objet")}" doit être rendu demain !`)
   }),
 
   deposit_released: (d) => ({
-    subject: `Caution libérée — ${asNumber(d.deposit)} € de retour sur ta carte`,
+    subject: `Caution libérée · ${asNumber(d.deposit)} € de retour sur ta carte`,
     html: baseLayout(`
       ${heading("Caution libérée !")}
       ${paragraph(`Les <strong>${asNumber(d.deposit)} €</strong> bloqués pour "${asText(d.listing_name, "cette location")}" sont libérés.`)}
@@ -374,7 +374,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
   }),
 
   dispute_opened: (d) => ({
-    subject: `Litige ouvert — "${asText(d.listing_name, "ta location")}"`,
+    subject: `Litige ouvert · "${asText(d.listing_name, "ta location")}"`,
     html: baseLayout(`
       ${heading("Un litige a été signalé")}
       ${paragraph(`Un problème a été signalé concernant la location de <strong>"${asText(d.listing_name, "cet objet")}"</strong>.`)}
@@ -386,11 +386,11 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
       ${alertBox(`<strong>Prochaine étape :</strong> notre équipe va examiner les preuves soumises. Tu recevras une décision sous <strong>48 heures ouvrées</strong>. La caution reste gelée.`, "#F59E0B", "#FEF3C7")}
       ${paragraph("Si tu as des éléments supplémentaires (photos, messages), ajoute-les dans l'app.")}
       ${ctaButton("Voir le litige →", disputeUrl(d))}
-    `, "Notre équipe examine la situation — décision sous 48h.")
+    `, "Notre équipe examine la situation. Décision sous 48h.")
   }),
 
   dispute_resolved_renter_won: (d) => ({
-    subject: `Litige résolu — Caution remboursée`,
+    subject: `Litige résolu · Caution remboursée`,
     html: baseLayout(`
       ${heading("Litige résolu en ta faveur")}
       ${paragraph(`Après examen, la caution de <strong>${asNumber(d.deposit)} €</strong> te sera intégralement remboursée.`)}
@@ -401,7 +401,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
   }),
 
   dispute_resolved_owner_won: (d) => ({
-    subject: `Litige résolu — Dédommagement confirmé`,
+    subject: `Litige résolu · Dédommagement confirmé`,
     html: baseLayout(`
       ${heading("Litige résolu en ta faveur")}
       ${paragraph(`Après examen des preuves, la caution de <strong>${asNumber(d.deposit)} €</strong> va être capturée.`)}
@@ -412,7 +412,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
   }),
 
   dispute_resolved_renter_lost: (d) => ({
-    subject: `Litige résolu — La caution est débitée`,
+    subject: `Litige résolu · La caution est débitée`,
     html: baseLayout(`
       ${heading("Litige résolu")}
       ${paragraph(`Après examen du dossier, la caution de <strong>${asNumber(d.deposit)} €</strong> liée à "${asText(d.listing_name, "cette location")}" sera débitée.`)}
@@ -423,7 +423,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
   }),
 
   booking_cancelled_owner: (d) => ({
-    subject: `Annulation — "${asText(d.listing_name, "ton objet")}" est de nouveau disponible`,
+    subject: `Annulation · "${asText(d.listing_name, "ton objet")}" est de nouveau disponible`,
     html: baseLayout(`
       ${heading("Réservation annulée")}
       ${paragraph(`<strong>${asText(d.renter_name, "Le locataire")}</strong> a annulé sa réservation pour "${asText(d.listing_name, "ton objet")}".`)}
@@ -433,7 +433,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
       ])}
       ${paragraph("Ton annonce est automatiquement remise en ligne pour ces dates.")}
       ${ctaButton("Voir mes annonces →", `${APP_URL}/mes-annonces`)}
-    `, `${asText(d.renter_name, "Le locataire")} a annulé — ton objet est de nouveau disponible.`)
+    `, `${asText(d.renter_name, "Le locataire")} a annulé, ton objet est de nouveau disponible.`)
   }),
 
   stripe_account_activated: (d) => ({
@@ -444,11 +444,11 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
       ${paragraph("Toutes les locations futures seront automatiquement virées sur ton compte 14 jours après le paiement du locataire.")}
       ${alertBox(`<strong>Prochaine étape :</strong> publie ta première annonce et commence à gagner de l'argent !`)}
       ${ctaButton("Créer une annonce →", `${APP_URL}/create-listing`)}
-    `, "Ton compte est prêt — les virements peuvent démarrer !")
+    `, "Ton compte est prêt, les virements peuvent démarrer !")
   }),
 
   deposit_hold_created: (d) => ({
-    subject: `Caution de ${asNumber(d.deposit)} € bloquée — retour de "${asText(d.listing_name, "ta location")}" bientôt`,
+    subject: `Caution de ${asNumber(d.deposit)} € bloquée · retour de "${asText(d.listing_name, "ta location")}" bientôt`,
     html: baseLayout(`
       ${heading("Caution bloquée")}
       ${paragraph(`La caution de <strong>${asNumber(d.deposit)} €</strong> pour "${asText(d.listing_name, "ta location")}" a été bloquée sur ta carte en prévision du retour.`)}
@@ -458,7 +458,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
   }),
 
   deposit_hold_failed: (d) => ({
-    subject: `Action requise — Impossible de bloquer la caution de ${asNumber(d.deposit)} €`,
+    subject: `Action requise · Impossible de bloquer la caution de ${asNumber(d.deposit)} €`,
     html: baseLayout(`
       ${heading("Caution non bloquée")}
       ${paragraph(`Nous n'avons pas pu bloquer la caution de <strong>${asNumber(d.deposit)} €</strong> pour "${asText(d.listing_name, "ta location")}".`)}

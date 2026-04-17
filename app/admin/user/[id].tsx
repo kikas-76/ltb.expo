@@ -312,7 +312,7 @@ export default function AdminUserDetail() {
                   </View>
                 )}
               </View>
-              <Text style={styles.email}>{profile.email ?? '—'}</Text>
+              <Text style={styles.email}>{profile.email ?? '-'}</Text>
               {profile.phone_number && <Text style={styles.metaText}>{profile.phone_number}</Text>}
               {profileCity && <Text style={styles.metaText}>{profileCity}</Text>}
               <Text style={styles.metaText}>
@@ -432,7 +432,7 @@ export default function AdminUserDetail() {
             <View key={b.id}>
               <View style={styles.listRow}>
                 <View style={styles.listRowContent}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.name ?? '—'}</Text>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.name ?? '-'}</Text>
                   <Text style={styles.listRowSub}>
                     {new Date(b.start_date).toLocaleDateString('fr-FR')} → {new Date(b.end_date).toLocaleDateString('fr-FR')} · {b.total_price}€
                   </Text>
@@ -453,7 +453,7 @@ export default function AdminUserDetail() {
             <View key={b.id}>
               <View style={styles.listRow}>
                 <View style={styles.listRowContent}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.name ?? '—'}</Text>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.name ?? '-'}</Text>
                   <Text style={styles.listRowSub}>
                     @{(b as any).renter?.username ?? '?'} · {new Date(b.start_date).toLocaleDateString('fr-FR')} · {b.total_price}€
                   </Text>

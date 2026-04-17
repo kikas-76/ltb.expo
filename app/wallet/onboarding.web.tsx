@@ -293,7 +293,7 @@ export default function WalletOnboardingScreen() {
                     {mode === 'edit' ? 'Mise à jour sécurisée' : 'Vérifie ton identité pour recevoir tes gains'}
                   </Text>
                   <Text style={styles.infoSubtitle}>
-                    Stripe peut utiliser un vocabulaire professionnel même pour les particuliers — c'est normal. Tu n'as rien à déclarer en tant qu'entreprise.
+                    Stripe peut utiliser un vocabulaire professionnel même pour les particuliers, c'est normal. Tu n'as rien à déclarer en tant qu'entreprise.
                   </Text>
                 </View>
               </View>

@@ -92,7 +92,7 @@ Deno.serve(async (req: Request) => {
 
       if ((conv as any).owner_id !== user.id) {
         return new Response(
-          JSON.stringify({ error: "Accès refusé — seul le propriétaire peut déclencher cet événement" }),
+          JSON.stringify({ error: "Accès refusé : seul le propriétaire peut déclencher cet événement" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -164,7 +164,7 @@ Deno.serve(async (req: Request) => {
 
       if ((bookingRow as any).owner_id !== user.id) {
         return new Response(
-          JSON.stringify({ error: "Accès refusé — seul le propriétaire peut libérer la caution" }),
+          JSON.stringify({ error: "Accès refusé : seul le propriétaire peut libérer la caution" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -212,7 +212,7 @@ Deno.serve(async (req: Request) => {
 
       if ((bookingRow as any).owner_id !== user.id && (bookingRow as any).renter_id !== user.id) {
         return new Response(
-          JSON.stringify({ error: "Accès refusé — vous n'êtes pas impliqué dans cette réservation" }),
+          JSON.stringify({ error: "Accès refusé : vous n'êtes pas impliqué dans cette réservation" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

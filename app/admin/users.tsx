@@ -155,7 +155,7 @@ export default function AdminUsers() {
               </View>
               <View style={styles.userInfo}>
                 <Text style={styles.username}>@{u.username ?? 'sans nom'}</Text>
-                <Text style={styles.email} numberOfLines={1}>{u.email ?? '—'}</Text>
+                <Text style={styles.email} numberOfLines={1}>{u.email ?? '-'}</Text>
                 <Text style={styles.joined}>
                   Inscrit le {new Date(u.created_at).toLocaleDateString('fr-FR')}
                 </Text>

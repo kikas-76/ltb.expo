@@ -20,7 +20,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 //   email is freed for re-registration.
 //
 // The function is BLOCKED if the user has rentals in flight (as renter or
-// owner) — they must complete or cancel them first. Otherwise money is in
+// owner) : they must complete or cancel them first. Otherwise money is in
 // motion and we'd risk losing track of it.
 
 const corsHeaders = {

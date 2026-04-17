@@ -61,7 +61,7 @@ const helpData: HelpCategory[] = [
         id: 'l1',
         question: 'Comment faire une demande de location ?',
         answer:
-          "Trouve l'objet qui t'intéresse sur la page Explore, appuie dessus pour voir le détail, puis sélectionne tes dates de location. Un récapitulatif du prix total et de la caution s'affiche automatiquement. Écris un message de présentation au loueur (obligatoire — présente-toi brièvement et explique ton usage de l'objet), puis appuie sur 'Envoyer la demande'. Le loueur a 48h pour accepter ou refuser.",
+          "Trouve l'objet qui t'intéresse sur la page Explore, appuie dessus pour voir le détail, puis sélectionne tes dates de location. Un récapitulatif du prix total et de la caution s'affiche automatiquement. Écris un message de présentation au loueur (obligatoire, présente-toi brièvement et explique ton usage de l'objet), puis appuie sur 'Envoyer la demande'. Le loueur a 48h pour accepter ou refuser.",
       },
       {
         id: 'l2',
@@ -161,7 +161,7 @@ const helpData: HelpCategory[] = [
         id: 'pay1',
         question: 'Quand suis-je débité en tant que locataire ?',
         answer:
-          "Le débit a lieu en deux temps. Le prix de la location est débité immédiatement au moment où tu confirmes ton paiement après acceptation de ta demande. La caution, elle, est simplement bloquée (mise en hold) sur ta carte au même moment — elle n'est pas débitée sauf en cas de dommage constaté. Si tout se passe bien, la caution est libérée automatiquement à la fin de la location.",
+          "Le débit a lieu en deux temps. Le prix de la location est débité immédiatement au moment où tu confirmes ton paiement après acceptation de ta demande. La caution, elle, est simplement bloquée (mise en hold) sur ta carte au même moment. Elle n'est pas débitée sauf en cas de dommage constaté. Si tout se passe bien, la caution est libérée automatiquement à la fin de la location.",
       },
       {
         id: 'pay2',
@@ -191,7 +191,7 @@ const helpData: HelpCategory[] = [
         id: 'pay6',
         question: 'Quels moyens de paiement sont acceptés ?',
         answer:
-          "LoueTonBien accepte toutes les cartes bancaires (Visa, Mastercard, American Express) via Stripe. Les paiements en espèces, par virement direct ou par chèque ne sont pas autorisés sur la plateforme — ils ne permettent pas de garantir la protection des deux parties en cas de litige. Apple Pay et Google Pay sont également disponibles selon ton appareil.",
+          "LoueTonBien accepte toutes les cartes bancaires (Visa, Mastercard, American Express) via Stripe. Les paiements en espèces, par virement direct ou par chèque ne sont pas autorisés sur la plateforme car ils ne permettent pas de garantir la protection des deux parties en cas de litige. Apple Pay et Google Pay sont également disponibles selon ton appareil.",
       },
       {
         id: 'pay7',
@@ -203,7 +203,7 @@ const helpData: HelpCategory[] = [
         id: 'pay8',
         question: 'Où voir mes gains en tant que loueur ?',
         answer:
-          "Tes gains sont visibles dans 'Mon Compte' → 'Mon Portefeuille'. Tu y trouveras le total de tes gains ce mois, le total historique et le détail de chaque transaction. Pour un historique encore plus détaillé avec les dates de virement et les relevés fiscaux, accède à ton tableau de bord Stripe depuis 'Gérer mon compte Stripe' — Stripe conserve l'ensemble de tes données financières.",
+          "Tes gains sont visibles dans 'Mon Compte' → 'Mon Portefeuille'. Tu y trouveras le total de tes gains ce mois, le total historique et le détail de chaque transaction. Pour un historique encore plus détaillé avec les dates de virement et les relevés fiscaux, accède à ton tableau de bord Stripe depuis 'Gérer mon compte Stripe'. Stripe conserve l'ensemble de tes données financières.",
       },
     ],
   },
@@ -217,7 +217,7 @@ const helpData: HelpCategory[] = [
         id: 's1',
         question: 'Mes données bancaires sont-elles sécurisées ?',
         answer:
-          "Oui, entièrement. LoueTonBien ne stocke jamais tes données bancaires. Tous les paiements sont traités par Stripe, certifié PCI-DSS niveau 1 — le niveau de sécurité le plus élevé dans l'industrie du paiement. Ni ton numéro de carte, ni ton IBAN ne transitent par les serveurs de LoueTonBien. Stripe est utilisé par des millions d'entreprises dans le monde, dont Amazon, Airbnb et Doctolib.",
+          "Oui, entièrement. LoueTonBien ne stocke jamais tes données bancaires. Tous les paiements sont traités par Stripe, certifié PCI-DSS niveau 1, le niveau de sécurité le plus élevé dans l'industrie du paiement. Ni ton numéro de carte, ni ton IBAN ne transitent par les serveurs de LoueTonBien. Stripe est utilisé par des millions d'entreprises dans le monde, dont Amazon, Airbnb et Doctolib.",
       },
       {
         id: 's2',
@@ -247,7 +247,7 @@ const helpData: HelpCategory[] = [
         id: 's6',
         question: "LoueTonBien est-il responsable des objets loués ?",
         answer:
-          "LoueTonBien est une plateforme de mise en relation et n'est pas propriétaire des objets proposés à la location. En cas de dommage, la caution constitue la première protection du loueur. Pour les objets de valeur élevée, nous recommandons au loueur de vérifier que sa propre assurance habitation couvre le prêt d'objets entre particuliers — c'est souvent le cas avec les contrats multirisques habitation. LoueTonBien intervient en arbitre en cas de litige entre les deux parties.",
+          "LoueTonBien est une plateforme de mise en relation et n'est pas propriétaire des objets proposés à la location. En cas de dommage, la caution constitue la première protection du loueur. Pour les objets de valeur élevée, nous recommandons au loueur de vérifier que sa propre assurance habitation couvre le prêt d'objets entre particuliers. C'est souvent le cas avec les contrats multirisques habitation. LoueTonBien intervient en arbitre en cas de litige entre les deux parties.",
       },
     ],
   },

@@ -144,7 +144,7 @@ export default function RequestMessageModal({
               <View style={styles.recapMetaItem}>
                 <Ionicons name="calendar-outline" size={12} color={Colors.primaryDark} />
                 <Text style={styles.recapMetaText}>
-                  {formatShort(startDate)} — {formatShort(endDate)}
+                  {formatShort(startDate)} → {formatShort(endDate)}
                 </Text>
               </View>
               <View style={styles.recapDot} />

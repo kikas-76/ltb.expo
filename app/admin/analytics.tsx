@@ -162,7 +162,7 @@ export default function AdminAnalytics() {
     const listingMap: Record<string, { name: string; count: number; revenue: number }> = {};
     (listingBookings ?? []).forEach((b: any) => {
       const lid = b.listing_id;
-      if (!listingMap[lid]) listingMap[lid] = { name: b.listing?.name ?? '—', count: 0, revenue: 0 };
+      if (!listingMap[lid]) listingMap[lid] = { name: b.listing?.name ?? '-', count: 0, revenue: 0 };
       listingMap[lid].count++;
       listingMap[lid].revenue += b.total_price ?? 0;
     });
@@ -396,7 +396,7 @@ export default function AdminAnalytics() {
               <View style={styles.rankRow}>
                 <Text style={styles.rankNumber}>{i + 1}</Text>
                 <View style={styles.rankInfo}>
-                  <Text style={styles.rankTitle}>@{u.username ?? '—'}</Text>
+                  <Text style={styles.rankTitle}>@{u.username ?? '-'}</Text>
                   <Text style={styles.rankSub}>{u.bookingCount} rés. · {u.totalAmount.toFixed(0)}€ dépensés</Text>
                 </View>
               </View>
@@ -415,7 +415,7 @@ export default function AdminAnalytics() {
               <View style={styles.rankRow}>
                 <Text style={styles.rankNumber}>{i + 1}</Text>
                 <View style={styles.rankInfo}>
-                  <Text style={styles.rankTitle}>@{u.username ?? '—'}</Text>
+                  <Text style={styles.rankTitle}>@{u.username ?? '-'}</Text>
                   <Text style={styles.rankSub}>{u.bookingCount} rés. · {u.totalAmount.toFixed(0)}€ générés</Text>
                 </View>
               </View>

@@ -129,7 +129,7 @@ export default function PaymentScreen() {
       });
       if (rentalError) throw new Error(rentalError.message);
 
-      // Deposit is NOT charged at payment time — it will be held automatically
+      // Deposit is NOT charged at payment time. It will be held automatically
       // 2 days before the rental ends via the hold-deposit cron function.
 
       const finalizeRes = await fetch(
@@ -273,7 +273,7 @@ export default function PaymentScreen() {
             </View>
 
             <Text style={styles.depositNote}>
-              La caution de {booking.deposit_amount} € est bloquée mais non débitée — libérée après le retour
+              La caution de {booking.deposit_amount} € est bloquée mais non débitée, libérée après le retour
             </Text>
           </View>
         </View>

@@ -58,7 +58,7 @@ export default function PaymentSuccessScreen() {
 
           <View style={styles.depositNote}>
             <Text style={styles.depositNoteText}>
-              La caution a été bloquée sur votre carte — elle sera automatiquement libérée après le retour de l'objet.
+              La caution a été bloquée sur votre carte, elle sera automatiquement libérée après le retour de l'objet.
             </Text>
           </View>
         </Animated.View>

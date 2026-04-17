@@ -235,7 +235,7 @@ export default function AdminTransactions() {
                   </View>
                 )}
                 <View style={styles.cardTopRow}>
-                  <Text style={styles.listingTitle} numberOfLines={1}>{b.listing?.name ?? '—'}</Text>
+                  <Text style={styles.listingTitle} numberOfLines={1}>{b.listing?.name ?? '-'}</Text>
                   <StatusBadge status={b.status} small />
                 </View>
                 <View style={styles.cardRow}>
@@ -259,7 +259,7 @@ export default function AdminTransactions() {
                     <TouchableOpacity
                       style={styles.flagBtn}
                       onPress={() => {
-                        setFlagModal({ bookingId: b.id, title: b.listing?.name ?? '—' });
+                        setFlagModal({ bookingId: b.id, title: b.listing?.name ?? '-' });
                         setFlagReason('');
                         setFlagError(null);
                       }}

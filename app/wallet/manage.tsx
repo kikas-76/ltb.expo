@@ -297,7 +297,7 @@ export default function WalletManageScreen() {
           <Ionicons name="flag-outline" size={16} color={Colors.textMuted} />
           <Text style={styles.infoLabel}>Pays</Text>
           <Text style={[styles.infoValue, styles.infoValueRight]}>
-            {account?.country === 'FR' ? 'France' : account?.country || '—'}
+            {account?.country === 'FR' ? 'France' : account?.country || '-'}
           </Text>
         </View>
       </View>

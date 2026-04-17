@@ -149,7 +149,7 @@ export default function LinkGoogleAccountScreen() {
                 onPress={() => router.replace('/login')}
                 activeOpacity={0.7}
               >
-                <Text style={styles.cancelText}>Annuler — se connecter avec email</Text>
+                <Text style={styles.cancelText}>Annuler, se connecter avec email</Text>
               </TouchableOpacity>
             </>
           )}

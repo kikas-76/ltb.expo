@@ -86,7 +86,7 @@ const SORT_OPTIONS: { key: SortKey; label: string; icon: string }[] = [
   { key: 'price_desc', label: 'Prix décroissant', icon: 'trending-down-outline' },
 ];
 
-// Keep this map in sync with components/explore/CategoryStrip.tsx — adding a
+// Keep this map in sync with components/explore/CategoryStrip.tsx. Adding a
 // new category to the DB requires adding it here too, otherwise the filter
 // list falls back to the generic cube icon and several categories collide.
 const CATEGORY_ICONS: Record<string, { iconName: string; bg: string; iconColor: string }> = {
@@ -307,7 +307,7 @@ export default function FilterPanel({
               <View style={styles.radiusSection}>
                 <Text style={styles.radiusLabel}>
                   Rayon de recherche
-                  <Text style={styles.radiusValue}> — {filters.radiusKm} km</Text>
+                  <Text style={styles.radiusValue}> · {filters.radiusKm} km</Text>
                 </Text>
                 <View style={styles.radiusRow}>
                   {RADIUS_OPTIONS.map((opt) => (

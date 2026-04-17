@@ -228,12 +228,15 @@ export default function OnboardingWelcomeScreen() {
                   .eq('id', user.id);
                 await refreshProfile();
               }
-              if (pendingListingId) {
+              if (PRELAUNCH_MODE) {
+                // Drop any deferred deep link during prelaunch: target
+                // routes are blocked and would bounce to mes-annonces anyway.
+                if (pendingListingId) setPendingListingId(null);
+                router.replace('/(tabs)/mes-annonces' as any);
+              } else if (pendingListingId) {
                 const id = pendingListingId;
                 setPendingListingId(null);
                 router.replace(`/listing/${id}` as any);
-              } else if (PRELAUNCH_MODE) {
-                router.replace('/(tabs)/mes-annonces' as any);
               } else {
                 router.replace('/(tabs)');
               }

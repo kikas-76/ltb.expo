@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
         await supabase.from("chat_messages").insert({
           conversation_id: booking.conversation_id,
           sender_id: null,
-          content: "Location validée automatiquement — Le délai de 24h est écoulé sans signalement de problème. La caution a été libérée.",
+          content: "Location validée automatiquement. Le délai de 24h est écoulé sans signalement de problème. La caution a été libérée.",
           is_system: true,
           is_read: false,
         });

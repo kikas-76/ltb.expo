@@ -365,7 +365,7 @@ export default function ListingDetailScreen() {
           await navigator.share({ title, text, url: webUrl });
         } else {
           await navigator.clipboard.writeText(webUrl);
-          showSnackbar("Lien copié — vous pouvez partager l'annonce !", 'share');
+          showSnackbar("Lien copié, vous pouvez partager l'annonce !", 'share');
         }
       } else {
         const deepLink = `myapp://listing/${id}`;
@@ -745,7 +745,7 @@ export default function ListingDetailScreen() {
                 })() : (
                   <View style={styles.totalRow}>
                     <Text style={styles.totalLabel}>Total estimé</Text>
-                    <Text style={styles.totalAmountMuted}>—</Text>
+                    <Text style={styles.totalAmountMuted}>-</Text>
                   </View>
                 )}
                 {hasDeposit ? (
@@ -1000,7 +1000,7 @@ export default function ListingDetailScreen() {
             </>
           )}
 
-          {/* Prix + badges + caution — bloc unifié */}
+          {/* Prix + badges + caution: bloc unifié */}
           <View style={styles.pricingCard}>
             {/* Prix row */}
             <View style={styles.priceRow}>
@@ -1051,7 +1051,7 @@ export default function ListingDetailScreen() {
                 <View style={styles.totalRowLeft}>
                   <Text style={styles.totalLabel}>Total estimé</Text>
                 </View>
-                <Text style={styles.totalAmountMuted}>—</Text>
+                <Text style={styles.totalAmountMuted}>-</Text>
               </View>
             )}
 
@@ -1074,7 +1074,7 @@ export default function ListingDetailScreen() {
             )}
           </View>
 
-          {/* Revenue projection — visible uniquement pour le propriétaire */}
+          {/* Revenue projection: visible uniquement pour le propriétaire */}
           {isOwner && (() => {
             const price = listing.price;
             const COMMISSION = 0.08;
@@ -1132,7 +1132,7 @@ export default function ListingDetailScreen() {
             );
           })()}
 
-          {/* Booking dates — masqué pour le propriétaire */}
+          {/* Booking dates: masqué pour le propriétaire */}
           {!isOwner && (<>
             <View style={styles.divider} />
             <View style={styles.section}>
@@ -1190,7 +1190,7 @@ export default function ListingDetailScreen() {
             <View style={styles.divider} />
           </>)}
 
-          {/* Pro business info — visible pour tous si is_pro */}
+          {/* Pro business info: visible pour tous si is_pro */}
           {listing.owner?.is_pro && !isOwner && (() => {
             const bh = listing.owner?.business_hours;
             return (
@@ -1288,7 +1288,7 @@ export default function ListingDetailScreen() {
             );
           })()}
 
-          {/* Approximate location map — masqué pour le propriétaire */}
+          {/* Approximate location map: masqué pour le propriétaire */}
           {!isOwner && listingLat && listingLng && (
             <>
               <View style={styles.section}>
@@ -1299,7 +1299,7 @@ export default function ListingDetailScreen() {
             </>
           )}
 
-          {/* Owner — masqué pour le propriétaire */}
+          {/* Owner: masqué pour le propriétaire */}
           {!isOwner && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Propriétaire</Text>

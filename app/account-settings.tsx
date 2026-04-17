@@ -363,7 +363,7 @@ export default function AccountSettingsScreen() {
     {
       icon: <Ionicons name="at-outline" size={18} color={Colors.primaryDark} />,
       label: "Nom d'utilisateur",
-      value: profile?.username ? `@${profile.username}` : '—',
+      value: profile?.username ? `@${profile.username}` : '-',
       preview: undefined as string | undefined,
       onPress: () => openSection('username'),
     },
@@ -377,7 +377,7 @@ export default function AccountSettingsScreen() {
     {
       icon: <Ionicons name="mail-outline" size={18} color={Colors.primaryDark} />,
       label: 'Adresse email',
-      value: profile?.email ?? user?.email ?? '—',
+      value: profile?.email ?? user?.email ?? '-',
       preview: undefined as string | undefined,
       onPress: () => openSection('email'),
     },

@@ -90,10 +90,10 @@ type Step = 'DETAILS' | 'CATEGORY' | 'PHOTOS' | 'PRICING';
 const STEPS: Step[] = ['DETAILS', 'CATEGORY', 'PHOTOS', 'PRICING'];
 
 const STEP_LABELS: Record<Step, string> = {
-  DETAILS: 'Étape 1 sur 4 — Votre objet',
-  CATEGORY: 'Étape 2 sur 4 — Catégorie',
-  PHOTOS: 'Étape 3 sur 4 — Photos',
-  PRICING: 'Étape 4 sur 4 — Tarif',
+  DETAILS: 'Étape 1 sur 4 · Votre objet',
+  CATEGORY: 'Étape 2 sur 4 · Catégorie',
+  PHOTOS: 'Étape 3 sur 4 · Photos',
+  PRICING: 'Étape 4 sur 4 · Tarif',
 };
 
 const STEP_TITLES_CREATE: Record<Step, string> = {
@@ -576,7 +576,7 @@ export default function CreateListingScreen() {
             </View>
           )}
 
-          {/* STEP 1 — DETAILS */}
+          {/* STEP 1: DETAILS */}
           {step === 'DETAILS' && (
             <View style={styles.formSection}>
               <View style={styles.fieldWrap}>
@@ -615,7 +615,7 @@ export default function CreateListingScreen() {
             </View>
           )}
 
-          {/* STEP 2 — CATEGORY */}
+          {/* STEP 2: CATEGORY */}
           {step === 'CATEGORY' && (
             <View style={styles.formSection}>
               {categoriesLoading ? (
@@ -687,7 +687,7 @@ export default function CreateListingScreen() {
             </View>
           )}
 
-          {/* STEP 3 — PHOTOS */}
+          {/* STEP 3: PHOTOS */}
           {step === 'PHOTOS' && (
             <View style={styles.formSection}>
               <TouchableOpacity style={[styles.photoDropZone, isDesktop && styles.photoDropZoneDesktop]} onPress={handlePickPhoto} activeOpacity={0.8}>
@@ -745,7 +745,7 @@ export default function CreateListingScreen() {
             </View>
           )}
 
-          {/* STEP 4 — PRICING */}
+          {/* STEP 4: PRICING */}
           {step === 'PRICING' && (
             <View style={styles.formSection}>
               {/* Price inputs card */}
@@ -1837,7 +1837,7 @@ const styles = StyleSheet.create({
     }),
   },
 
-  /* Desktop Category Grid — 3 columns */
+  /* Desktop Category Grid: 3 columns */
   categoryGridDesktop: {
     gap: 12,
   },
@@ -1869,7 +1869,7 @@ const styles = StyleSheet.create({
     height: undefined,
   },
 
-  /* Desktop Pricing — 2 col inputs */
+  /* Desktop Pricing: 2 col inputs */
   pricingTwoColRow: {
     flexDirection: 'row',
     gap: 16,
@@ -1880,7 +1880,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
 
-  /* Desktop Preview — 16:9 photo */
+  /* Desktop Preview: 16:9 photo */
   previewPhotoDesktop: {
     aspectRatio: 16 / 9,
     height: undefined,

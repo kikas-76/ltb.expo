@@ -210,7 +210,7 @@ export default function LandingScreen() {
               <Animated.View style={[styles.subWrap, { opacity: a3, transform: [{ translateY: y3 }] }]}>
                 <Text style={styles.sub}>
                   {PRELAUNCH_MODE
-                    ? "Crée ton compte et publie ton annonce dès maintenant.\nLa marketplace ouvre au public très bientôt — tes annonces seront\nen ligne dès l'ouverture."
+                    ? "Crée ton compte et publie ton annonce dès maintenant.\nLa marketplace ouvre au public très bientôt, tes annonces seront\nen ligne dès l'ouverture."
                     : 'Louez, prêtez et partagez des objets\navec vos voisins en toute confiance.'}
                 </Text>
               </Animated.View>

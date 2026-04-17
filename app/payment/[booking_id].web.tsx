@@ -221,7 +221,7 @@ function StripeEmbedForm({
       var rentalPI = rentalResult.paymentIntent;
       if (!rentalPI || rentalPI.status !== 'succeeded') throw new Error('Paiement location échoué');
 
-      // Deposit is NOT charged at payment time — held automatically 2 days before rental ends
+      // Deposit is NOT charged at payment time. Held automatically 2 days before rental ends
 
       window.parent.postMessage({
         type: 'stripe_success',
@@ -280,7 +280,7 @@ function StripeEmbedForm({
             );
           }
 
-          // Deposit is NOT charged at payment time — hold-deposit cron handles it
+          // Deposit is NOT charged at payment time. Hold-deposit cron handles it
 
           router.replace(`/payment-success?booking_id=${msg.bookingId}` as any);
         } catch (err: any) {
@@ -516,7 +516,7 @@ export default function PaymentScreen() {
                 </View>
 
                 <Text style={styles.depositNote}>
-                  La caution de {booking.deposit_amount} € est bloquée mais non débitée — libérée après le retour
+                  La caution de {booking.deposit_amount} € est bloquée mais non débitée, libérée après le retour
                 </Text>
               </View>
             </View>

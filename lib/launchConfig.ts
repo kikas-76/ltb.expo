@@ -1,7 +1,7 @@
 // Soft-launch "deposit only" mode.
 // When EXPO_PUBLIC_PRELAUNCH_MODE === 'true' the app allows account
 // creation, onboarding, listing creation, wallet/Stripe Connect setup,
-// and editing one's own data — but NOT browsing the marketplace, search,
+// and editing one's own data, but NOT browsing the marketplace, search,
 // bookings, payments, chat, or other users' profiles.
 //
 // To open the marketplace: set EXPO_PUBLIC_PRELAUNCH_MODE=false (or remove

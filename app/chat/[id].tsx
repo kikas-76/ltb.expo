@@ -194,7 +194,7 @@ export default function ChatScreen() {
             .eq('conversation_id', id)
             .maybeSingle(),
         ];
-        // Check OWNER's Stripe status (not renter's — renters don't need Stripe accounts)
+        // Check OWNER's Stripe status (not renter's: renters don't need Stripe accounts)
         if (isRequester) {
           queries.push(
             supabase
@@ -750,11 +750,11 @@ export default function ChatScreen() {
 
       if (newOwnerVal && newRenterVal) {
         await updateBookingStatus(bookingId, 'in_progress', confirmField);
-        await postSystemMessage(id as string, 'Remise confirmée par les deux parties — Location en cours');
+        await postSystemMessage(id as string, 'Remise confirmée par les deux parties. Location en cours');
       } else {
         await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'accepted', confirmField);
         const who = isOwner ? meta.ownerUsername : meta.requesterUsername;
-        await postSystemMessage(id as string, `Remise confirmée par ${who} — En attente de l'autre partie`);
+        await postSystemMessage(id as string, `Remise confirmée par ${who}. En attente de l'autre partie`);
       }
     } finally {
       setConfirmLoading(false);
@@ -780,13 +780,13 @@ export default function ChatScreen() {
         setValidationDeadlineMs(new Date(confirmedAt).getTime() + 24 * 3600 * 1000);
         await postSystemMessage(
           id as string,
-          "Retour confirmé par les deux parties — Le propriétaire a 24h pour signaler un problème, sinon la location est validée automatiquement."
+          "Retour confirmé par les deux parties. Le propriétaire a 24h pour signaler un problème, sinon la location est validée automatiquement."
         );
         if (isOwner) setShowValidationModal(true);
       } else {
         await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'in_progress', returnField);
         const who = isOwner ? meta.ownerUsername : meta.requesterUsername;
-        await postSystemMessage(id as string, `Retour confirmé par ${who} — En attente de l'autre partie`);
+        await postSystemMessage(id as string, `Retour confirmé par ${who}. En attente de l'autre partie`);
       }
     } finally {
       setConfirmLoading(false);
@@ -829,7 +829,7 @@ export default function ChatScreen() {
 
       await postSystemMessage(
         id as string,
-        "Location terminée — L'objet a été validé par le propriétaire. La caution a été libérée."
+        "Location terminée. L'objet a été validé par le propriétaire. La caution a été libérée."
       );
 
       setShowValidationModal(false);
@@ -1095,7 +1095,7 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Handover confirmation card — collapsible, shown when bookingStatus === 'active' */}
+      {/* Handover confirmation card: collapsible, shown when bookingStatus === 'active' */}
       {bookingStatus === 'active' && bookingId && meta && (() => {
         const myConfirmed = meta.isOwner ? handoverConfirmedOwner : handoverConfirmedRenter;
         const otherConfirmed = meta.isOwner ? handoverConfirmedRenter : handoverConfirmedOwner;
@@ -1178,7 +1178,7 @@ export default function ChatScreen() {
         );
       })()}
 
-      {/* Return confirmation card — collapsible, shown when bookingStatus === 'in_progress' */}
+      {/* Return confirmation card: collapsible, shown when bookingStatus === 'in_progress' */}
       {bookingStatus === 'in_progress' && bookingId && meta && (() => {
         const myConfirmed = meta.isOwner ? returnConfirmedOwner : returnConfirmedRenter;
         const otherConfirmed = meta.isOwner ? returnConfirmedRenter : returnConfirmedOwner;
@@ -1261,7 +1261,7 @@ export default function ChatScreen() {
         );
       })()}
 
-      {/* Validation banner — shown for both parties during pending_owner_validation */}
+      {/* Validation banner: shown for both parties during pending_owner_validation */}
       {bookingStatus === 'pending_owner_validation' && !ownerValidated && meta && (
         meta.isOwner ? (
           <TouchableOpacity
@@ -1306,7 +1306,7 @@ export default function ChatScreen() {
           >
             <View style={styles.payBannerGreenLeft}>
               <Text style={styles.payBannerGreenTitle}>
-                Demande acceptée — Finalise ta réservation
+                Demande acceptée · Finalise ta réservation
               </Text>
             </View>
             <TouchableOpacity
@@ -1464,7 +1464,7 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Owner validation modal — shown when bookingStatus === 'pending_owner_validation' and user is owner */}
+      {/* Owner validation modal: shown when bookingStatus === 'pending_owner_validation' and user is owner */}
       <Modal
         visible={showValidationModal && !!meta?.isOwner}
         transparent
@@ -1495,7 +1495,7 @@ export default function ChatScreen() {
               ) : (
                 <>
                   <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-                  <Text style={styles.validationBtnOkText}>Tout est OK — Libérer la caution</Text>
+                  <Text style={styles.validationBtnOkText}>Tout est OK, libérer la caution</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -1507,7 +1507,7 @@ export default function ChatScreen() {
               disabled={confirmLoading}
             >
               <Ionicons name="warning-outline" size={18} color="#C0392B" />
-              <Text style={styles.validationBtnDisputeText}>Signaler un problème — Ouvrir un litige</Text>
+              <Text style={styles.validationBtnDisputeText}>Signaler un problème, ouvrir un litige</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

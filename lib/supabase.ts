@@ -13,10 +13,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 if (!process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-  console.warn('[env] EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY is missing — payment screens will fail.');
+  console.warn('[env] EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY is missing. Payment screens will fail.');
 }
 if (!process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY) {
-  console.warn('[env] EXPO_PUBLIC_GOOGLE_MAPS_KEY is missing — maps and address autocomplete will fail.');
+  console.warn('[env] EXPO_PUBLIC_GOOGLE_MAPS_KEY is missing. Maps and address autocomplete will fail.');
 }
 
 let storage: any = undefined;

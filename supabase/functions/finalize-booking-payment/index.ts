@@ -126,7 +126,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Deposit is no longer verified here — it will be held later by hold-deposit cron
+    // Deposit is no longer verified here. It will be held later by hold-deposit cron
 
     const updateData: Record<string, any> = { status: "active" };
     if (rental_payment_intent_id) updateData.stripe_rental_payment_intent_id = rental_payment_intent_id;
@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // If count is 0, webhook already handled it — still success
+    // If count is 0, webhook already handled it. Still success
     if (count === 0) {
       return new Response(
         JSON.stringify({ success: true, booking_id, status: "active" }),
@@ -214,7 +214,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // For short rentals (end_date within 2 days), trigger deposit hold immediately.
-    // Cron runs daily as the safety net — we don't set deposit_hold_failed here,
+    // Cron runs daily as the safety net. We don't set deposit_hold_failed here,
     // we just surface failures with structured logs so they're visible.
     const twoDaysFromNow = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
     if (booking.deposit_amount > 0 && new Date(booking.end_date) <= twoDaysFromNow) {

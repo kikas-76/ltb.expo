@@ -217,7 +217,7 @@ export default function AdminAudit() {
                 ) : null}
                 <View style={styles.cardFooter}>
                   <Text style={styles.cardId} numberOfLines={1}>
-                    ID : {log.target_id ?? '—'}
+                    ID : {log.target_id ?? '-'}
                   </Text>
                   <Ionicons name="chevron-forward-outline" size={14} color={Colors.textMuted} />
                 </View>
@@ -264,7 +264,7 @@ export default function AdminAudit() {
               <ScrollView showsVerticalScrollIndicator={false}>
                 <DetailRow label="Action" value={ACTION_LABELS[detailLog.action]?.label ?? detailLog.action} />
                 <DetailRow label="Type cible" value={detailLog.target_type} />
-                <DetailRow label="ID cible" value={detailLog.target_id ?? '—'} />
+                <DetailRow label="ID cible" value={detailLog.target_id ?? '-'} />
                 <DetailRow label="Admin" value={`@${(detailLog.admin as any)?.username ?? '?'}`} />
                 <DetailRow label="Date" value={new Date(detailLog.created_at).toLocaleString('fr-FR')} />
                 {detailLog.ip_address ? <DetailRow label="IP" value={detailLog.ip_address} /> : null}

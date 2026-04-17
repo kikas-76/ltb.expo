@@ -276,7 +276,7 @@ export default function MesAnnoncesScreen() {
       convs.map((c: any) =>
         postSystemMessage(
           c.id,
-          "L'annonce a été supprimée ou masquée — Cette demande n'est plus disponible"
+          "L'annonce a été supprimée ou masquée. Cette demande n'est plus disponible"
         )
       )
     );
@@ -429,7 +429,7 @@ export default function MesAnnoncesScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.prelaunchBannerTitle}>Tu es en avant-première</Text>
               <Text style={styles.prelaunchBannerText}>
-                La marketplace ouvre au public très bientôt. Tes annonces seront visibles dès l'ouverture — plus tu en déposes maintenant, plus tu es visible au lancement.
+                La marketplace ouvre au public très bientôt. Tes annonces seront visibles dès l'ouverture. Plus tu en déposes maintenant, plus tu es visible au lancement.
               </Text>
             </View>
           </View>

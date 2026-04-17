@@ -99,7 +99,7 @@ export default function DisputePage() {
       if (conversation_id) {
         await postSystemMessage(
           conversation_id,
-          "Un litige a été ouvert par le propriétaire — La caution reste bloquée jusqu'à résolution"
+          "Un litige a été ouvert par le propriétaire. La caution reste bloquée jusqu'à résolution"
         );
       }
 

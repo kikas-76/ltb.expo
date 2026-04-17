@@ -303,7 +303,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
             <View style={styles.unavailableBanner}>
               <Ionicons name="eye-off-outline" size={13} color="#92400E" />
               <Text style={styles.unavailableBannerText}>
-                Annonce supprimée ou masquée — Plus disponible
+                Annonce supprimée ou masquée · Plus disponible
               </Text>
             </View>
           ) : (
@@ -366,7 +366,7 @@ export default function MessagesScreen() {
   const { refresh: refreshUnread } = useUnread();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  // stripeReady removed — now computed per-item as ownerStripeReady in buildConversationItem
+  // stripeReady removed: now computed per-item as ownerStripeReady in buildConversationItem
   const insets = useSafeAreaInsets();
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -474,7 +474,7 @@ export default function MessagesScreen() {
     };
   }, []);
 
-  // fetchStripeStatus removed — stripe readiness is now per-owner in buildConversationItem
+  // fetchStripeStatus removed: stripe readiness is now per-owner in buildConversationItem
 
   const fetchConversations = useCallback(async () => {
     if (!user) { setLoading(false); return; }

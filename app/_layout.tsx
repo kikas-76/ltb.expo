@@ -140,9 +140,11 @@ function RootNavigator() {
 
     // Prelaunch guard: once authenticated + onboarded, only let users
     // reach the allowed routes (account creation, listing creation,
-    // wallet, settings). Everything else bounces to mes-annonces.
-    if (PRELAUNCH_MODE && profile?.onboarding_completed) {
-      const onAllowedTab = seg === '(tabs)' && segments[1] === 'mes-annonces';
+    // wallet, settings, profil). Everything else bounces to mes-annonces.
+    // Admins bypass entirely so they can moderate during prelaunch.
+    if (PRELAUNCH_MODE && profile?.onboarding_completed && profile?.role !== 'admin') {
+      const allowedTabChildren = new Set(['mes-annonces', 'profil']);
+      const onAllowedTab = seg === '(tabs)' && allowedTabChildren.has(segments[1] as string);
       if (!PRELAUNCH_ALLOWED_SEGMENTS.has(seg) && !onAllowedTab && !isAuthRoute) {
         router.replace('/(tabs)/mes-annonces' as any);
         return;
@@ -150,6 +152,17 @@ function RootNavigator() {
     }
 
     if (profile?.onboarding_completed && isAuthRoute) {
+      if (PRELAUNCH_MODE && profile?.role !== 'admin') {
+        // Deep links to blocked routes are dropped during prelaunch;
+        // otherwise the router would push /listing/... and the guard
+        // above would immediately bounce it back, creating a flash.
+        if (pendingListingId) setPendingListingId(null);
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.removeItem('pending_book_url');
+        }
+        router.replace('/(tabs)/mes-annonces' as any);
+        return;
+      }
       if (pendingListingId) {
         const id = pendingListingId;
         setPendingListingId(null);
@@ -166,9 +179,9 @@ function RootNavigator() {
             return;
           }
         }
-        router.replace(PRELAUNCH_MODE ? '/(tabs)/mes-annonces' : '/(tabs)');
+        router.replace('/(tabs)');
       } else {
-        router.replace(PRELAUNCH_MODE ? '/(tabs)/mes-annonces' : '/(tabs)');
+        router.replace('/(tabs)');
       }
     }
   }, [session, loading, profileLoading, segments, profile]);

@@ -177,7 +177,7 @@ export default function DirectBookPage() {
 
       await postSystemMessage(
         conv.id,
-        `Réservation directe via lien — Du ${formatDate(startDate)} au ${formatDate(endDate)}`
+        `Réservation directe via lien · Du ${formatDate(startDate)} au ${formatDate(endDate)}`
       );
 
       router.replace(`/payment/${bookingData.id}` as any);
@@ -273,7 +273,7 @@ export default function DirectBookPage() {
           <>
             <Ionicons name="flash-outline" size={18} color="#fff" />
             <Text style={styles.ctaBtnText}>
-              Réserver et payer — {totalWithFee.toFixed(2)}€
+              Réserver et payer · {totalWithFee.toFixed(2)}€
             </Text>
           </>
         ) : (

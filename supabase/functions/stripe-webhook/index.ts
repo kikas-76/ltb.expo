@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    console.log(`Webhook reçu : ${eventType} — ${data.id}`);
+    console.log(`Webhook reçu : ${eventType} · ${data.id}`);
 
     const fmt = (d: string) =>
       new Date(d).toLocaleDateString("fr-FR", {
@@ -166,9 +166,9 @@ Deno.serve(async (req: Request) => {
             .maybeSingle();
 
           if (fetchError) {
-            console.error(`Booking ${bookingId} fetch failed after activation — emails skipped:`, fetchError.message);
+            console.error(`Booking ${bookingId} fetch failed after activation, emails skipped:`, fetchError.message);
           } else if (!booking) {
-            console.error(`Booking ${bookingId} not found after activation — emails skipped`);
+            console.error(`Booking ${bookingId} not found after activation, emails skipped`);
           }
 
           if (booking) {
@@ -216,7 +216,7 @@ Deno.serve(async (req: Request) => {
             })
             .eq("id", bookingId);
 
-          console.log(`Booking ${bookingId} — deferred deposit hold confirmed (${data.id})`);
+          console.log(`Booking ${bookingId} · deferred deposit hold confirmed (${data.id})`);
         }
 
         break;
@@ -250,7 +250,7 @@ Deno.serve(async (req: Request) => {
         }
 
         if (!bookings || bookings.length === 0) {
-          console.warn(`charge.refunded received for unknown PI ${paymentIntentId} — no booking matched, ignoring`);
+          console.warn(`charge.refunded received for unknown PI ${paymentIntentId}, no booking matched, ignoring`);
           break;
         }
 
@@ -289,7 +289,7 @@ Deno.serve(async (req: Request) => {
           break;
         }
 
-        console.log(`Connect ${accountId} — charges: ${chargesEnabled}, payouts: ${payoutsEnabled}`);
+        console.log(`Connect ${accountId} · charges: ${chargesEnabled}, payouts: ${payoutsEnabled}`);
 
         const justActivated =
           chargesEnabled &&

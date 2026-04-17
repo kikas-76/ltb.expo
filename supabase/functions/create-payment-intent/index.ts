@@ -215,7 +215,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Deposit is NOT charged at payment time — it will be held 2 days before
+    // Deposit is NOT charged at payment time. It will be held 2 days before
     // the rental ends via the hold-deposit cron function. The renter's card is
     // saved via setup_future_usage: "off_session" on the rental intent.
 

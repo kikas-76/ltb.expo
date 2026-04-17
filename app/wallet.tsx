@@ -69,13 +69,13 @@ function BalanceCard({ earnings, loading }: { earnings: Earnings; loading: boole
         <View>
           <Text style={styles.balanceSubLabel}>Ce mois</Text>
           <Text style={styles.balanceSubAmount}>
-            {loading ? '—' : formatEur(earnings.monthly)}
+            {loading ? '-' : formatEur(earnings.monthly)}
           </Text>
         </View>
         <View style={styles.balanceRight}>
           <Text style={styles.balanceSubLabel}>En attente</Text>
           <Text style={styles.balanceSubAmount}>
-            {loading ? '—' : formatEur(earnings.pending)}
+            {loading ? '-' : formatEur(earnings.pending)}
           </Text>
         </View>
       </View>
@@ -215,7 +215,7 @@ function TransactionItem({ item, last }: { item: Transaction; last: boolean }) {
         </View>
         <View style={styles.txMeta}>
           <Text style={styles.txTitle}>
-            {isIncome ? 'Revenu' : 'Paiement'}{item.listingName ? ` — ${item.listingName}` : ''}
+            {isIncome ? 'Revenu' : 'Paiement'}{item.listingName ? ` · ${item.listingName}` : ''}
           </Text>
           <Text style={styles.txDate}>{item.date}</Text>
           <View style={[styles.txBadge, { backgroundColor: isIncome ? '#DCFCE7' : '#F3F4F6' }]}>

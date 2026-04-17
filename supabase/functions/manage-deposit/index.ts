@@ -175,7 +175,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // FIX: added "disputed" — admins must be able to release deposit even when disputed
+      // FIX: added "disputed". Admins must be able to release deposit even when disputed
       // "pending_owner_validation" is now valid since CHECK constraint was corrected
       const allowedStatuses = [
         "pending_owner_validation",
@@ -200,14 +200,14 @@ Deno.serve(async (req: Request) => {
       }
 
       if (!depositPiId) {
-        // No Stripe PI exists (hold not yet created or hold failed) — graceful release
+        // No Stripe PI exists (hold not yet created or hold failed). Graceful release
         await supabaseAdmin.from("bookings").update({
           deposit_action: "release",
           deposit_released_at: new Date().toISOString(),
         }).eq("id", bookingId);
         return jsonResponse({
           success: true,
-          message: "Aucune caution Stripe active — marquée comme libérée.",
+          message: "Aucune caution Stripe active, marquée comme libérée.",
           deposit_action: "release",
         });
       }
