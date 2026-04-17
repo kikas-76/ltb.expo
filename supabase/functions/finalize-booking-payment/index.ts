@@ -129,7 +129,7 @@ Deno.serve(async (req: Request) => {
     // Deposit is no longer verified here — it will be held later by hold-deposit cron
 
     const updateData: Record<string, any> = { status: "active" };
-    if (rental_payment_intent_id) updateData.stripe_transfer_id = rental_payment_intent_id;
+    if (rental_payment_intent_id) updateData.stripe_rental_payment_intent_id = rental_payment_intent_id;
 
     // Atomic: only update if still pending_payment (webhook may have already set active)
     const { error: updateError, count } = await supabaseAdmin
@@ -213,16 +213,26 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // For short rentals (end_date within 2 days), trigger deposit hold immediately
+    // For short rentals (end_date within 2 days), trigger deposit hold immediately.
+    // Cron runs daily as the safety net — we don't set deposit_hold_failed here,
+    // we just surface failures with structured logs so they're visible.
     const twoDaysFromNow = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
     if (booking.deposit_amount > 0 && new Date(booking.end_date) <= twoDaysFromNow) {
       try {
-        await supabaseAdmin.functions.invoke("hold-deposit", {
+        const { data: holdResult, error: holdErr } = await supabaseAdmin.functions.invoke("hold-deposit", {
           headers: internalSecret ? { "x-internal-secret": internalSecret } : {},
           body: { booking_ids: [booking_id], internal_secret: internalSecret },
         });
+        if (holdErr) {
+          console.error(`Short-rental hold-deposit invoke failed for booking ${booking_id}:`, holdErr);
+        } else {
+          const result = holdResult?.results?.[0];
+          if (result?.status === "failed") {
+            console.error(`Short-rental hold-deposit declined for booking ${booking_id}:`, result.reason);
+          }
+        }
       } catch (holdErr) {
-        console.error("Short-rental hold-deposit trigger failed:", holdErr);
+        console.error(`Short-rental hold-deposit trigger threw for booking ${booking_id}:`, holdErr);
       }
     }
 

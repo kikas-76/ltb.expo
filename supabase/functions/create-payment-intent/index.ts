@@ -86,10 +86,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // Idempotency: if a rental PI already exists for this booking, return it instead of creating a new one
-    if (booking.stripe_transfer_id) {
+    if (booking.stripe_rental_payment_intent_id) {
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (stripeKey) {
-        const existingPI = await stripeGet(`/payment_intents/${booking.stripe_transfer_id}`, stripeKey);
+        const existingPI = await stripeGet(`/payment_intents/${booking.stripe_rental_payment_intent_id}`, stripeKey);
         if (existingPI && !existingPI.error && existingPI.client_secret) {
           return new Response(
             JSON.stringify({

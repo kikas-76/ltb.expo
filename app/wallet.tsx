@@ -407,17 +407,17 @@ export default function WalletScreen() {
 
       const { data: pendingBookings } = await supabase
         .from('bookings')
-        .select('total_price, return_confirmed_at, stripe_transfer_id')
+        .select('total_price, return_confirmed_at, stripe_rental_payment_intent_id')
         .eq('owner_id', user.id)
         .in('status', ['completed', 'active'])
-        .is('stripe_transfer_id', null);
+        .is('stripe_rental_payment_intent_id', null);
 
       const { data: lastTransferBooking } = await supabase
         .from('bookings')
         .select('return_confirmed_at')
         .eq('owner_id', user.id)
         .eq('status', 'completed')
-        .not('stripe_transfer_id', 'is', null)
+        .not('stripe_rental_payment_intent_id', 'is', null)
         .order('return_confirmed_at', { ascending: false })
         .limit(1)
         .maybeSingle();

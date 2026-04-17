@@ -141,7 +141,7 @@ Deno.serve(async (req: Request) => {
           // pas "accepted". Le filtre "accepted" ne matchait jamais.
           const { error } = await supabase
             .from("bookings")
-            .update({ status: "active", stripe_transfer_id: data.id })
+            .update({ status: "active", stripe_rental_payment_intent_id: data.id })
             .eq("id", bookingId)
             .eq("status", "pending_payment");
 
@@ -154,7 +154,7 @@ Deno.serve(async (req: Request) => {
 
           // ── Récupère booking + profils pour les emails ─────────
           // FIX: display_name supprimé → utilise username
-          const { data: booking } = await supabase
+          const { data: booking, error: fetchError } = await supabase
             .from("bookings")
             .select(`
               id, total_price, deposit_amount, start_date, end_date,
@@ -164,6 +164,12 @@ Deno.serve(async (req: Request) => {
             `)
             .eq("id", bookingId)
             .maybeSingle();
+
+          if (fetchError) {
+            console.error(`Booking ${bookingId} fetch failed after activation — emails skipped:`, fetchError.message);
+          } else if (!booking) {
+            console.error(`Booking ${bookingId} not found after activation — emails skipped`);
+          }
 
           if (booking) {
             const commissionPercent = (booking.listing?.owner_commission_percent ?? 8) / 100;
@@ -232,7 +238,7 @@ Deno.serve(async (req: Request) => {
         const { data: bookings } = await supabase
           .from("bookings")
           .select("id, status")
-          .eq("stripe_transfer_id", paymentIntentId)
+          .eq("stripe_rental_payment_intent_id", paymentIntentId)
           .limit(1);
 
         if (bookings && bookings.length > 0) {

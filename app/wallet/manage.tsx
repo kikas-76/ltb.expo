@@ -60,10 +60,13 @@ function getPayoutBadge(status: string): Badge {
 
 function getChargeBadge(status: string): Badge {
   switch (status) {
+    case 'paid':
     case 'succeeded':
       return { label: 'Reçu', bg: Colors.primarySurface, color: '#3B6D11' };
     case 'pending':
       return { label: 'En attente', bg: '#FFF8E1', color: '#92400E' };
+    case 'reversed':
+      return { label: 'Remboursé', bg: '#F0F0F0', color: '#6B6B6B' };
     case 'failed':
       return { label: 'Échoué', bg: '#FDF2F2', color: '#C25450' };
     default:
@@ -153,7 +156,7 @@ export default function WalletManageScreen() {
             0
           );
 
-          const stripeAvailable = data.balance?.available?.[0]?.amount ?? 0;
+          const stripeAvailable = data.balance?.available ?? 0;
           if (stripeAvailable === 0 && totalFromBookings > 0) {
             data.balance = data.balance ?? {};
             data.balance.available_from_bookings = Math.round(totalFromBookings * 100);
@@ -172,10 +175,10 @@ export default function WalletManageScreen() {
   }, []);
 
   const account = accountData?.account;
-  const bankAccount = accountData?.bank_account;
+  const bankAccount = account?.external_accounts?.[0] ?? null;
   const balance = accountData?.balance;
   const payouts = accountData?.payouts ?? [];
-  const charges = accountData?.charges ?? [];
+  const charges = accountData?.payments ?? [];
 
   const isActive = account?.charges_enabled && account?.payouts_enabled;
   const hasRequirements = account?.requirements?.currently_due?.length > 0;
@@ -188,12 +191,12 @@ export default function WalletManageScreen() {
     ? { label: 'Vérifié', bg: Colors.primarySurface, color: '#3B6D11' }
     : { label: 'En attente', bg: '#FFF8E1', color: '#92400E' };
 
-  const stripeAvailable = balance?.available?.[0]?.amount ?? 0;
+  const stripeAvailable = balance?.available ?? 0;
   const availableFromBookings = balance?.available_from_bookings ?? 0;
   const isEstimated = stripeAvailable === 0 && availableFromBookings > 0;
   const availableBalance = isEstimated ? availableFromBookings : stripeAvailable;
-  const pendingBalance = balance?.pending?.[0]?.amount ?? 0;
-  const currency = balance?.available?.[0]?.currency?.toUpperCase() ?? 'EUR';
+  const pendingBalance = balance?.pending ?? 0;
+  const currency = balance?.currency?.toUpperCase() ?? 'EUR';
 
   if (loading) {
     return (

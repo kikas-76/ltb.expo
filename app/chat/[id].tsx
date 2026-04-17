@@ -22,6 +22,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { updateBookingStatus, updateBookingConfirmationFields } from '@/lib/updateBookingStatus';
+import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
@@ -613,6 +614,8 @@ export default function ChatScreen() {
     if (!id || !meta) return;
     setStatusUpdating(true);
 
+    const previousStatus = meta.status;
+
     const { error } = await supabase
       .from('conversations')
       .update({ status: newStatus })
@@ -621,9 +624,8 @@ export default function ChatScreen() {
     if (!error) {
       if (newStatus === 'accepted') {
         const days = getDayCount(meta.startDate, meta.endDate);
-        const disc = days >= 7 ? 0.2 : days >= 3 ? 0.1 : 0;
         const totalPrice = meta.listingPrice != null
-          ? Math.round(meta.listingPrice * days * (1 - disc))
+          ? computeRentalTotal(meta.listingPrice, days)
           : 0;
 
         const { data: existingBooking } = await supabase
@@ -633,23 +635,25 @@ export default function ChatScreen() {
           .maybeSingle();
 
         if (!existingBooking) {
-          const { data: listingData } = await supabase
-            .from('listings')
-            .select('deposit_amount')
-            .eq('id', meta.listingId)
-            .maybeSingle();
-
-          await supabase.from('bookings').insert({
-            listing_id: meta.listingId,
-            renter_id: meta.requesterUserId,
-            owner_id: meta.ownerUserId,
-            status: 'pending_payment',
-            start_date: new Date(meta.startDate + 'T00:00:00').toISOString(),
-            end_date: new Date(meta.endDate + 'T23:59:59').toISOString(),
-            total_price: totalPrice,
-            deposit_amount: listingData?.deposit_amount ?? 0,
-            conversation_id: id,
+          const { error: bookingError } = await createPendingPaymentBooking({
+            listingId: meta.listingId,
+            renterId: meta.requesterUserId,
+            ownerId: meta.ownerUserId,
+            startDate: meta.startDate,
+            endDate: meta.endDate,
+            totalPrice,
+            conversationId: id as string,
           });
+
+          if (bookingError) {
+            await supabase
+              .from('conversations')
+              .update({ status: previousStatus })
+              .eq('id', id);
+            console.error('createPendingPaymentBooking failed:', bookingError);
+            setStatusUpdating(false);
+            return;
+          }
         }
       } else if (newStatus === 'refused') {
         await supabase
@@ -678,7 +682,7 @@ export default function ChatScreen() {
             },
             body: JSON.stringify({ event, conversation_id: id }),
           }
-        ).catch(() => {});
+        ).catch((e) => console.error('chat-notify failed:', e));
       }
     }
     setStatusUpdating(false);
@@ -709,32 +713,19 @@ export default function ChatScreen() {
       }
 
       const days = getDayCount(meta.startDate, meta.endDate);
-      const disc = days >= 7 ? 0.2 : days >= 3 ? 0.1 : 0;
       const totalPrice = meta.listingPrice != null
-        ? Math.round(meta.listingPrice * days * (1 - disc))
+        ? computeRentalTotal(meta.listingPrice, days)
         : 0;
 
-      const { data: listingDepositData } = await supabase
-        .from('listings')
-        .select('deposit_amount')
-        .eq('id', meta.listingId)
-        .maybeSingle();
-
-      const { data: newBooking, error } = await supabase
-        .from('bookings')
-        .insert({
-          listing_id: meta.listingId,
-          renter_id: meta.requesterUserId,
-          owner_id: meta.ownerUserId,
-          status: 'pending_payment',
-          start_date: new Date(meta.startDate + 'T00:00:00').toISOString(),
-          end_date: new Date(meta.endDate + 'T23:59:59').toISOString(),
-          total_price: totalPrice,
-          deposit_amount: listingDepositData?.deposit_amount ?? 0,
-          conversation_id: id,
-        })
-        .select('id, total_price, status')
-        .single();
+      const { data: newBooking, error } = await createPendingPaymentBooking({
+        listingId: meta.listingId,
+        renterId: meta.requesterUserId,
+        ownerId: meta.ownerUserId,
+        startDate: meta.startDate,
+        endDate: meta.endDate,
+        totalPrice,
+        conversationId: id as string,
+      });
 
       if (!error && newBooking) {
         setBookingId(newBooking.id);
@@ -805,13 +796,13 @@ export default function ChatScreen() {
     if (!bookingId || !id || confirmLoading) return;
     setConfirmLoading(true);
     try {
-      await updateBookingStatus(bookingId, 'completed', { owner_validated: true });
-
       const { data: bookingData } = await supabase
         .from('bookings')
         .select('stripe_payment_intent_id')
         .eq('id', bookingId)
         .maybeSingle();
+
+      await updateBookingStatus(bookingId, 'completed', { owner_validated: true });
 
       if (bookingData?.stripe_payment_intent_id) {
         const { data: { session } } = await supabase.auth.getSession();

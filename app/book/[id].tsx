@@ -14,6 +14,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
+import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
@@ -67,7 +68,7 @@ export default function DirectBookPage() {
   const discount = days >= 7 ? 0.2 : days >= 3 ? 0.1 : 0;
   const basePrice = listing ? listing.price * days : 0;
   const discountAmt = Math.round(basePrice * discount);
-  const totalPrice = Math.round(basePrice * (1 - discount));
+  const totalPrice = listing ? computeRentalTotal(listing.price, days) : 0;
   const feePercent = (listing?.renter_fee_percent ?? 7) / 100;
   const serviceFee = Math.round(totalPrice * feePercent * 100) / 100;
   const totalWithFee = (totalPrice + serviceFee);
@@ -157,21 +158,15 @@ export default function DirectBookPage() {
         return;
       }
 
-      const { data: bookingData, error: bookingError } = await supabase
-        .from('bookings')
-        .insert({
-          listing_id: listing.id,
-          renter_id: user.id,
-          owner_id: listing.owner!.id,
-          status: 'pending_payment',
-          start_date: new Date(startDate + 'T00:00:00').toISOString(),
-          end_date: new Date(endDate + 'T23:59:59').toISOString(),
-          total_price: totalPrice,
-          deposit_amount: depositAmount,
-          conversation_id: conv.id,
-        })
-        .select('id')
-        .single();
+      const { data: bookingData, error: bookingError } = await createPendingPaymentBooking({
+        listingId: listing.id,
+        renterId: user.id,
+        ownerId: listing.owner!.id,
+        startDate,
+        endDate,
+        totalPrice,
+        conversationId: conv.id,
+      });
 
       if (bookingError || !bookingData) {
         setError("Une erreur est survenue lors de la création de la réservation.");

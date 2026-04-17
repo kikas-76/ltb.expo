@@ -22,7 +22,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: bookings, error } = await supabase
       .from("bookings")
-      .select("id, conversation_id")
+      .select("id, conversation_id, stripe_payment_intent_id")
       .eq("status", "pending_owner_validation")
       .not("return_confirmed_at", "is", null)
       .lt("return_confirmed_at", deadline);
@@ -34,22 +34,44 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     const results = [];
-    for (const booking of (bookings ?? [])) {
-      const { data: bookingDetail } = await supabase
-        .from("bookings")
-        .select("stripe_payment_intent_id")
-        .eq("id", booking.id)
-        .maybeSingle();
 
+    for (const booking of (bookings ?? [])) {
       const updateData: Record<string, any> = {
         status: "completed",
         owner_validated: true,
       };
 
-      if (bookingDetail?.stripe_payment_intent_id) {
-        updateData.deposit_action = "release";
-        updateData.deposit_released_at = new Date().toISOString();
+      // Try to cancel the deposit hold BEFORE marking it released, so the DB
+      // never claims released when the auth still sits on the renter's card.
+      if (booking.stripe_payment_intent_id && stripeKey) {
+        try {
+          const cancelRes = await fetch(
+            `https://api.stripe.com/v1/payment_intents/${booking.stripe_payment_intent_id}/cancel`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${stripeKey}`,
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+            }
+          );
+          const cancelData = await cancelRes.json();
+          // Accept "already canceled" as success (idempotent)
+          const alreadyTerminal = cancelData?.error?.code === "payment_intent_unexpected_state";
+          if (cancelRes.ok || alreadyTerminal) {
+            updateData.deposit_action = "release";
+            updateData.deposit_released_at = new Date().toISOString();
+          } else {
+            console.error(
+              `auto-validate: Stripe cancel failed for booking ${booking.id}:`,
+              cancelData?.error
+            );
+          }
+        } catch (e) {
+          console.error(`auto-validate: Stripe cancel threw for booking ${booking.id}:`, e);
+        }
       }
 
       const { error: updateError } = await supabase
@@ -57,33 +79,15 @@ Deno.serve(async (req: Request) => {
         .update(updateData)
         .eq("id", booking.id);
 
-      if (!updateError) {
-        if (bookingDetail?.stripe_payment_intent_id) {
-          const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-          if (stripeKey) {
-            await fetch(
-              `https://api.stripe.com/v1/payment_intents/${bookingDetail.stripe_payment_intent_id}/cancel`,
-              {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${stripeKey}`,
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-              }
-            );
-          }
-        }
-
-        if (booking.conversation_id) {
-          await supabase.from("chat_messages").insert({
-            conversation_id: booking.conversation_id,
-            sender_id: null,
-            content: "Location validée automatiquement — Le délai de 24h est écoulé sans signalement de problème. La caution a été libérée.",
-            is_system: true,
-            is_read: false,
-          });
-          results.push({ id: booking.id, status: "auto_completed" });
-        }
+      if (!updateError && booking.conversation_id) {
+        await supabase.from("chat_messages").insert({
+          conversation_id: booking.conversation_id,
+          sender_id: null,
+          content: "Location validée automatiquement — Le délai de 24h est écoulé sans signalement de problème. La caution a été libérée.",
+          is_system: true,
+          is_read: false,
+        });
+        results.push({ id: booking.id, status: "auto_completed" });
       }
     }
 

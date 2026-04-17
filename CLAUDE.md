@@ -112,7 +112,6 @@ All functions are Deno-based and use `SUPABASE_SERVICE_ROLE_KEY` server-side:
 | `admin-action` | Admin moderation (suspend, ban, unban, flag). |
 | `get-account-details` | Returns Stripe account balance, payouts, transfers for wallet screen. |
 | `get-dashboard-link` | Creates Stripe Connect login link for account owner. |
-| `create-checkout-session` | Creates Stripe Checkout sessions (legacy, currently unused in app). |
 
 ### Payment flow (Stripe Connect)
 

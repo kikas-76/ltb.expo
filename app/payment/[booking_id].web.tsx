@@ -431,7 +431,7 @@ export default function PaymentScreen() {
 
   const feePercent = (booking.listing?.renter_fee_percent ?? 7) / 100;
   const serviceFee = Math.round(booking.total_price * feePercent * 100) / 100;
-  const totalNow = Math.round((booking.total_price + serviceFee + booking.deposit_amount) * 100) / 100;
+  const totalNow = Math.round((booking.total_price + serviceFee) * 100) / 100;
   const thumb = booking.listing?.photos_url?.[0] ?? null;
 
   return (
