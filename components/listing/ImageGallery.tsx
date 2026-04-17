@@ -238,7 +238,7 @@ export default function ImageGallery({ photos, height = 340, containerWidth, onP
             onPress={() => openLightbox(i)}
             style={{ width: slideWidth, height }}
           >
-            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 1600, quality: 80 }) ?? photo }} style={{ width: slideWidth, height }} resizeMode="contain" />
+            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 1600, quality: 80 }) ?? photo }} style={{ width: slideWidth, height }} resizeMode="cover" />
           </TouchableOpacity>
         ))}
       </ScrollView>

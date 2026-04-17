@@ -518,7 +518,7 @@ export default function ListingDetailScreen() {
           >
             <ImageGallery
               photos={photos}
-              height={Math.min(Math.max(windowWidth * 0.42, 460), 620)}
+              height={Math.min(windowWidth * 0.25, 340)}
               containerWidth={Math.min(windowWidth, 1280) - 380}
               onPhotoChange={(i) => setActivePhoto(i)}
             />
@@ -2504,11 +2504,12 @@ const desktopStyles = StyleSheet.create({
     }),
   },
   ctaBtnTall: {
-    height: 60,
-    borderRadius: 14,
+    height: 68,
+    borderRadius: 16,
+    paddingHorizontal: 24,
   },
   ctaBtnTextLarge: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: 'Inter-Bold',
     letterSpacing: 0.3,
   },
