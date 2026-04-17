@@ -115,7 +115,11 @@ export default function AdminUserDetail() {
       { data: disputesData },
       { data: reportsData },
     ] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', id).maybeSingle(),
+      supabase
+        .from('profiles')
+        .select('id, username, email, phone_number, role, is_pro, created_at, bio, business_name, siren, stripe_account_id, stripe_charges_enabled, account_status, ban_reason, banned_until, location_data')
+        .eq('id', id)
+        .maybeSingle(),
       supabase
         .from('user_account_events')
         .select('id, event_type, reason, duration_days, expires_at, created_at, performed_by_profile:profiles!user_account_events_performed_by_fkey(username)')

@@ -233,22 +233,33 @@ Deno.serve(async (req: Request) => {
       // ▸ Remboursement
       case "charge.refunded": {
         const paymentIntentId = data.payment_intent;
-        if (!paymentIntentId) break;
+        if (!paymentIntentId) {
+          console.warn("charge.refunded sans payment_intent, ignoré");
+          break;
+        }
 
-        const { data: bookings } = await supabase
+        const { data: bookings, error: lookupError } = await supabase
           .from("bookings")
           .select("id, status")
           .eq("stripe_rental_payment_intent_id", paymentIntentId)
           .limit(1);
 
-        if (bookings && bookings.length > 0) {
-          await supabase
-            .from("bookings")
-            .update({ status: "cancelled" })
-            .eq("id", bookings[0].id);
-
-          console.log(`Booking ${bookings[0].id} → cancelled (remboursement)`);
+        if (lookupError) {
+          console.error(`charge.refunded lookup failed for PI ${paymentIntentId}:`, lookupError.message);
+          break;
         }
+
+        if (!bookings || bookings.length === 0) {
+          console.warn(`charge.refunded received for unknown PI ${paymentIntentId} — no booking matched, ignoring`);
+          break;
+        }
+
+        await supabase
+          .from("bookings")
+          .update({ status: "cancelled" })
+          .eq("id", bookings[0].id);
+
+        console.log(`Booking ${bookings[0].id} → cancelled (remboursement)`);
         break;
       }
 

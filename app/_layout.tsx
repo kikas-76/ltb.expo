@@ -141,8 +141,13 @@ function RootNavigator() {
         const pendingUrl = window.sessionStorage.getItem('pending_book_url');
         if (pendingUrl) {
           window.sessionStorage.removeItem('pending_book_url');
-          router.replace(pendingUrl as any);
-          return;
+          // Only honor in-app paths; reject anything that could be parsed as an
+          // absolute URL (open-redirect guard).
+          const isSafeRelative = pendingUrl.startsWith('/') && !pendingUrl.startsWith('//');
+          if (isSafeRelative) {
+            router.replace(pendingUrl as any);
+            return;
+          }
         }
         router.replace('/(tabs)');
       } else {
