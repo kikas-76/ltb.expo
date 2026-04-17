@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { router, useFocusEffect } from 'expo-router';
+import { SkeletonConversationRow } from '@/components/Skeleton';
 
 
 function getReadIdsFromStorage(): Set<string> {
@@ -638,8 +639,8 @@ export default function MessagesScreen() {
       )}
 
       {loading ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+        <View>
+          {Array.from({ length: 5 }).map((_, i) => <SkeletonConversationRow key={i} />)}
         </View>
       ) : conversations.length === 0 ? (
         <View style={styles.emptyState}>
@@ -748,8 +749,8 @@ export default function MessagesScreen() {
             contentContainerStyle={desktopStyles.listContent}
           >
             {loading ? (
-              <View style={desktopStyles.loadingWrap}>
-                <ActivityIndicator size="large" color={Colors.primary} />
+              <View>
+                {Array.from({ length: 6 }).map((_, i) => <SkeletonConversationRow key={i} />)}
               </View>
             ) : conversations.length === 0 ? (
               <View style={desktopStyles.emptyLeft}>

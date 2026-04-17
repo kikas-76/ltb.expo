@@ -23,6 +23,7 @@ import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { updateBookingStatus, updateBookingConfirmationFields } from '@/lib/updateBookingStatus';
 import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
+import { Skeleton } from '@/components/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
@@ -934,8 +935,23 @@ export default function ChatScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.root, styles.centered]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={styles.root}>
+        <View style={{ padding: 16, gap: 12, borderBottomWidth: 0.5, borderBottomColor: '#E8E5D8' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Skeleton width={48} height={48} radius={12} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <Skeleton height={14} width="60%" />
+              <Skeleton height={12} width="40%" />
+            </View>
+          </View>
+        </View>
+        <View style={{ padding: 16, gap: 14 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <View key={i} style={{ flexDirection: 'row', justifyContent: i % 2 === 0 ? 'flex-start' : 'flex-end' }}>
+              <Skeleton width="65%" height={42} radius={16} />
+            </View>
+          ))}
+        </View>
       </View>
     );
   }

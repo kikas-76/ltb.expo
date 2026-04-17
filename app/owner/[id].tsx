@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import ProBadge from '@/components/ProBadge';
+import { SkeletonProfileHeader, SkeletonGrid } from '@/components/Skeleton';
 
 const DESKTOP_BREAKPOINT = 900;
 
@@ -275,8 +276,9 @@ export default function OwnerProfilePage() {
     return (
       <View style={styles.root}>
         <StatusBar barStyle="dark-content" />
-        <View style={[styles.loadingWrap, { paddingTop: insets.top + 80 }]}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+        <View style={{ paddingTop: insets.top + 24 }}>
+          <SkeletonProfileHeader />
+          <SkeletonGrid count={4} />
         </View>
       </View>
     );

@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SkeletonGrid } from '@/components/Skeleton';
 
 
 interface Listing {
@@ -389,8 +390,8 @@ export default function MesAnnoncesScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.centered, { backgroundColor: Colors.background }]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={{ flex: 1, backgroundColor: Colors.background }}>
+        <SkeletonGrid count={6} />
       </View>
     );
   }

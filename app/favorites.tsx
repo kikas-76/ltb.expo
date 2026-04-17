@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFavoritesContext } from '@/contexts/FavoritesContext';
 import { Colors } from '@/constants/colors';
 import ListingCard from '@/components/explore/ListingCard';
+import { SkeletonGrid } from '@/components/Skeleton';
 
 interface FavoriteListing {
   id: string;
@@ -137,10 +138,7 @@ export default function FavoritesScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Colors.primaryDark} />
-          <Text style={styles.loadingText}>Chargement...</Text>
-        </View>
+        <SkeletonGrid count={6} />
       ) : listings.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIllustration}>
