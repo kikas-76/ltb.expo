@@ -126,13 +126,13 @@ function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: Li
         {photo ? (
           Platform.OS === 'web' ? (
             <img
-              src={getOptimizedImageUrl(photo, { width: 800, quality: 80 }) ?? photo}
+              src={getOptimizedImageUrl(photo, { width: 800, height: 600, resize: 'cover' }) ?? photo}
               loading="lazy"
               decoding="async"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', backgroundColor: '#F5F2E3' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           ) : (
-            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 800, quality: 80 }) ?? photo }} style={styles.image} resizeMode="contain" />
+            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 800, height: 600, resize: 'cover' }) ?? photo }} style={styles.image} resizeMode="cover" />
           )
         ) : (
           <View style={styles.imageFallback} />
@@ -195,7 +195,6 @@ const styles = StyleSheet.create({
     aspectRatio: 4 / 3,
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: '#F5F2E3',
   },
   image: {
     width: '100%',

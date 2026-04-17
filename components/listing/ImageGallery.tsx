@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   galleryContainer: {
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.background,
   },
   fallback: {
     backgroundColor: Colors.primaryLight,
