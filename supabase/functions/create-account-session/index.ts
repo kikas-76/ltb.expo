@@ -95,7 +95,8 @@ function buildCreateParams(
       payouts: {
         schedule: {
           delay_days: 14,
-          interval: "daily",
+          interval: "weekly",
+          weekly_anchor: "monday",
         },
       },
     },
