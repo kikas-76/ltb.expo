@@ -632,7 +632,7 @@ export default function ListingDetailScreen() {
                   >
                     <View style={styles.ownerAvatarWrap}>
                       {ownerPhoto ? (
-                        <Image source={{ uri: getOptimizedImageUrl(ownerPhoto, { width: 96 }) ?? ownerPhoto }} style={styles.ownerAvatar} />
+                        <Image source={{ uri: getOptimizedImageUrl(ownerPhoto, { width: 200, height: 200, resize: 'cover' }) ?? ownerPhoto }} style={styles.ownerAvatar} />
                       ) : (
                         <View style={styles.ownerAvatarFallback}>
                           <Text style={styles.ownerAvatarText}>{ownerInitials}</Text>
@@ -1279,7 +1279,7 @@ export default function ListingDetailScreen() {
               >
                 <View style={styles.ownerAvatarWrap}>
                   {ownerPhoto ? (
-                    <Image source={{ uri: getOptimizedImageUrl(ownerPhoto, { width: 96 }) ?? ownerPhoto }} style={styles.ownerAvatar} />
+                    <Image source={{ uri: getOptimizedImageUrl(ownerPhoto, { width: 200, height: 200, resize: 'cover' }) ?? ownerPhoto }} style={styles.ownerAvatar} />
                   ) : (
                     <View style={styles.ownerAvatarFallback}>
                       <Text style={styles.ownerAvatarText}>{ownerInitials}</Text>

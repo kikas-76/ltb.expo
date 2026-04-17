@@ -126,13 +126,13 @@ function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: Li
         {photo ? (
           Platform.OS === 'web' ? (
             <img
-              src={getOptimizedImageUrl(photo, { width: 600 }) ?? photo}
+              src={getOptimizedImageUrl(photo, { width: 800, height: 600, resize: 'cover' }) ?? photo}
               loading="lazy"
               decoding="async"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           ) : (
-            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 600 }) ?? photo }} style={styles.image} resizeMode="cover" />
+            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 800, height: 600, resize: 'cover' }) ?? photo }} style={styles.image} resizeMode="cover" />
           )
         ) : (
           <View style={styles.imageFallback} />
@@ -163,7 +163,7 @@ function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: Li
 
         <View style={styles.footer}>
           {listing.owner?.photo_url ? (
-            <Image source={{ uri: getOptimizedImageUrl(listing.owner.photo_url, { width: 64 }) ?? listing.owner.photo_url }} style={styles.ownerAvatar} />
+            <Image source={{ uri: getOptimizedImageUrl(listing.owner.photo_url, { width: 96, height: 96, resize: 'cover' }) ?? listing.owner.photo_url }} style={styles.ownerAvatar} />
           ) : (
             <View style={styles.ownerAvatarFallback}>
               <Text style={styles.ownerAvatarText}>{ownerInitials}</Text>

@@ -128,7 +128,7 @@ function LightboxModal({
               style={styles.lightboxPage}
             >
               <Animated.Image
-                source={{ uri: getOptimizedImageUrl(photo, { width: 1400, quality: 85 }) ?? photo }}
+                source={{ uri: getOptimizedImageUrl(photo, { width: 2000, quality: 85 }) ?? photo }}
                 style={[
                   styles.lightboxImage,
                   i === currentIndex && { transform: [{ scale: zoomScale }] },
@@ -238,7 +238,7 @@ export default function ImageGallery({ photos, height = 340, containerWidth, onP
             onPress={() => openLightbox(i)}
             style={{ width: slideWidth, height }}
           >
-            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 1000 }) ?? photo }} style={{ width: slideWidth, height }} resizeMode="contain" />
+            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 1600, quality: 80 }) ?? photo }} style={{ width: slideWidth, height }} resizeMode="contain" />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -298,7 +298,7 @@ export default function ImageGallery({ photos, height = 340, containerWidth, onP
               activeOpacity={0.8}
               style={[styles.thumbBtn, i === activeIndex && styles.thumbBtnActive]}
             >
-              <Image source={{ uri: getOptimizedImageUrl(photo, { width: 120 }) ?? photo }} style={styles.thumbImg} resizeMode="cover" />
+              <Image source={{ uri: getOptimizedImageUrl(photo, { width: 200, height: 200, resize: 'cover' }) ?? photo }} style={styles.thumbImg} resizeMode="cover" />
               {i === activeIndex && <View style={styles.thumbOverlay} />}
             </TouchableOpacity>
           ))}
