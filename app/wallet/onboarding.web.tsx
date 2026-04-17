@@ -11,6 +11,8 @@ import {
 } from '@stripe/react-connect-js';
 import { Colors } from '@/constants/colors';
 import { PreOnboardingForm } from '@/components/wallet/PreOnboardingForm';
+import { PRELAUNCH_MODE } from '@/lib/launchConfig';
+import PreviewUnavailable from '@/components/PreviewUnavailable';
 
 type Step = 'checking' | 'pre-onboarding' | 'stripe' | 'error';
 
@@ -34,6 +36,18 @@ function profileIsComplete(p: ProfileData | null): boolean {
 }
 
 export default function WalletOnboardingScreen() {
+  if (PRELAUNCH_MODE) {
+    return (
+      <PreviewUnavailable
+        title="Portefeuille pas encore disponible"
+        description="La configuration Stripe s'ouvrira avec la marketplace. Tu pourras la faire au lancement, avant tes premières locations."
+      />
+    );
+  }
+  return <WalletOnboardingContent />;
+}
+
+function WalletOnboardingContent() {
   const insets = useSafeAreaInsets();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const [step, setStep] = useState<Step>('checking');

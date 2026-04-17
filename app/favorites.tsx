@@ -20,6 +20,8 @@ import { useFavoritesContext } from '@/contexts/FavoritesContext';
 import { Colors } from '@/constants/colors';
 import ListingCard from '@/components/explore/ListingCard';
 import { SkeletonGrid } from '@/components/Skeleton';
+import { PRELAUNCH_MODE } from '@/lib/launchConfig';
+import PreviewUnavailable from '@/components/PreviewUnavailable';
 
 interface FavoriteListing {
   id: string;
@@ -38,6 +40,18 @@ interface FavoriteListing {
 }
 
 export default function FavoritesScreen() {
+  if (PRELAUNCH_MODE) {
+    return (
+      <PreviewUnavailable
+        title="Favoris pas encore disponibles"
+        description="La page Favoris s'ouvrira avec la marketplace. En attendant, continue à déposer tes annonces."
+      />
+    );
+  }
+  return <FavoritesScreenContent />;
+}
+
+function FavoritesScreenContent() {
   const { user, profile } = useAuth();
   const { refreshKey } = useFavoritesContext();
   const insets = useSafeAreaInsets();

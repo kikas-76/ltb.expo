@@ -18,6 +18,8 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { supabase } from '@/lib/supabase';
 import { computeOwnerEarnings } from '@/lib/pricing';
 import { PAYOUT_INTERVAL_DAYS, PAYOUT_INTERVAL_LABEL } from '@/lib/payoutSchedule';
+import { PRELAUNCH_MODE } from '@/lib/launchConfig';
+import PreviewUnavailable from '@/components/PreviewUnavailable';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 
@@ -306,6 +308,18 @@ function InfoCard() {
 }
 
 export default function WalletScreen() {
+  if (PRELAUNCH_MODE) {
+    return (
+      <PreviewUnavailable
+        title="Portefeuille pas encore disponible"
+        description="La configuration du portefeuille et des virements Stripe s'ouvrira avec la marketplace. Tu pourras la faire au lancement, avant tes premières locations."
+      />
+    );
+  }
+  return <WalletScreenContent />;
+}
+
+function WalletScreenContent() {
   const insets = useSafeAreaInsets();
   const { isDesktop } = useResponsive();
 

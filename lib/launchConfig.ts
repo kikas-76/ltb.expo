@@ -25,7 +25,8 @@ export const PRELAUNCH_ALLOWED_SEGMENTS = new Set<string | undefined>([
   'legal',
   'onboarding',
   'create-listing',
-  'wallet',
+  'wallet',         // routed, but the page itself renders <PreviewUnavailable />
+  'favorites',      // same: reachable so we can show the "not yet available" screen
   'account-settings',
   'help-center',
   'help',

@@ -16,6 +16,8 @@ import { supabase } from '@/lib/supabase';
 import { computeOwnerEarnings } from '@/lib/pricing';
 import { PAYOUT_INTERVAL_LABEL } from '@/lib/payoutSchedule';
 import { Colors } from '@/constants/colors';
+import { PRELAUNCH_MODE } from '@/lib/launchConfig';
+import PreviewUnavailable from '@/components/PreviewUnavailable';
 
 function formatEur(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',') + ' €';
@@ -115,6 +117,18 @@ const sectionCardStyles = StyleSheet.create({
 });
 
 export default function WalletManageScreen() {
+  if (PRELAUNCH_MODE) {
+    return (
+      <PreviewUnavailable
+        title="Portefeuille pas encore disponible"
+        description="La gestion du portefeuille Stripe s'ouvrira avec la marketplace."
+      />
+    );
+  }
+  return <WalletManageContent />;
+}
+
+function WalletManageContent() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
