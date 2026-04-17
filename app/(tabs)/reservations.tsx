@@ -160,7 +160,7 @@ function PaymentDeadlineBanner({
           <Ionicons name="alert-circle-outline" size={13} color="#92400E" />
         </View>
         <Text style={styles.payBannerTextOrange} numberOfLines={2}>
-          Le propri\u00e9taire n'a pas encore activ\u00e9 son compte de paiement
+          Le propriétaire n'a pas encore activé son compte de paiement
         </Text>
       </View>
     );

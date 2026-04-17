@@ -1312,7 +1312,7 @@ export default function ChatScreen() {
           <View style={styles.payBannerOrange}>
             <View style={styles.payBannerOrangeLeft}>
               <Text style={styles.payBannerOrangeTitle}>
-                Le propri\u00e9taire n'a pas encore activ\u00e9 son compte de paiement
+                Le propriétaire n'a pas encore activé son compte de paiement
               </Text>
             </View>
           </View>
