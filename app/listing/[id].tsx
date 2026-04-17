@@ -165,6 +165,7 @@ export default function ListingDetailScreen() {
   const [bookedRanges, setBookedRanges] = useState<{ start: Date; end: Date }[]>([]);
   const [cityName, setCityName] = useState<string | null>(null);
   const [shareLinkVisible, setShareLinkVisible] = useState(false);
+  const [firstPhotoAspect, setFirstPhotoAspect] = useState<number>(4 / 3);
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -468,6 +469,24 @@ export default function ListingDetailScreen() {
 
   const isOwner = !!(userId && listing.owner?.id && userId === listing.owner.id);
   const photos = listing.photos_url ?? [];
+
+  // Measure the first photo so the gallery height adapts to its aspect ratio
+  // (avoids huge empty bands around portrait phone uploads).
+  useEffect(() => {
+    if (!photos[0]) return;
+    Image.getSize(
+      photos[0],
+      (w, h) => {
+        if (w > 0 && h > 0) {
+          // Clamp between 0.55 (very portrait) and 1.9 (very wide) so the
+          // container never gets pathological dimensions.
+          setFirstPhotoAspect(Math.max(0.55, Math.min(1.9, w / h)));
+        }
+      },
+      () => {},
+    );
+  }, [photos[0]]);
+
   const catValue = listing.category?.value ?? '';
   const catColors = CATEGORY_COLORS[catValue] ?? CATEGORY_COLORS['autre'];
   const ownerPhoto = listing.owner?.avatar_url ?? listing.owner?.photo_url;
@@ -516,12 +535,23 @@ export default function ListingDetailScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 64 }}
           >
-            <ImageGallery
-              photos={photos}
-              height={Math.min(windowWidth * 0.25, 340)}
-              containerWidth={Math.min(windowWidth, 1280) - 380}
-              onPhotoChange={(i) => setActivePhoto(i)}
-            />
+            {(() => {
+              const galleryWidth = Math.min(windowWidth, 1280) - 380;
+              // Adapt the height to the first photo's aspect, clamped so the
+              // section stays close to its previous compact size.
+              const adaptiveHeight = Math.max(
+                300,
+                Math.min(540, galleryWidth / firstPhotoAspect),
+              );
+              return (
+                <ImageGallery
+                  photos={photos}
+                  height={adaptiveHeight}
+                  containerWidth={galleryWidth}
+                  onPhotoChange={(i) => setActivePhoto(i)}
+                />
+              );
+            })()}
             <View style={{ paddingHorizontal: 40, paddingTop: 32 }}>
               <View style={styles.metaRow}>
                 {listing.category_name && (
@@ -2504,9 +2534,15 @@ const desktopStyles = StyleSheet.create({
     }),
   },
   ctaBtnTall: {
-    height: 68,
+    height: 72,
+    minHeight: 72,
     borderRadius: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
+    paddingVertical: 20,
+    marginTop: 12,
+    ...Platform.select({
+      web: { boxShadow: '0 6px 22px rgba(183,191,156,0.55)' } as any,
+    }),
   },
   ctaBtnTextLarge: {
     fontSize: 18,
