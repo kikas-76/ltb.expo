@@ -203,6 +203,24 @@ export default function ListingDetailScreen() {
     };
   }, [id]);
 
+  // Measure the first photo so the gallery height adapts to its aspect ratio
+  // (avoids huge empty bands around portrait phone uploads). Must run on
+  // every render (no early-return between hooks), so it sits next to its
+  // siblings; guards on the listing existing.
+  useEffect(() => {
+    const firstPhoto = listing?.photos_url?.[0];
+    if (!firstPhoto) return;
+    Image.getSize(
+      firstPhoto,
+      (w, h) => {
+        if (w > 0 && h > 0) {
+          setFirstPhotoAspect(Math.max(0.55, Math.min(1.9, w / h)));
+        }
+      },
+      () => {},
+    );
+  }, [listing?.photos_url?.[0]]);
+
   useEffect(() => {
     if (initialFavoriteRef.current === null) {
       initialFavoriteRef.current = isFavorite;
@@ -469,23 +487,6 @@ export default function ListingDetailScreen() {
 
   const isOwner = !!(userId && listing.owner?.id && userId === listing.owner.id);
   const photos = listing.photos_url ?? [];
-
-  // Measure the first photo so the gallery height adapts to its aspect ratio
-  // (avoids huge empty bands around portrait phone uploads).
-  useEffect(() => {
-    if (!photos[0]) return;
-    Image.getSize(
-      photos[0],
-      (w, h) => {
-        if (w > 0 && h > 0) {
-          // Clamp between 0.55 (very portrait) and 1.9 (very wide) so the
-          // container never gets pathological dimensions.
-          setFirstPhotoAspect(Math.max(0.55, Math.min(1.9, w / h)));
-        }
-      },
-      () => {},
-    );
-  }, [photos[0]]);
 
   const catValue = listing.category?.value ?? '';
   const catColors = CATEGORY_COLORS[catValue] ?? CATEGORY_COLORS['autre'];
