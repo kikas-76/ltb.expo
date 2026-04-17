@@ -16,6 +16,7 @@ type Step = 'checking' | 'pre-onboarding' | 'stripe' | 'error';
 
 interface ProfileData {
   username: string | null;
+  display_name: string | null;
   phone_number: string | null;
   location_data: Record<string, string> | null;
   is_pro: boolean;
@@ -24,10 +25,12 @@ interface ProfileData {
 
 function profileIsComplete(p: ProfileData | null): boolean {
   if (!p) return false;
-  const hasName = Boolean(p.username?.trim());
+  // The Stripe pre-fill needs the legal name (display_name). The pseudo
+  // (username) is not enough on its own.
+  const hasLegalName = Boolean(p.display_name?.trim());
   const hasPhone = Boolean(p.phone_number?.trim());
   const hasCity = Boolean((p.location_data as any)?.city?.trim());
-  return hasName && hasPhone && hasCity;
+  return hasLegalName && hasPhone && hasCity;
 }
 
 export default function WalletOnboardingScreen() {
@@ -58,7 +61,7 @@ export default function WalletOnboardingScreen() {
 
       const { data: p } = await supabase
         .from('profiles')
-        .select('username, phone_number, location_data, is_pro, business_name')
+        .select('username, display_name, phone_number, location_data, is_pro, business_name')
         .eq('id', session.user.id)
         .maybeSingle();
 
@@ -261,6 +264,7 @@ export default function WalletOnboardingScreen() {
                 userId={userId}
                 initialData={{
                   username: profile?.username ?? undefined,
+                  display_name: profile?.display_name ?? undefined,
                   phone_number: profile?.phone_number ?? undefined,
                   city: (profile?.location_data as any)?.city ?? undefined,
                   is_pro: profile?.is_pro ?? false,

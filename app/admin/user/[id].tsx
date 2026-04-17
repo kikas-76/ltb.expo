@@ -23,6 +23,7 @@ const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 interface UserProfile {
   id: string;
   username: string | null;
+  display_name: string | null;
   email: string | null;
   phone_number: string | null;
   bio: string | null;
@@ -117,7 +118,7 @@ export default function AdminUserDetail() {
     ] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, username, email, phone_number, role, is_pro, created_at, bio, business_name, siren, stripe_account_id, stripe_charges_enabled, account_status, ban_reason, banned_until, location_data')
+        .select('id, username, display_name, email, phone_number, role, is_pro, created_at, bio, business_name, siren, stripe_account_id, stripe_charges_enabled, account_status, ban_reason, banned_until, location_data')
         .eq('id', id)
         .maybeSingle(),
       supabase
@@ -295,6 +296,9 @@ export default function AdminUserDetail() {
               </Text>
             </View>
             <View style={styles.identityInfo}>
+              {profile.display_name ? (
+                <Text style={styles.legalName}>{profile.display_name}</Text>
+              ) : null}
               <View style={styles.identityNameRow}>
                 <Text style={styles.username}>@{profile.username ?? 'sans nom'}</Text>
                 {profile.role === 'admin' && (
@@ -686,10 +690,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
-  username: {
+  legalName: {
     fontFamily: 'Inter-Bold',
-    fontSize: 16,
+    fontSize: 17,
     color: Colors.text,
+    marginBottom: 2,
+  },
+  username: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: Colors.textMuted,
   },
   email: {
     fontFamily: 'Inter-Regular',

@@ -14,6 +14,7 @@ import { Colors } from '@/constants/colors';
 
 interface PreOnboardingData {
   username: string;
+  display_name: string;
   phone_number: string;
   city: string;
   is_pro: boolean;
@@ -27,7 +28,7 @@ interface Props {
 }
 
 export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
-  const [username, setUsername] = useState(initialData.username ?? '');
+  const [displayName, setDisplayName] = useState(initialData.display_name ?? '');
   const [phone, setPhone] = useState(initialData.phone_number ?? '');
   const [city, setCity] = useState(initialData.city ?? '');
   const [isPro, setIsPro] = useState(initialData.is_pro ?? false);
@@ -36,8 +37,8 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!username.trim()) {
-      setError('Indique ton prénom et nom.');
+    if (!displayName.trim()) {
+      setError('Indique ton prénom et nom légal.');
       return;
     }
     if (!phone.trim()) {
@@ -56,27 +57,15 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
     setSaving(true);
     setError(null);
 
-    const existingLocationData = initialData.city
-      ? null
-      : undefined;
-
     const locationDataPatch = city.trim()
       ? { city: city.trim() }
       : undefined;
 
-    const trimmedUsername = username.trim();
-    const usernameUnchanged = trimmedUsername === (initialData.username ?? '').trim();
-
     const patch: Record<string, unknown> = {
+      display_name: displayName.trim(),
       phone_number: phone.trim(),
       is_pro: isPro,
     };
-
-    // Only push the username when it actually changed — avoids the unique
-    // constraint check firing when the user just re-confirms their own name.
-    if (!usernameUnchanged) {
-      patch.username = trimmedUsername;
-    }
 
     if (isPro) {
       patch.business_name = businessName.trim();
@@ -103,13 +92,7 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
     setSaving(false);
 
     if (updateError) {
-      const code = (updateError as any)?.code ?? '';
-      const msg = String((updateError as any)?.message ?? '').toLowerCase();
-      if (code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
-        setError('Ce nom est déjà utilisé. Ajoute une initiale ou un détail pour le différencier.');
-      } else {
-        setError('Impossible de sauvegarder. Réessaie.');
-      }
+      setError('Impossible de sauvegarder. Réessaie.');
       return;
     }
 
@@ -128,17 +111,27 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
         Ces informations permettent à Stripe de préremplir ton dossier. Tu gagneras du temps dans les étapes suivantes.
       </Text>
 
+      {initialData.username ? (
+        <View style={styles.usernameChip}>
+          <Text style={styles.usernameChipLabel}>Pseudo public</Text>
+          <Text style={styles.usernameChipValue}>@{initialData.username}</Text>
+        </View>
+      ) : null}
+
       <View style={styles.fields}>
         <View style={styles.field}>
-          <Text style={styles.label}>Prénom et nom</Text>
+          <Text style={styles.label}>Prénom et nom légal</Text>
           <TextInput
             style={styles.input}
-            value={username}
-            onChangeText={setUsername}
+            value={displayName}
+            onChangeText={setDisplayName}
             placeholder="Ex : Marie Dupont"
             placeholderTextColor="#B0ADA0"
             autoCorrect={false}
           />
+          <Text style={styles.helperText}>
+            Utilisé uniquement pour la vérification Stripe. Ton pseudo @{initialData.username ?? '...'} reste affiché publiquement.
+          </Text>
         </View>
 
         <View style={styles.field}>
@@ -249,6 +242,35 @@ const styles = StyleSheet.create({
     color: '#6B6B6B',
     lineHeight: 19,
     marginBottom: 20,
+  },
+  usernameChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.primarySurface,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#D9D5C8',
+  },
+  usernameChipLabel: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#6B6B60',
+  },
+  usernameChipValue: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.primaryDark,
+  },
+  helperText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: '#8A8A80',
+    marginTop: 4,
+    lineHeight: 15,
   },
   fields: {
     gap: 14,
