@@ -22,16 +22,29 @@ import { InfinityHero } from '@/components/landing/InfinityHero';
   overlay View that is pointer-events:none, sized to match the screen.
 */
 
+// Each icon uses a tint that matches its category strip on the home page,
+// so the landing visually previews the marketplace's diversity. Sizes vary
+// (16–28) to create a richer constellation rather than a uniform grid.
 const FLOATING_ICONS = [
-  { icon: 'bicycle-outline',         topPct: 0.08,  leftPct: 0.04,  delay: 0,   size: 22, rotate: '-8deg'  },
-  { icon: 'camera-outline',          topPct: 0.06,  leftPct: 0.72,  delay: 200, size: 20, rotate: '6deg'   },
-  { icon: 'musical-note-outline',    topPct: 0.22,  leftPct: 0.86,  delay: 450, size: 18, rotate: '10deg'  },
-  { icon: 'hammer-outline',          topPct: 0.52,  leftPct: 0.84,  delay: 150, size: 20, rotate: '-5deg'  },
-  { icon: 'game-controller-outline', topPct: 0.66,  leftPct: 0.03,  delay: 380, size: 22, rotate: '4deg'   },
-  { icon: 'shirt-outline',           topPct: 0.44,  leftPct: 0.88,  delay: 620, size: 18, rotate: '8deg'   },
-  { icon: 'football-outline',        topPct: 0.78,  leftPct: 0.72,  delay: 280, size: 18, rotate: '-6deg'  },
-  { icon: 'tv-outline',              topPct: 0.18,  leftPct: 0.03,  delay: 520, size: 18, rotate: '5deg'   },
-  { icon: 'car-outline',             topPct: 0.36,  leftPct: 0.02,  delay: 100, size: 20, rotate: '-4deg'  },
+  // top band
+  { icon: 'bicycle-outline',         topPct: 0.07,  leftPct: 0.04, delay: 0,    size: 24, rotate: '-8deg', color: '#3A8C6A' },
+  { icon: 'tv-outline',              topPct: 0.16,  leftPct: 0.02, delay: 520,  size: 18, rotate: '5deg',  color: '#4A7EC7' },
+  { icon: 'sparkles-outline',        topPct: 0.04,  leftPct: 0.45, delay: 350,  size: 16, rotate: '-3deg', color: '#C050A0' },
+  { icon: 'camera-outline',          topPct: 0.05,  leftPct: 0.72, delay: 200,  size: 22, rotate: '6deg',  color: '#4A7EC7' },
+  { icon: 'musical-notes-outline',   topPct: 0.20,  leftPct: 0.88, delay: 450,  size: 20, rotate: '10deg', color: '#C04070' },
+  // mid band (kept away from the central title/cta column)
+  { icon: 'car-outline',             topPct: 0.34,  leftPct: 0.02, delay: 100,  size: 22, rotate: '-4deg', color: '#3A8C6A' },
+  { icon: 'shirt-outline',           topPct: 0.42,  leftPct: 0.90, delay: 620,  size: 18, rotate: '8deg',  color: '#B85050' },
+  { icon: 'happy-outline',           topPct: 0.50,  leftPct: 0.04, delay: 280,  size: 20, rotate: '5deg',  color: '#8050B8' },
+  { icon: 'restaurant-outline',      topPct: 0.52,  leftPct: 0.86, delay: 150,  size: 20, rotate: '-5deg', color: '#C08030' },
+  // lower band
+  { icon: 'compass-outline',         topPct: 0.62,  leftPct: 0.06, delay: 700,  size: 22, rotate: '-7deg', color: '#5A9040' },
+  { icon: 'game-controller-outline', topPct: 0.66,  leftPct: 0.03, delay: 380,  size: 22, rotate: '4deg',  color: '#4A5EC7' },
+  { icon: 'construct-outline',       topPct: 0.70,  leftPct: 0.86, delay: 240,  size: 22, rotate: '7deg',  color: '#4A8C4A' },
+  { icon: 'football-outline',        topPct: 0.78,  leftPct: 0.72, delay: 280,  size: 18, rotate: '-6deg', color: '#C07840' },
+  { icon: 'home-outline',            topPct: 0.82,  leftPct: 0.06, delay: 540,  size: 18, rotate: '4deg',  color: '#A07830' },
+  { icon: 'briefcase-outline',       topPct: 0.88,  leftPct: 0.88, delay: 460,  size: 16, rotate: '-3deg', color: '#8A6A50' },
+  { icon: 'flame-outline',           topPct: 0.92,  leftPct: 0.42, delay: 800,  size: 16, rotate: '6deg',  color: '#C07840' },
 ] as const;
 
 function FloatingIcons({ width, height }: { width: number; height: number }) {
@@ -48,7 +61,7 @@ function FloatingIcons({ width, height }: { width: number; height: number }) {
 }
 
 function SingleFloatingIcon({
-  icon, topPct, leftPct, delay, size, rotate, containerWidth, containerHeight,
+  icon, topPct, leftPct, delay, size, rotate, color, containerWidth, containerHeight,
 }: typeof FLOATING_ICONS[number] & { containerWidth: number; containerHeight: number }) {
   const appear = useRef(new Animated.Value(0)).current;
   const floatY  = useRef(new Animated.Value(0)).current;
@@ -89,7 +102,7 @@ function SingleFloatingIcon({
         },
       ]}
     >
-      <Ionicons name={icon as any} size={size} color={Colors.primaryDark} />
+      <Ionicons name={icon as any} size={size} color={color} />
     </Animated.View>
   );
 }
@@ -205,6 +218,21 @@ export default function LandingScreen() {
                 <Text style={styles.loginText}>Déjà un compte ?</Text>
                 <Text style={styles.loginLink}> Se connecter</Text>
               </TouchableOpacity>
+
+              <View style={styles.trustRow}>
+                <View style={styles.trustBadge}>
+                  <Ionicons name="shield-checkmark-outline" size={13} color={Colors.primaryDark} />
+                  <Text style={styles.trustBadgeText}>Paiement Stripe</Text>
+                </View>
+                <View style={styles.trustBadge}>
+                  <Ionicons name="lock-closed-outline" size={13} color={Colors.primaryDark} />
+                  <Text style={styles.trustBadgeText}>Caution garantie</Text>
+                </View>
+                <View style={styles.trustBadge}>
+                  <Ionicons name="leaf-outline" size={13} color={Colors.primaryDark} />
+                  <Text style={styles.trustBadgeText}>Écoresponsable</Text>
+                </View>
+              </View>
 
               <TouchableOpacity onPress={() => router.push('/legal')} activeOpacity={0.7}>
                 <Text style={styles.legal}>Mentions légales · CGU · Confidentialité</Text>
@@ -368,5 +396,32 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     marginTop: 2,
+  },
+
+  trustRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+    marginBottom: 4,
+    paddingHorizontal: 4,
+  },
+  trustBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  trustBadgeText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 11,
+    color: Colors.primaryDark,
+    letterSpacing: 0.1,
   },
 });
