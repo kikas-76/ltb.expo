@@ -64,11 +64,19 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
       ? { city: city.trim() }
       : undefined;
 
+    const trimmedUsername = username.trim();
+    const usernameUnchanged = trimmedUsername === (initialData.username ?? '').trim();
+
     const patch: Record<string, unknown> = {
-      username: username.trim(),
       phone_number: phone.trim(),
       is_pro: isPro,
     };
+
+    // Only push the username when it actually changed — avoids the unique
+    // constraint check firing when the user just re-confirms their own name.
+    if (!usernameUnchanged) {
+      patch.username = trimmedUsername;
+    }
 
     if (isPro) {
       patch.business_name = businessName.trim();
@@ -95,7 +103,13 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
     setSaving(false);
 
     if (updateError) {
-      setError('Impossible de sauvegarder. Réessaie.');
+      const code = (updateError as any)?.code ?? '';
+      const msg = String((updateError as any)?.message ?? '').toLowerCase();
+      if (code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
+        setError('Ce nom est déjà utilisé. Ajoute une initiale ou un détail pour le différencier.');
+      } else {
+        setError('Impossible de sauvegarder. Réessaie.');
+      }
       return;
     }
 
