@@ -117,7 +117,6 @@ export default function PaymentScreen() {
       );
 
       const data = await response.json();
-      console.log('create-payment-intent response:', data);
 
       if (data.error) throw new Error(data.error);
       if (!data.rental_client_secret) {

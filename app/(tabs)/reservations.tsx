@@ -382,7 +382,7 @@ export default function MessagesScreen() {
     setDeleteLoading(false);
     setDeleteModalId(null);
   };
-  const buildConversationItem = useCallback((conv: any, userId: string): ConversationItem => {
+  const buildConversationItem = useCallback((conv: any, userId: string, ownerStripeReadyMap: Map<string, boolean>): ConversationItem => {
     const listing = Array.isArray(conv.listing) ? conv.listing[0] : conv.listing;
     const requester = Array.isArray(conv.requester) ? conv.requester[0] : conv.requester;
     const owner = Array.isArray(conv.owner) ? conv.owner[0] : conv.owner;
@@ -440,18 +440,10 @@ export default function MessagesScreen() {
       extractCityFromAddress(listing?.location_data?.address) ||
       null;
 
-    // Check OWNER's Stripe readiness (not renter's — renters don't need Stripe accounts)
-    let ownerStripeReady = true;
-    if (isRequester && displayStatus === 'accepted') {
-      const { data: ownerProfile } = await supabase
-        .from('profiles')
-        .select('stripe_onboarding_complete, stripe_charges_enabled')
-        .eq('id', conv.owner_id)
-        .maybeSingle();
-      ownerStripeReady =
-        ownerProfile?.stripe_onboarding_complete === true &&
-        ownerProfile?.stripe_charges_enabled === true;
-    }
+    // Owner Stripe readiness pulled from the batch-fetched map (filled in fetchConversations)
+    const ownerStripeReady = isRequester && displayStatus === 'accepted'
+      ? (ownerStripeReadyMap.get(conv.owner_id) ?? false)
+      : true;
 
     return {
       id: conv.id,
@@ -507,8 +499,28 @@ export default function MessagesScreen() {
 
     if (error || !data) { setLoading(false); return; }
 
+    const ownerIdsToCheck = Array.from(new Set(
+      data
+        .filter((conv: any) => conv.requester_id === user.id && conv.status === 'accepted')
+        .map((conv: any) => conv.owner_id)
+    ));
+
+    const ownerStripeReadyMap = new Map<string, boolean>();
+    if (ownerIdsToCheck.length > 0) {
+      const { data: ownerProfiles } = await supabase
+        .from('profiles')
+        .select('id, stripe_onboarding_complete, stripe_charges_enabled')
+        .in('id', ownerIdsToCheck);
+      for (const p of ownerProfiles ?? []) {
+        ownerStripeReadyMap.set(
+          p.id,
+          p.stripe_onboarding_complete === true && p.stripe_charges_enabled === true,
+        );
+      }
+    }
+
     const items: ConversationItem[] = data
-      .map((conv: any) => buildConversationItem(conv, user.id))
+      .map((conv: any) => buildConversationItem(conv, user.id, ownerStripeReadyMap))
       .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp);
 
     setConversations(items);
