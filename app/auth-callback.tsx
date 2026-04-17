@@ -3,16 +3,19 @@ import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
+import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 
 async function redirectByProfile(userId: string) {
   const { data } = await supabase
     .from('profiles')
-    .select('onboarding_completed')
+    .select('onboarding_completed, role')
     .eq('id', userId)
     .maybeSingle();
 
   if (!data?.onboarding_completed) {
     router.replace('/onboarding/profile' as any);
+  } else if (PRELAUNCH_MODE && data.role !== 'admin') {
+    router.replace('/(tabs)/mes-annonces' as any);
   } else {
     router.replace('/(tabs)');
   }

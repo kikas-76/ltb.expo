@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ export default function EmailConfirmedScreen() {
   const iconScale = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(0)).current;
 
-  const [sessionSet, setSessionSet] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -31,13 +32,31 @@ export default function EmailConfirmedScreen() {
           const refreshToken = params.get('refresh_token');
           if (accessToken && refreshToken) {
             await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-            setSessionSet(true);
+            // Strip tokens from URL so a refresh doesn't replay them.
+            window.history.replaceState(null, '', window.location.pathname);
+            setSessionReady(true);
+            return;
           }
         }
+      }
+      // No tokens in the URL: maybe the user was already logged in (e.g.
+      // landed here from another tab). Only enable the button if a real
+      // session is present; otherwise the global guard would just bounce
+      // them back to the landing page.
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        setSessionReady(true);
       }
     };
     restoreSession();
   }, []);
+
+  const handleContinue = () => {
+    // Brand-new accounts always need to complete the onboarding flow,
+    // and the global guard sends already-onboarded users to the right
+    // tab (mes-annonces in prelaunch, the marketplace otherwise).
+    router.replace('/onboarding/profile' as any);
+  };
 
   useEffect(() => {
     Animated.sequence([
@@ -72,12 +91,22 @@ export default function EmailConfirmedScreen() {
 
         <Animated.View style={[styles.actionsBlock, { opacity: fadeAnim }]}>
           <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={() => router.replace('/(tabs)')}
+            style={[styles.loginBtn, !sessionReady && styles.loginBtnDisabled]}
+            onPress={handleContinue}
+            disabled={!sessionReady}
             activeOpacity={0.85}
           >
-            <Ionicons name="arrow-forward-outline" size={18} color="#fff" />
-            <Text style={styles.loginBtnText}>Continuer</Text>
+            {sessionReady ? (
+              <>
+                <Ionicons name="arrow-forward-outline" size={18} color="#fff" />
+                <Text style={styles.loginBtnText}>Continuer</Text>
+              </>
+            ) : (
+              <>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.loginBtnText}>Connexion en cours…</Text>
+              </>
+            )}
           </TouchableOpacity>
         </Animated.View>
 
@@ -183,6 +212,9 @@ const styles = StyleSheet.create({
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 16px rgba(22,163,74,0.3)' },
     }),
+  },
+  loginBtnDisabled: {
+    opacity: 0.7,
   },
   loginBtnText: {
     fontFamily: 'Inter-SemiBold',

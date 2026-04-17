@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDeepLink } from '@/contexts/DeepLinkContext';
 import { Colors } from '@/constants/colors';
 import GoogleButton from '@/components/GoogleButton';
+import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 
 
 export default function LoginScreen() {
@@ -90,10 +91,15 @@ export default function LoginScreen() {
       return;
     }
 
-    if (pendingListingId) {
+    const inPrelaunch = PRELAUNCH_MODE && profile?.role !== 'admin';
+
+    if (pendingListingId && !inPrelaunch) {
       const id = pendingListingId;
       setPendingListingId(null);
       router.replace(`/listing/${id}` as any);
+    } else if (inPrelaunch) {
+      if (pendingListingId) setPendingListingId(null);
+      router.replace('/(tabs)/mes-annonces' as any);
     } else {
       router.replace('/(tabs)');
     }
