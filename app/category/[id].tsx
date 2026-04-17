@@ -25,6 +25,7 @@ import FilterPanel, {
   CITIES,
   SortKey,
 } from '@/components/explore/FilterPanel';
+import { useResponsive } from '@/hooks/useResponsive';
 
 interface Listing {
   id: string;
@@ -67,6 +68,9 @@ const SORT_LABEL: Record<SortKey, string> = {
 export default function CategoryScreen() {
   const router = useRouter();
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
+  const { isDesktop, isTablet } = useResponsive();
+  const numColumns = isDesktop ? 4 : isTablet ? 3 : 2;
+  const isWide = Platform.OS === 'web' && (isDesktop || isTablet);
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,18 +242,21 @@ export default function CategoryScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <Animated.View
-        style={[styles.topBar, { opacity: headerFade, transform: [{ translateY: headerSlide }] }]}
+        style={[styles.topBar, isWide && styles.topBarWide, { opacity: headerFade, transform: [{ translateY: headerSlide }] }]}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{name}</Text>
-        <View style={styles.backBtn} />
+        <View style={isWide ? styles.topBarInner : styles.topBarInnerMobile}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+            <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.title} numberOfLines={1}>{name}</Text>
+          <View style={styles.backBtn} />
+        </View>
       </Animated.View>
 
       <Animated.View
-        style={[styles.filterBar, { opacity: headerFade, transform: [{ translateY: headerSlide }] }]}
+        style={[styles.filterBar, isWide && styles.filterBarWide, { opacity: headerFade, transform: [{ translateY: headerSlide }] }]}
       >
+        <View style={isWide ? styles.filterBarInner : undefined}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={15} color={Colors.textMuted} />
           <TextInput
@@ -361,21 +368,47 @@ export default function CategoryScreen() {
             </TouchableOpacity>
           )}
         </ScrollView>
+        </View>
       </Animated.View>
 
       <Animated.View
         style={[styles.flex, { opacity: contentFade, transform: [{ translateY: contentSlide }] }]}
       >
         {loading ? (
-          <View style={styles.skeletonGrid}>
-            {[1, 2, 3, 4].map((i) => (
-              <View key={i} style={styles.gridItem}>
-                <SkeletonCard variant="grid" />
+          isWide ? (
+            <ScrollView contentContainerStyle={styles.webScrollContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.webGridWrapper}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numColumns}, 1fr)`, gap: 16 } as any}>
+                  {Array.from({ length: numColumns * 3 }).map((_, i) => (
+                    <div key={i}><SkeletonCard variant="grid" /></div>
+                  ))}
+                </div>
               </View>
-            ))}
-          </View>
+            </ScrollView>
+          ) : (
+            <View style={styles.skeletonGrid}>
+              {[1, 2, 3, 4].map((i) => (
+                <View key={i} style={styles.gridItem}>
+                  <SkeletonCard variant="grid" />
+                </View>
+              ))}
+            </View>
+          )
         ) : filtered.length === 0 ? (
           <CategoryEmptyState categoryName={name ?? ''} />
+        ) : isWide ? (
+          <ScrollView contentContainerStyle={styles.webScrollContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.webGridWrapper}>
+              {renderListHeader()}
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numColumns}, 1fr)`, gap: 16 } as any}>
+                {filtered.map((item) => (
+                  <div key={item.id}>
+                    <ListingCard listing={item} variant="grid" />
+                  </div>
+                ))}
+              </div>
+            </View>
+          </ScrollView>
         ) : (
           <FlatList
             data={filtered}
@@ -410,13 +443,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 10,
     backgroundColor: Colors.background,
+  },
+  topBarWide: {
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  topBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 1200,
+  },
+  topBarInnerMobile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   backBtn: {
     width: 38,
@@ -445,6 +491,13 @@ const styles = StyleSheet.create({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4 },
       android: { elevation: 2 },
     }),
+  },
+  filterBarWide: {
+    alignItems: 'center',
+  },
+  filterBarInner: {
+    width: '100%',
+    maxWidth: 1200,
   },
   searchBox: {
     flexDirection: 'row',
@@ -597,5 +650,15 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     width: '47.5%',
+  },
+  webScrollContent: {
+    alignItems: 'center',
+    paddingBottom: 48,
+  },
+  webGridWrapper: {
+    width: '100%',
+    maxWidth: 1200,
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
 });
