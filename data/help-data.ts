@@ -135,7 +135,7 @@ const helpData: HelpCategory[] = [
         id: 'p5',
         question: "Quand est-ce que je reçois mon argent ?",
         answer:
-          "Les virements sont effectués automatiquement tous les 7 jours sur ton compte bancaire. Le paiement est déclenché après confirmation du retour de l'objet par les deux parties. Le délai de virement est généralement de 1 à 3 jours ouvrés après le déclenchement selon ta banque. Tu peux suivre l'état de tes gains dans 'Mon Portefeuille' et gérer tes paramètres de virement depuis ton tableau de bord Stripe.",
+          "Les virements sont effectués automatiquement tous les 14 jours sur ton compte bancaire. Le paiement est déclenché après confirmation du retour de l'objet par les deux parties. Le délai de virement est généralement de 1 à 3 jours ouvrés après le déclenchement selon ta banque. Tu peux suivre l'état de tes gains dans 'Mon Portefeuille' et gérer tes paramètres de virement depuis ton tableau de bord Stripe.",
       },
       {
         id: 'p6',

@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { computeOwnerEarnings } from '@/lib/pricing';
+import { PAYOUT_INTERVAL_LABEL } from '@/lib/payoutSchedule';
 import { Colors } from '@/constants/colors';
 
 function formatEur(cents: number): string {
@@ -381,7 +382,7 @@ export default function WalletManageScreen() {
       <View style={styles.transferNote}>
         <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
         <Text style={styles.transferNoteText}>
-          Les virements sont effectués automatiquement tous les 7 jours
+          Les virements sont effectués automatiquement tous les {PAYOUT_INTERVAL_LABEL}
         </Text>
       </View>
     </SectionCard>

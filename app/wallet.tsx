@@ -17,6 +17,7 @@ import { Colors } from '@/constants/colors';
 import { useResponsive } from '@/hooks/useResponsive';
 import { supabase } from '@/lib/supabase';
 import { computeOwnerEarnings } from '@/lib/pricing';
+import { PAYOUT_INTERVAL_DAYS, PAYOUT_INTERVAL_LABEL } from '@/lib/payoutSchedule';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 
@@ -121,7 +122,7 @@ function PaymentStatusCard({
             <Text style={styles.outlineBtnText}>Mon compte paiement →</Text>
           )}
         </TouchableOpacity>
-        <Text style={styles.transferNote}>Virements automatiques tous les 7 jours</Text>
+        <Text style={styles.transferNote}>Virements automatiques tous les {PAYOUT_INTERVAL_LABEL}</Text>
       </View>
     );
   }
@@ -196,7 +197,7 @@ function NextTransferCard({
                 ? `Dernier : ${formatDate(nextTransfer.lastTransferAt)}`
                 : "Aujourd'hui"}
             </Text>
-            <Text style={styles.progressLabel}>Dans 7 jours</Text>
+            <Text style={styles.progressLabel}>Dans {PAYOUT_INTERVAL_LABEL}</Text>
           </View>
         </View>
       )}
@@ -430,12 +431,12 @@ export default function WalletScreen() {
 
       const lastTransferAt = lastTransferBooking?.return_confirmed_at ?? null;
 
-      let daysUntil = 7;
+      let daysUntil = PAYOUT_INTERVAL_DAYS;
       if (lastTransferAt) {
         const daysSinceLast = Math.floor(
           (Date.now() - new Date(lastTransferAt).getTime()) / (1000 * 60 * 60 * 24)
         );
-        daysUntil = Math.max(0, 7 - daysSinceLast);
+        daysUntil = Math.max(0, PAYOUT_INTERVAL_DAYS - daysSinceLast);
       }
 
       setNextTransfer({ amount: pendingAmount, daysUntil, lastTransferAt });

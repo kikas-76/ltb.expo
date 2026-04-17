@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
+import { PAYOUT_INTERVAL_LABEL } from '@/lib/payoutSchedule';
 
 
 export default function WalletSuccessScreen() {
@@ -53,7 +54,7 @@ export default function WalletSuccessScreen() {
 
   const benefits = [
     'Paiements sécurisés par Stripe',
-    'Virements automatiques tous les 7 jours',
+    `Virements automatiques tous les ${PAYOUT_INTERVAL_LABEL}`,
     'Tu reçois 92% du montant de chaque location',
   ];
 
