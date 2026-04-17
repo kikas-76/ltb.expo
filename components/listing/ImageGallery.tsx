@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
+import { getOptimizedImageUrl } from '@/lib/imageUrl';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -127,7 +128,7 @@ function LightboxModal({
               style={styles.lightboxPage}
             >
               <Animated.Image
-                source={{ uri: photo }}
+                source={{ uri: getOptimizedImageUrl(photo, { width: 1400, quality: 85 }) ?? photo }}
                 style={[
                   styles.lightboxImage,
                   i === currentIndex && { transform: [{ scale: zoomScale }] },
@@ -237,7 +238,7 @@ export default function ImageGallery({ photos, height = 340, containerWidth, onP
             onPress={() => openLightbox(i)}
             style={{ width: slideWidth, height }}
           >
-            <Image source={{ uri: photo }} style={{ width: slideWidth, height }} resizeMode="contain" />
+            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 1000 }) ?? photo }} style={{ width: slideWidth, height }} resizeMode="contain" />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -297,7 +298,7 @@ export default function ImageGallery({ photos, height = 340, containerWidth, onP
               activeOpacity={0.8}
               style={[styles.thumbBtn, i === activeIndex && styles.thumbBtnActive]}
             >
-              <Image source={{ uri: photo }} style={styles.thumbImg} resizeMode="cover" />
+              <Image source={{ uri: getOptimizedImageUrl(photo, { width: 120 }) ?? photo }} style={styles.thumbImg} resizeMode="cover" />
               {i === activeIndex && <View style={styles.thumbOverlay} />}
             </TouchableOpacity>
           ))}

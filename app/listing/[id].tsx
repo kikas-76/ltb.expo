@@ -31,6 +31,8 @@ import RequestMessageModal from '@/components/listing/RequestMessageModal';
 import ProBadge from '@/components/ProBadge';
 import ApproximateLocationMap from '@/components/listing/ApproximateLocationMap';
 import ShareLinkModal from '@/components/listing/ShareLinkModal';
+import { Skeleton } from '@/components/Skeleton';
+import { getOptimizedImageUrl } from '@/lib/imageUrl';
 
 const RECENTLY_VIEWED_KEY = 'ltb_recently_viewed';
 const MAX_RECENTLY_VIEWED = 5;
@@ -437,8 +439,18 @@ export default function ListingDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={{ flex: 1, backgroundColor: Colors.background }}>
+        <Skeleton height={HEADER_IMAGE_HEIGHT} radius={0} />
+        <View style={{ padding: 16, gap: 14 }}>
+          <Skeleton height={28} width="75%" />
+          <Skeleton height={18} width="40%" />
+          <Skeleton height={48} width="100%" radius={12} />
+          <Skeleton height={14} width="100%" />
+          <Skeleton height={14} width="92%" />
+          <Skeleton height={14} width="60%" />
+          <View style={{ height: 12 }} />
+          <Skeleton height={56} width="100%" radius={999} />
+        </View>
       </View>
     );
   }
@@ -620,7 +632,7 @@ export default function ListingDetailScreen() {
                   >
                     <View style={styles.ownerAvatarWrap}>
                       {ownerPhoto ? (
-                        <Image source={{ uri: ownerPhoto }} style={styles.ownerAvatar} />
+                        <Image source={{ uri: getOptimizedImageUrl(ownerPhoto, { width: 96 }) ?? ownerPhoto }} style={styles.ownerAvatar} />
                       ) : (
                         <View style={styles.ownerAvatarFallback}>
                           <Text style={styles.ownerAvatarText}>{ownerInitials}</Text>
@@ -1267,7 +1279,7 @@ export default function ListingDetailScreen() {
               >
                 <View style={styles.ownerAvatarWrap}>
                   {ownerPhoto ? (
-                    <Image source={{ uri: ownerPhoto }} style={styles.ownerAvatar} />
+                    <Image source={{ uri: getOptimizedImageUrl(ownerPhoto, { width: 96 }) ?? ownerPhoto }} style={styles.ownerAvatar} />
                   ) : (
                     <View style={styles.ownerAvatarFallback}>
                       <Text style={styles.ownerAvatarText}>{ownerInitials}</Text>
