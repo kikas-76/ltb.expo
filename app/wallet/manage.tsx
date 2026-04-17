@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { computeOwnerEarnings } from '@/lib/pricing';
 import { Colors } from '@/constants/colors';
 
 function formatEur(cents: number): string {
@@ -152,7 +153,7 @@ export default function WalletManageScreen() {
             .eq('status', 'completed');
 
           const totalFromBookings = (completedBookings ?? []).reduce(
-            (sum: number, b: any) => sum + Number(b.total_price) * 0.92,
+            (sum: number, b: any) => sum + computeOwnerEarnings(b.total_price),
             0
           );
 

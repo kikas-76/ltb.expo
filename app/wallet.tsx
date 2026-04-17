@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { useResponsive } from '@/hooks/useResponsive';
 import { supabase } from '@/lib/supabase';
+import { computeOwnerEarnings } from '@/lib/pricing';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 
@@ -386,7 +387,7 @@ export default function WalletScreen() {
         ]);
 
       const calcNet = (bookings: any[]) =>
-        (bookings || []).reduce((sum: number, b: any) => sum + Number(b.total_price) * 0.92, 0);
+        (bookings || []).reduce((sum: number, b: any) => sum + computeOwnerEarnings(b.total_price), 0);
 
       setEarnings({
         monthly: calcNet(monthlyBookings ?? []),
@@ -423,7 +424,7 @@ export default function WalletScreen() {
         .maybeSingle();
 
       const pendingAmount = (pendingBookings ?? []).reduce(
-        (sum: number, b: any) => sum + Number(b.total_price) * 0.92,
+        (sum: number, b: any) => sum + computeOwnerEarnings(b.total_price),
         0
       );
 

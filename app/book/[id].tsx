@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
+import { getDiscount } from '@/lib/pricing';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
@@ -65,7 +66,7 @@ export default function DirectBookPage() {
   const startDate = start ?? '';
   const endDate = end ?? '';
   const days = startDate && endDate ? getDayCount(startDate, endDate) : 0;
-  const discount = days >= 7 ? 0.2 : days >= 3 ? 0.1 : 0;
+  const discount = getDiscount(days);
   const basePrice = listing ? listing.price * days : 0;
   const discountAmt = Math.round(basePrice * discount);
   const totalPrice = listing ? computeRentalTotal(listing.price, days) : 0;

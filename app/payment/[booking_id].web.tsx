@@ -14,6 +14,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { translatePaymentError } from '@/lib/paymentErrors';
 import { Colors } from '@/constants/colors';
 
 
@@ -283,7 +284,7 @@ function StripeEmbedForm({
 
           router.replace(`/payment-success?booking_id=${msg.bookingId}` as any);
         } catch (err: any) {
-          setError(err.message);
+          setError(translatePaymentError(err));
           setLoading(false);
         }
       }
@@ -399,7 +400,7 @@ export default function PaymentScreen() {
         setRentalClientSecret(data.rental_client_secret);
         setRentalPaymentIntentId(data.rental_payment_intent_id ?? null);
       } catch (err: any) {
-        setIntentError(err.message);
+        setIntentError(translatePaymentError(err));
       } finally {
         setLoadingIntent(false);
       }

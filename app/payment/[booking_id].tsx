@@ -14,6 +14,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { translatePaymentError } from '@/lib/paymentErrors';
 import { Colors } from '@/constants/colors';
 
 
@@ -160,7 +161,7 @@ export default function PaymentScreen() {
       } as any);
 
     } catch (err: any) {
-      Alert.alert('Erreur paiement', err.message);
+      Alert.alert('Erreur paiement', translatePaymentError(err));
     } finally {
       setLoading(false);
     }

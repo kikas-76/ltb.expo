@@ -7,33 +7,18 @@ import {
   Animated,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 
 
 export default function PaymentSuccessScreen() {
-  const { booking_id, session_id } = useLocalSearchParams<{ booking_id: string; session_id: string }>();
   const insets = useSafeAreaInsets();
 
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-
-  useEffect(() => {
-    if (booking_id && session_id) {
-      // Only store the checkout session ID — the actual status transition
-      // to "active" is handled securely by the stripe-webhook on payment_intent.succeeded
-      supabase
-        .from('bookings')
-        .update({ stripe_checkout_session_id: session_id })
-        .eq('id', booking_id)
-        .eq('status', 'pending_payment')
-        .then(() => {});
-    }
-  }, [booking_id, session_id]);
 
   useEffect(() => {
     Animated.sequence([
