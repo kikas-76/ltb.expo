@@ -5,11 +5,34 @@
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="robots" content="noindex, nofollow">
-    <link rel="canonical" href="https://www.louetonbien.fr">
+    <link rel="canonical" href="https://app.louetonbien.fr/">
     <link rel="icon" type="image/png" href="/assets/images/LTB_favicon.png" />
     <link rel="preconnect" href="https://mpqwdschdxbavxjvorvj.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://mpqwdschdxbavxjvorvj.supabase.co" />
     <link rel="preconnect" href="https://js.stripe.com" crossorigin />
+
+    <!-- B2: Open Graph + Twitter Card defaults so shared links (WhatsApp,
+         Twitter, iMessage) preview the app brand instead of an empty box.
+         These are static fallbacks; per-listing previews would require
+         an edge middleware that injects listing-specific tags on demand. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LoueTonBien" />
+    <meta property="og:title" content="LoueTonBien — Loue, prête, partage" />
+    <meta property="og:description" content="La marketplace française pour louer entre voisins. Outils, mobilité, sport, événementiel — tout ce dont tu as besoin, autour de toi." />
+    <meta property="og:url" content="https://app.louetonbien.fr/" />
+    <meta property="og:image" content="https://app.louetonbien.fr/logoLTBwhitoutbaground.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="fr_FR" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="LoueTonBien — Loue, prête, partage" />
+    <meta name="twitter:description" content="La marketplace française pour louer entre voisins en toute confiance." />
+    <meta name="twitter:image" content="https://app.louetonbien.fr/logoLTBwhitoutbaground.png" />
+
+    <meta name="description" content="LoueTonBien — Loue et prête des objets entre voisins en toute confiance. Paiement sécurisé, caution garantie." />
+    <meta name="theme-color" content="#7A9060" />
+
     <title>%WEB_TITLE%</title>
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
