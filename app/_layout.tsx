@@ -76,8 +76,13 @@ function RootNavigator() {
       if (url) handleUrl(url);
     });
 
-    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
-    return () => sub.remove();
+    // Native only: listening on web makes every internal router.push fire a 'url'
+    // event, and our handler re-pushes the same route → infinite loop / Chrome
+    // throttling. Web routing is handled by expo-router itself.
+    if (Platform.OS !== 'web') {
+      const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+      return () => sub.remove();
+    }
   }, [session]);
 
   useEffect(() => {
