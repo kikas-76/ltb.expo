@@ -13,6 +13,7 @@ const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://louetonbien.fr";
 type ProfileRow = {
   stripe_account_id?: string | null;
   username?: string | null;
+  display_name?: string | null;
   phone_number?: string | null;
   business_type?: string | null;
   business_name?: string | null;
@@ -33,8 +34,11 @@ function normalizePhone(rawPhone?: string | null): string | undefined {
   return undefined;
 }
 
-function splitName(username?: string | null): { firstName?: string; lastName?: string } {
-  const trimmed = (username ?? "").trim();
+// Stripe wants the legal first/last name. Prefer display_name (the legal
+// full name collected on the wallet pre-onboarding form) and fall back to
+// username only for very old accounts that never set it.
+function splitLegalName(profile: ProfileRow | null): { firstName?: string; lastName?: string } {
+  const trimmed = ((profile as any)?.display_name ?? profile?.username ?? "").trim();
   if (!trimmed) return {};
   const nameParts = trimmed.split(/\s+/);
   const firstName = nameParts[0] ?? undefined;
@@ -72,7 +76,7 @@ function buildCreateParams(
   profile: ProfileRow | null,
 ): Stripe.AccountCreateParams {
   const phone = normalizePhone(profile?.phone_number);
-  const { firstName, lastName } = splitName(profile?.username);
+  const { firstName, lastName } = splitLegalName(profile);
   const locationData = profile?.location_data ?? null;
   const isProValue = isProfessional(profile);
 
@@ -145,7 +149,7 @@ function buildUpdateParams(
   detailsSubmitted: boolean,
 ): Stripe.AccountUpdateParams {
   const phone = normalizePhone(profile?.phone_number);
-  const { firstName, lastName } = splitName(profile?.username);
+  const { firstName, lastName } = splitLegalName(profile);
   const locationData = profile?.location_data ?? null;
   const isProValue = isProfessional(profile);
 
@@ -231,7 +235,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_account_id, username, phone_number, business_type, business_name, siren_number, location_data, is_pro, bio, business_address")
+      .select("stripe_account_id, username, display_name, phone_number, business_type, business_name, siren_number, location_data, is_pro, bio, business_address")
       .eq("id", user.id)
       .maybeSingle();
 

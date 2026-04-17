@@ -20,8 +20,11 @@ function normalizePhone(raw: string | null | undefined): string | undefined {
   return undefined;
 }
 
-function splitName(username: string | null | undefined) {
-  const parts = (username ?? "").trim().split(/\s+/);
+// Prefer display_name (legal name from the wallet pre-onboarding form).
+// Fall back to username only for older accounts that never set it.
+function splitLegalName(profile: { display_name?: string | null; username?: string | null } | null) {
+  const trimmed = ((profile?.display_name ?? profile?.username) ?? "").trim();
+  const parts = trimmed.split(/\s+/);
   const firstName = parts[0] || undefined;
   const lastName = parts.length > 1 ? parts.slice(1).join(" ") : firstName;
   return { firstName, lastName };
@@ -61,7 +64,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_account_id, username, phone_number, is_pro, business_name, siren_number, location_data, business_address")
+      .select("stripe_account_id, username, display_name, phone_number, is_pro, business_name, siren_number, location_data, business_address")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -69,7 +72,7 @@ Deno.serve(async (req: Request) => {
 
     if (!accountId) {
       const phone = normalizePhone(profile?.phone_number);
-      const { firstName, lastName } = splitName(profile?.username);
+      const { firstName, lastName } = splitLegalName(profile);
       const locationData = profile?.location_data;
       const isPro = Boolean(profile?.is_pro && profile?.business_name);
 
