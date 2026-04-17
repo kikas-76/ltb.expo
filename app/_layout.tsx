@@ -18,6 +18,7 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { PRELAUNCH_MODE, PRELAUNCH_ALLOWED_SEGMENTS } from '@/lib/launchConfig';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { UnreadProvider } from '@/contexts/UnreadContext';
@@ -137,6 +138,17 @@ function RootNavigator() {
       return;
     }
 
+    // Prelaunch guard: once authenticated + onboarded, only let users
+    // reach the allowed routes (account creation, listing creation,
+    // wallet, settings). Everything else bounces to mes-annonces.
+    if (PRELAUNCH_MODE && profile?.onboarding_completed) {
+      const onAllowedTab = seg === '(tabs)' && segments[1] === 'mes-annonces';
+      if (!PRELAUNCH_ALLOWED_SEGMENTS.has(seg) && !onAllowedTab && !isAuthRoute) {
+        router.replace('/(tabs)/mes-annonces' as any);
+        return;
+      }
+    }
+
     if (profile?.onboarding_completed && isAuthRoute) {
       if (pendingListingId) {
         const id = pendingListingId;
@@ -154,9 +166,9 @@ function RootNavigator() {
             return;
           }
         }
-        router.replace('/(tabs)');
+        router.replace(PRELAUNCH_MODE ? '/(tabs)/mes-annonces' : '/(tabs)');
       } else {
-        router.replace('/(tabs)');
+        router.replace(PRELAUNCH_MODE ? '/(tabs)/mes-annonces' : '/(tabs)');
       }
     }
   }, [session, loading, profileLoading, segments, profile]);

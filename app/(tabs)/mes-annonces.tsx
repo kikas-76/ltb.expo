@@ -21,6 +21,7 @@ import { postSystemMessage } from '@/lib/postSystemMessage';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SkeletonGrid } from '@/components/Skeleton';
+import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 
 
 interface Listing {
@@ -420,6 +421,20 @@ export default function MesAnnoncesScreen() {
           </TouchableOpacity>
         </View>
 
+        {PRELAUNCH_MODE && (
+          <View style={[styles.prelaunchBanner, isDesktop && desktopStyles.prelaunchBannerDesktop]}>
+            <View style={styles.prelaunchBannerIcon}>
+              <Ionicons name="sparkles-outline" size={16} color={Colors.primaryDark} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.prelaunchBannerTitle}>Tu es en avant-première</Text>
+              <Text style={styles.prelaunchBannerText}>
+                La marketplace ouvre au public très bientôt. Tes annonces seront visibles dès l'ouverture — plus tu en déposes maintenant, plus tu es visible au lancement.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {listings.length > 0 && (
           <View style={styles.statsRow}>
             <StatBadge label="Total" value={String(listings.length)} />
@@ -578,6 +593,38 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 20,
+  },
+  prelaunchBanner: {
+    flexDirection: 'row',
+    gap: 12,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 14,
+    backgroundColor: Colors.primarySurface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D4DAC4',
+  },
+  prelaunchBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  prelaunchBannerTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: Colors.primaryDark,
+    marginBottom: 3,
+  },
+  prelaunchBannerText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.text,
+    lineHeight: 17,
   },
   pageTitle: {
     fontSize: 28,
@@ -1066,6 +1113,9 @@ const desktopStyles = StyleSheet.create({
   pageHeaderDesktop: {
     paddingHorizontal: 0,
     marginBottom: 4,
+  },
+  prelaunchBannerDesktop: {
+    marginHorizontal: 0,
   },
   grid: {
     flexDirection: 'row',

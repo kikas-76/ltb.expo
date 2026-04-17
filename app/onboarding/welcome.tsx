@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
+import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -231,6 +232,8 @@ export default function OnboardingWelcomeScreen() {
                 const id = pendingListingId;
                 setPendingListingId(null);
                 router.replace(`/listing/${id}` as any);
+              } else if (PRELAUNCH_MODE) {
+                router.replace('/(tabs)/mes-annonces' as any);
               } else {
                 router.replace('/(tabs)');
               }

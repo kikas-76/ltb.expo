@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { InfinityHero } from '@/components/landing/InfinityHero';
+import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 
 /*
   Floating icons are rendered INSIDE the flex column so they don't
@@ -187,15 +188,30 @@ export default function LandingScreen() {
               </Animated.View>
 
               <Animated.View style={[styles.titleWrap, { opacity: a2, transform: [{ translateY: y2 }] }]}>
-                <Text style={[styles.title, !isNarrow && styles.titleWide]}>
-                  Tout ce dont vous avez besoin,{' '}
-                  <Text style={styles.titleAccent}>autour de vous.</Text>
-                </Text>
+                {PRELAUNCH_MODE ? (
+                  <>
+                    <View style={styles.prelaunchBadge}>
+                      <Ionicons name="sparkles-outline" size={13} color={Colors.primaryDark} />
+                      <Text style={styles.prelaunchBadgeText}>Avant-première · dépôt d'annonces ouvert</Text>
+                    </View>
+                    <Text style={[styles.title, !isNarrow && styles.titleWide]}>
+                      Dépose ta première annonce{' '}
+                      <Text style={styles.titleAccent}>avant l'ouverture.</Text>
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={[styles.title, !isNarrow && styles.titleWide]}>
+                    Tout ce dont vous avez besoin,{' '}
+                    <Text style={styles.titleAccent}>autour de vous.</Text>
+                  </Text>
+                )}
               </Animated.View>
 
               <Animated.View style={[styles.subWrap, { opacity: a3, transform: [{ translateY: y3 }] }]}>
                 <Text style={styles.sub}>
-                  Louez, prêtez et partagez des objets{'\n'}avec vos voisins en toute confiance.
+                  {PRELAUNCH_MODE
+                    ? "Crée ton compte et publie ton annonce dès maintenant.\nLa marketplace ouvre au public très bientôt — tes annonces seront\nen ligne dès l'ouverture."
+                    : 'Louez, prêtez et partagez des objets\navec vos voisins en toute confiance.'}
                 </Text>
               </Animated.View>
             </View>
@@ -206,7 +222,9 @@ export default function LandingScreen() {
                 onPress={() => router.push('/register')}
                 activeOpacity={0.82}
               >
-                <Text style={styles.primaryBtnText}>Commencer gratuitement</Text>
+                <Text style={styles.primaryBtnText}>
+                  {PRELAUNCH_MODE ? 'Déposer mon annonce' : 'Commencer gratuitement'}
+                </Text>
                 <Ionicons name="arrow-forward" size={18} color={Colors.white} />
               </TouchableOpacity>
 
@@ -316,6 +334,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 4,
     marginTop: 6,
+  },
+  prelaunchBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 12,
+  },
+  prelaunchBadgeText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: Colors.primaryDark,
+    letterSpacing: 0.2,
   },
   title: {
     fontFamily: 'Inter-Bold',
