@@ -230,16 +230,21 @@ export default function AccountSettingsScreen() {
     if (trimmed === (profile?.email ?? user?.email ?? '')) { setSection('menu'); return; }
     setEmailSaving(true);
     setEmailError(null);
+    // Supabase sends a confirmation link to the NEW address (and, if "Secure
+    // email change" is on in the Dashboard, also to the OLD one). The actual
+    // email on auth.users only flips when the link is clicked. We must NOT
+    // update profiles.email here — that would desync the DB from auth.users
+    // and let an attacker who hijacks a session move the displayed address
+    // without ever owning the inbox. The DB sync happens via the
+    // sync_profile_email_from_auth trigger after confirmation.
     const { error } = await supabase.auth.updateUser({ email: trimmed });
     setEmailSaving(false);
     if (error) {
       setEmailError("Erreur : " + error.message);
       return;
     }
-    await supabase.from('profiles').update({ email: trimmed }).eq('id', user!.id);
-    await refreshProfile();
     setEmailSuccess(true);
-    setTimeout(() => setSection('menu'), 1500);
+    setTimeout(() => setSection('menu'), 2500);
   };
 
   const formatPhone = (v: string) => {
@@ -551,7 +556,7 @@ export default function AccountSettingsScreen() {
           <Text style={styles.fieldDescription}>
             Un email de confirmation sera envoyé à la nouvelle adresse.
           </Text>
-          {emailSuccess && <SuccessBanner message="Email mis à jour ! Vérifiez votre boîte mail." />}
+          {emailSuccess && <SuccessBanner message="Lien de confirmation envoyé. L'email sera modifié uniquement après que tu aies cliqué sur le lien reçu sur la nouvelle adresse." />}
           {emailError && <ErrorBanner message={emailError} />}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nouvelle adresse email</Text>
