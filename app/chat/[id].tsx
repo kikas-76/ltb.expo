@@ -448,7 +448,9 @@ export default function ChatScreen() {
     setUploading(true);
     setUploadError(null);
     const ext = (asset.uri.split('.').pop() ?? 'jpg').split('?')[0].toLowerCase();
-    const path = `chat/${id}/${Date.now()}.${ext}`;
+    // Path must start with auth.uid() to satisfy the listing-photos RLS
+    // policy (storage.foldername(name)[1] = auth.uid()::text).
+    const path = `${user.id}/chat/${id}/${Date.now()}.${ext}`;
 
     const tempId = `temp-photo-${Date.now()}`;
     const now = new Date().toISOString();
@@ -509,7 +511,9 @@ export default function ChatScreen() {
     setUploading(true);
     setUploadError(null);
     const ext = name.split('.').pop() ?? 'bin';
-    const path = `chat/${id}/${Date.now()}-${name}`;
+    // Path must start with auth.uid() to satisfy the listing-photos RLS
+    // policy (storage.foldername(name)[1] = auth.uid()::text).
+    const path = `${user.id}/chat/${id}/${Date.now()}-${name}`;
 
     const tempId = `temp-file-${Date.now()}`;
     const now = new Date().toISOString();

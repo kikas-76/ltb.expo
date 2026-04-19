@@ -368,7 +368,7 @@ export default function ListingDetailScreen() {
           showSnackbar("Lien copié, vous pouvez partager l'annonce !", 'share');
         }
       } else {
-        const deepLink = `myapp://listing/${id}`;
+        const deepLink = `louetonbien://listing/${id}`;
         const message = `${text}\n${deepLink}`;
         await Share.share({ message, url: deepLink, title });
       }
