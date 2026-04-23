@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
+import { getRentalDays } from '@/lib/pricing';
 
 const MONTH_NAMES = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -345,9 +346,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
   const calendarWidth = isDesktop ? Math.min(windowWidth * 0.42, 420) : windowWidth - 40;
   const cellSize = Math.floor(calendarWidth / 7);
 
-  const days = startDate && endDate
-    ? Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000) + 1
-    : 0;
+  const days = startDate && endDate ? getRentalDays(startDate, endDate) : 0;
 
   useEffect(() => { setCopied(false); }, [startDate, endDate]);
 

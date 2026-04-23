@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
-import { getDiscount } from '@/lib/pricing';
+import { getDiscount, getRentalDays } from '@/lib/pricing';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
@@ -45,12 +45,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function getDayCount(start: string, end: string): number {
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
-  return Math.round((e - s) / 86400000) + 1;
-}
-
 export default function DirectBookPage() {
   const { id, start, end } = useLocalSearchParams<{ id: string; start: string; end: string }>();
   const { session, profile } = useAuth();
@@ -65,7 +59,7 @@ export default function DirectBookPage() {
 
   const startDate = start ?? '';
   const endDate = end ?? '';
-  const days = startDate && endDate ? getDayCount(startDate, endDate) : 0;
+  const days = startDate && endDate ? getRentalDays(startDate, endDate) : 0;
   const discount = getDiscount(days);
   const basePrice = listing ? listing.price * days : 0;
   const discountAmt = Math.round(basePrice * discount);

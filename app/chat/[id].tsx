@@ -23,6 +23,7 @@ import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { updateBookingStatus, updateBookingConfirmationFields } from '@/lib/updateBookingStatus';
 import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
+import { getRentalDays } from '@/lib/pricing';
 import { Skeleton } from '@/components/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnread } from '@/contexts/UnreadContext';
@@ -80,12 +81,6 @@ function formatDateShort(dateStr: string): string {
     day: 'numeric',
     month: 'short',
   });
-}
-
-function getDayCount(start: string, end: string): number {
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
-  return Math.round((e - s) / 86400000) + 1;
 }
 
 export default function ChatScreen() {
@@ -628,7 +623,7 @@ export default function ChatScreen() {
 
     if (!error) {
       if (newStatus === 'accepted') {
-        const days = getDayCount(meta.startDate, meta.endDate);
+        const days = getRentalDays(meta.startDate, meta.endDate);
         const totalPrice = meta.listingPrice != null
           ? computeRentalTotal(meta.listingPrice, days)
           : 0;
@@ -717,7 +712,7 @@ export default function ChatScreen() {
         return;
       }
 
-      const days = getDayCount(meta.startDate, meta.endDate);
+      const days = getRentalDays(meta.startDate, meta.endDate);
       const totalPrice = meta.listingPrice != null
         ? computeRentalTotal(meta.listingPrice, days)
         : 0;
@@ -960,7 +955,7 @@ export default function ChatScreen() {
     );
   }
 
-  const days = meta ? getDayCount(meta.startDate, meta.endDate) : 0;
+  const days = meta ? getRentalDays(meta.startDate, meta.endDate) : 0;
 
   return (
     <View style={[styles.root, isDesktop && chatDesktopStyles.outerWrap]}>

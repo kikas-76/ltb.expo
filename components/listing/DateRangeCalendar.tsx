@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
+import { getRentalDays } from '@/lib/pricing';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_DAYS = 7;
@@ -33,11 +34,6 @@ function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
-}
-
-function daysBetween(a: Date, b: Date) {
-  const ms = Math.abs(b.getTime() - a.getTime());
-  return Math.round(ms / (1000 * 60 * 60 * 24)) + 1;
 }
 
 function toKey(d: Date) {
@@ -124,7 +120,7 @@ export default function DateRangeCalendar({
     }
   }, [visible, isDesktop]);
 
-  const selectedDays = startDate && endDate ? daysBetween(startDate, endDate) : startDate ? 1 : 0;
+  const selectedDays = startDate && endDate ? getRentalDays(startDate, endDate) : 0;
 
   const discount = selectedDays >= 7 ? 0.2 : selectedDays >= 3 ? 0.1 : 0;
   const totalBeforeDiscount = selectedDays * pricePerDay;
@@ -153,10 +149,10 @@ export default function DateRangeCalendar({
       e = startDate;
     }
 
-    const range = daysBetween(s, e);
+    const range = getRentalDays(s, e);
     if (range > MAX_DAYS) {
       const maxEnd = new Date(s);
-      maxEnd.setDate(maxEnd.getDate() + MAX_DAYS - 1);
+      maxEnd.setDate(maxEnd.getDate() + MAX_DAYS);
       e = maxEnd;
     }
 
@@ -171,8 +167,8 @@ export default function DateRangeCalendar({
   }, [startDate, endDate, today, bookedRanges]);
 
   const handleConfirm = () => {
-    if (startDate) {
-      onConfirm(startDate, endDate ?? startDate, selectedDays);
+    if (startDate && endDate) {
+      onConfirm(startDate, endDate, selectedDays);
     }
   };
 
@@ -349,7 +345,11 @@ export default function DateRangeCalendar({
             >
               <Ionicons name="calendar-outline" size={16} color="#fff" />
               <Text style={styles.confirmBtnText}>
-                {selectedDays === 0 ? 'Sélectionnez des dates' : `Confirmer (${totalPrice}€)`}
+                {!startDate
+                  ? 'Sélectionnez des dates'
+                  : !endDate
+                    ? 'Sélectionnez la date de retour'
+                    : `Confirmer (${totalPrice}€)`}
               </Text>
             </TouchableOpacity>
           </View>

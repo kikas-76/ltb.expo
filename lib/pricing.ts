@@ -4,6 +4,14 @@ export function getDiscount(days: number): number {
   return 0;
 }
 
+// Hotel model: picking J and J+1 on the calendar = 1 day of rental.
+// Returns 0 for same-day or inverted inputs so UI can force a valid range.
+export function getRentalDays(start: string | Date, end: string | Date): number {
+  const s = typeof start === 'string' ? new Date(start).getTime() : start.getTime();
+  const e = typeof end === 'string' ? new Date(end).getTime() : end.getTime();
+  return Math.max(0, Math.round((e - s) / 86400000));
+}
+
 export function computeRentalTotal(pricePerDay: number, days: number): number {
   return Math.round(pricePerDay * days * (1 - getDiscount(days)));
 }
