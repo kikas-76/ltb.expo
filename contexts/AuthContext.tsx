@@ -40,14 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (_userId: string) => {
     setProfileLoading(true);
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, email, username, photo_url, phone_number, location_data, is_pro, bio, role, onboarding_completed, created_at')
-      .eq('id', userId)
-      .maybeSingle();
-    setProfile(data);
+    // Direct SELECT on profiles is column-restricted for authenticated users
+    // (email, phone_number, role, onboarding_completed are revoked). The
+    // SECURITY DEFINER RPC reads auth.uid() server-side and returns the
+    // caller's full row. The userId param is now redundant but kept to avoid
+    // touching the call sites; the RPC keys on the JWT, not on the param.
+    const { data, error } = await supabase.rpc('get_my_profile');
+    if (error) {
+      setProfile(null);
+    } else {
+      const row = Array.isArray(data) ? data[0] : data;
+      setProfile(row ?? null);
+    }
     setProfileLoading(false);
   };
 

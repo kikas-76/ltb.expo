@@ -65,17 +65,17 @@ export default function AdminDashboard() {
       { count: activeBookings },
       { count: openDisputes },
       { count: pendingReports },
-      { count: restrictedAccounts },
+      { data: restrictedAccountsRaw },
       { data: monthBookings },
       { data: recentDisputes },
       { data: recentBookings },
       { count: flagged },
     ] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
       supabase.from('bookings').select('*', { count: 'exact', head: true }).in('status', ['pending_payment', 'active', 'in_progress']),
       supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'open'),
       supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).in('account_status', ['suspended', 'banned']),
+      supabase.rpc('admin_count_restricted_accounts'),
       supabase.from('bookings').select('total_price, status').gte('created_at', monthStart).lte('created_at', monthEnd),
       supabase.from('disputes')
         .select('id, status, created_at, description, reporter:profiles!disputes_reporter_id_fkey(username), booking:bookings(listing:listings(name))')
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
       openDisputes: openDisputes ?? 0,
       pendingReports: pendingReports ?? 0,
       monthlyRevenue,
-      restrictedAccounts: restrictedAccounts ?? 0,
+      restrictedAccounts: Number(restrictedAccountsRaw ?? 0),
     });
     setDisputes((recentDisputes as any) ?? []);
     setBookings((recentBookings as any) ?? []);
