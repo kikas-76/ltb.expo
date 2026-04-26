@@ -637,11 +637,8 @@ export default function ChatScreen() {
         if (!existingBooking) {
           const { error: bookingError } = await createPendingPaymentBooking({
             listingId: meta.listingId,
-            renterId: meta.requesterUserId,
-            ownerId: meta.ownerUserId,
             startDate: meta.startDate,
             endDate: meta.endDate,
-            totalPrice,
             conversationId: id as string,
           });
 
@@ -719,11 +716,8 @@ export default function ChatScreen() {
 
       const { data: newBooking, error } = await createPendingPaymentBooking({
         listingId: meta.listingId,
-        renterId: meta.requesterUserId,
-        ownerId: meta.ownerUserId,
         startDate: meta.startDate,
         endDate: meta.endDate,
-        totalPrice,
         conversationId: id as string,
       });
 

@@ -4,11 +4,8 @@ export { getDiscount, computeRentalTotal } from '@/lib/pricing';
 
 export interface CreatePendingBookingInput {
   listingId: string;
-  renterId: string;
-  ownerId: string;
   startDate: string;
   endDate: string;
-  totalPrice: number;
   conversationId: string;
 }
 
@@ -18,28 +15,31 @@ export interface CreatedBooking {
   status: string | null;
 }
 
+// Calls the create_booking_for_payment RPC, which recomputes price, deposit
+// and owner_id server-side from the listings table. Direct INSERTs into
+// public.bookings from the client are blocked by REVOKE — see migration
+// 20260426_revoke_direct_booking_insert.sql.
 export async function createPendingPaymentBooking(
   input: CreatePendingBookingInput
 ): Promise<{ data: CreatedBooking | null; error: any }> {
-  const { data: listingData } = await supabase
-    .from('listings')
-    .select('deposit_amount')
-    .eq('id', input.listingId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('create_booking_for_payment', {
+    p_listing_id: input.listingId,
+    p_start_date: input.startDate,
+    p_end_date: input.endDate,
+    p_conversation_id: input.conversationId,
+  });
 
-  return await supabase
-    .from('bookings')
-    .insert({
-      listing_id: input.listingId,
-      renter_id: input.renterId,
-      owner_id: input.ownerId,
-      status: 'pending_payment',
-      start_date: new Date(input.startDate + 'T00:00:00').toISOString(),
-      end_date: new Date(input.endDate + 'T23:59:59').toISOString(),
-      total_price: input.totalPrice,
-      deposit_amount: listingData?.deposit_amount ?? 0,
-      conversation_id: input.conversationId,
-    })
-    .select('id, total_price, status')
-    .single();
+  if (error) return { data: null, error };
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return { data: null, error: new Error('No booking returned') };
+
+  return {
+    data: {
+      id: row.booking_id,
+      total_price: row.total_price ?? null,
+      status: row.status ?? null,
+    },
+    error: null,
+  };
 }

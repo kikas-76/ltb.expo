@@ -155,11 +155,8 @@ export default function DirectBookPage() {
 
       const { data: bookingData, error: bookingError } = await createPendingPaymentBooking({
         listingId: listing.id,
-        renterId: user.id,
-        ownerId: listing.owner!.id,
         startDate,
         endDate,
-        totalPrice,
         conversationId: conv.id,
       });
 
