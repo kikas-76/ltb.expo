@@ -64,6 +64,7 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [nearbyData, setNearbyData] = useState<Listing[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -75,31 +76,78 @@ export default function ExploreScreen() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [catRes, listingsRes] = await Promise.all([
+      const lat = profile?.location_data?.lat ?? null;
+      const lng = profile?.location_data?.lng ?? null;
+      const hasLocation = lat !== null && lng !== null;
+
+      const baseSelect =
+        'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)';
+
+      const [catRes, listingsRes, nearbyRes] = await Promise.all([
         supabase.from('categories').select('id, name, value, icon_path').order('order'),
         supabase
           .from('listings')
-          .select(
-            'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
-          )
+          .select(baseSelect)
           .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(19),
+        hasLocation
+          ? supabase.rpc('get_nearby_listings', {
+              user_lat: lat,
+              user_lng: lng,
+              radius_km: 9999,
+              lim: 19,
+              offset_val: 0,
+            })
+          : Promise.resolve({ data: null }),
       ]);
 
       if (catRes.data) setCategories(catRes.data);
 
-      if (listingsRes.data) {
-        const mapped: Listing[] = listingsRes.data.map((l: any) => ({
-          ...l,
-          owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
-        }));
-        setListings(mapped);
+      const mapOwner = (l: any) => ({
+        ...l,
+        owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
+      });
+
+      const recentMapped: Listing[] = listingsRes.data
+        ? (listingsRes.data as any[]).map(mapOwner)
+        : [];
+      setListings(recentMapped);
+
+      // Nearby: RPC returns listings already sorted by distance ASC but
+      // without owner. Hydrate owners via a follow-up SELECT keyed on the
+      // returned ids, then re-order to preserve the distance ordering.
+      if (nearbyRes && (nearbyRes as any).data) {
+        const rows = (nearbyRes as any).data as any[];
+        if (rows.length === 0) {
+          setNearbyData([]);
+        } else {
+          const ids = rows.map((r) => r.id);
+          const { data: ownerRows } = await supabase
+            .from('listings')
+            .select(
+              'id, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)',
+            )
+            .in('id', ids);
+          const ownerMap = new Map<string, any>();
+          (ownerRows ?? []).forEach((o: any) => {
+            const owner = Array.isArray(o.owner) ? o.owner[0] : o.owner;
+            ownerMap.set(o.id, owner ?? null);
+          });
+          const ordered: Listing[] = rows.map((r) => ({
+            ...r,
+            owner: ownerMap.get(r.id) ?? null,
+          }));
+          setNearbyData(ordered);
+        }
+      } else {
+        // No location → reuse the recent feed so the section is not empty
+        setNearbyData(recentMapped);
       }
     } finally {
       setLoadingData(false);
     }
-  }, []);
+  }, [profile?.location_data?.lat, profile?.location_data?.lng]);
 
   useEffect(() => {
     fetchData();
@@ -116,10 +164,11 @@ export default function ExploreScreen() {
 
   const DESKTOP_GRID_LIMIT = 18;
   const filteredListings = applyFilters(listings);
-  const hasMoreListings = isDesktop && filteredListings.length > DESKTOP_GRID_LIMIT;
+  const filteredNearby = applyFilters(nearbyData);
+  const hasMoreListings = isDesktop && filteredNearby.length > DESKTOP_GRID_LIMIT;
   const nearbyListings = isDesktop
-    ? filteredListings.slice(0, DESKTOP_GRID_LIMIT)
-    : filteredListings.slice(0, 8);
+    ? filteredNearby.slice(0, DESKTOP_GRID_LIMIT)
+    : filteredNearby.slice(0, 8);
   const recentListings = isDesktop
     ? filteredListings.slice(0, DESKTOP_GRID_LIMIT)
     : filteredListings.slice(0, 8);
