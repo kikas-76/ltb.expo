@@ -144,7 +144,7 @@ function RootNavigator() {
     // Admins bypass entirely so they can moderate during prelaunch.
     if (PRELAUNCH_MODE && profile?.onboarding_completed && profile?.role !== 'admin') {
       const allowedTabChildren = new Set(['mes-annonces', 'profil']);
-      const onAllowedTab = seg === '(tabs)' && allowedTabChildren.has(segments[1] as string);
+      const onAllowedTab = seg === '(tabs)' && allowedTabChildren.has((segments as readonly string[])[1]);
       if (!PRELAUNCH_ALLOWED_SEGMENTS.has(seg) && !onAllowedTab && !isAuthRoute) {
         router.replace('/(tabs)/mes-annonces' as any);
         return;

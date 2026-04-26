@@ -27,6 +27,7 @@ interface ListingData {
   description: string | null;
   price: number;
   deposit_amount: number | null;
+  renter_fee_percent: number | null;
   photos_url: string[] | null;
   category_name: string | null;
   owner: {

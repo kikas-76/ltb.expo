@@ -182,7 +182,7 @@ export default function ChatScreen() {
 
       // Fetch booking data whenever conversation is accepted (booking exists)
       if (conv.status === 'accepted') {
-        const queries: Promise<any>[] = [
+        const queries: any[] = [
           supabase
             .from('bookings')
             .select('id, total_price, status, renter_id, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter, owner_validated, return_confirmed_at')
@@ -737,7 +737,7 @@ export default function ChatScreen() {
     setConfirmLoading(true);
     try {
       const isOwner = meta.isOwner;
-      const confirmField = isOwner ? { handover_confirmed_owner: true } : { handover_confirmed_renter: true };
+      const confirmField: Record<string, boolean> = isOwner ? { handover_confirmed_owner: true } : { handover_confirmed_renter: true };
       const newOwnerVal = isOwner ? true : handoverConfirmedOwner;
       const newRenterVal = !isOwner ? true : handoverConfirmedRenter;
 
@@ -759,7 +759,7 @@ export default function ChatScreen() {
     setConfirmLoading(true);
     try {
       const isOwner = meta.isOwner;
-      const returnField = isOwner ? { return_confirmed_owner: true } : { return_confirmed_renter: true };
+      const returnField: Record<string, boolean> = isOwner ? { return_confirmed_owner: true } : { return_confirmed_renter: true };
       const newOwnerVal = isOwner ? true : returnConfirmedOwner;
       const newRenterVal = !isOwner ? true : returnConfirmedRenter;
 

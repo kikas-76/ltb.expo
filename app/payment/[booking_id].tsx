@@ -54,9 +54,12 @@ if (Platform.OS !== 'web') {
 }
 
 function useStripeHook() {
-  if (useStripe) {
-    return useStripe();
-  }
+  // The conditional is platform-driven (set once at module load) and never
+  // changes between renders, so React's hook ordering is preserved per
+  // platform. The .web.tsx variant of this file uses Stripe Elements
+  // instead, so on web this code path is dead.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  if (useStripe) return useStripe();
   return { confirmPayment: async () => ({ error: { message: 'Stripe non disponible sur web' } }) };
 }
 

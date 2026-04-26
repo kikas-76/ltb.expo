@@ -5,6 +5,7 @@ import { Colors } from '@/constants/colors';
 interface HomeHeaderProps {
   username: string | null;
   photoUrl: string | null;
+  notificationCount?: number;
 }
 
 export default function HomeHeader({ username }: HomeHeaderProps) {

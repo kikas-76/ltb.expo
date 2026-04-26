@@ -54,11 +54,16 @@ export default function OnboardingWelcomeScreen() {
   const btnScale = useRef(new Animated.Value(0.9)).current;
   const btnOpacity = useRef(new Animated.Value(0)).current;
 
-  const stepAnims = STEPS.map(() => ({
-    opacity: useRef(new Animated.Value(0)).current,
-    slide: useRef(new Animated.Value(30)).current,
-    iconScale: useRef(new Animated.Value(0.6)).current,
-  }));
+  // Single useRef holding the per-step Animated.Value triplet, so we don't
+  // call useRef inside a .map() (rules-of-hooks). STEPS is module-constant
+  // so this initializer runs exactly once per component instance.
+  const stepAnims = useRef(
+    STEPS.map(() => ({
+      opacity: new Animated.Value(0),
+      slide: new Animated.Value(30),
+      iconScale: new Animated.Value(0.6),
+    })),
+  ).current;
 
   useEffect(() => {
     Animated.sequence([

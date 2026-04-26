@@ -65,8 +65,11 @@ async function convertHeicToJpegIfPossible(file: File): Promise<File> {
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(file);
     });
+    // Web-only path (FileReader/canvas/File above are not available on native).
+    // RN's `Image` global differs from the DOM `HTMLImageElement`, so we go
+    // through `globalThis` to grab the browser constructor explicitly.
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
+      const el = new (globalThis as any).Image() as HTMLImageElement;
       el.onload = () => resolve(el);
       el.onerror = () => reject(new Error('heic decode failed'));
       el.src = dataUrl;

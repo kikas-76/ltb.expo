@@ -29,7 +29,7 @@ interface RecentDispute {
   created_at: string;
   description: string;
   reporter: { username: string | null } | null;
-  booking: { listing: { title: string } | null } | null;
+  booking: { listing: { name: string } | null } | null;
 }
 
 interface RecentBooking {
