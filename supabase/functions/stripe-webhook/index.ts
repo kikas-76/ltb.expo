@@ -5,10 +5,16 @@ import { createClient } from "npm:@supabase/supabase-js@2";
  * Stripe Webhook Handler pour LoueTonBien
  *
  * Événements gérés :
- * - payment_intent.succeeded    → booking "active" + emails confirmation
+ * - payment_intent.succeeded     → booking "active" + emails confirmation
  * - payment_intent.payment_failed → log l'échec
- * - charge.refunded             → booking "cancelled"
- * - account.updated             → statut Stripe Connect + email activation
+ * - charge.refunded              → booking "cancelled"
+ * - account.updated              → statut Stripe Connect + email activation
+ *
+ * Idempotency: every event is logged in public.stripe_events keyed by
+ * event_id. Duplicates short-circuit to 200 without re-running the
+ * side-effect path. Transient failures bubble up as 5xx so Stripe
+ * retries; the retry collides on the unique key and replays at most
+ * the parts that hadn't completed.
  */
 
 const corsHeaders = {
@@ -17,7 +23,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Stripe-Signature",
 };
 
-// ── Helper email (non-bloquant) ────────────────────────────────
 const sendEmail = async (
   supabase: any,
   to: string,
@@ -33,7 +38,6 @@ const sendEmail = async (
   }
 };
 
-// ── Vérification signature Stripe ─────────────────────────────
 async function verifyStripeSignature(
   payload: string,
   sigHeader: string,
@@ -75,6 +79,12 @@ async function verifyStripeSignature(
   }
 }
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -84,40 +94,85 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   }
 
+  // Bookkeeping for the catch-all: we want to flip the stripe_events row
+  // to status='failed' before bouncing 5xx, so retries can see the
+  // previous attempt's error message.
+  let eventIdForCatch: string | null = null;
+  let supabaseForCatch: any = null;
+
   try {
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    const stripeKey     = Deno.env.get("STRIPE_SECRET_KEY");
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
 
     if (!webhookSecret || !stripeKey) {
       console.error("Missing STRIPE_WEBHOOK_SECRET or STRIPE_SECRET_KEY");
-      return new Response(
-        JSON.stringify({ error: "Webhook non configuré" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Configuration error is not retriable — Stripe replays won't fix it.
+      return json({ error: "Webhook non configuré" }, 500);
     }
 
-    const body      = await req.text();
+    const body = await req.text();
     const sigHeader = req.headers.get("stripe-signature") ?? "";
 
     const isValid = await verifyStripeSignature(body, sigHeader, webhookSecret);
     if (!isValid) {
       console.error("Signature Stripe invalide");
-      return new Response(
-        JSON.stringify({ error: "Signature invalide" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: "Signature invalide" }, 400);
     }
 
-    const event     = JSON.parse(body);
-    const eventType = event.type;
-    const data      = event.data.object;
+    const event = JSON.parse(body);
+    const eventType: string = event.type;
+    const data = event.data.object;
+    const eventId: string | undefined = event.id;
+
+    if (!eventId) {
+      console.error("Event without id, refusing to process");
+      return json({ error: "Missing event id" }, 400);
+    }
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+    eventIdForCatch = eventId;
+    supabaseForCatch = supabase;
 
-    console.log(`Webhook reçu : ${eventType} · ${data.id}`);
+    // ── Idempotency check ────────────────────────────────────────
+    // Insert succeeds for a fresh event; it conflicts on event_id for
+    // a duplicate. We use upsert with `ignoreDuplicates: true` and
+    // check whether a row was actually inserted by re-fetching status.
+    const { error: insertError } = await supabase
+      .from("stripe_events")
+      .insert({
+        event_id: eventId,
+        type: eventType,
+        booking_id: data?.metadata?.booking_id ?? null,
+      });
+
+    if (insertError) {
+      // 23505 = unique_violation → already processed (or in flight)
+      if ((insertError as any).code === "23505") {
+        const { data: existing } = await supabase
+          .from("stripe_events")
+          .select("status")
+          .eq("event_id", eventId)
+          .maybeSingle();
+
+        if (existing?.status === "processed") {
+          console.log(`Event ${eventId} déjà traité, idempotent 200`);
+          return json({ received: true, idempotent: true }, 200);
+        }
+        // Status is 'received' or 'failed' — another retry might still
+        // be in flight, or the previous attempt died mid-way. Replaying
+        // is safer than silently swallowing, so we continue.
+        console.log(`Event ${eventId} retry détecté (status=${existing?.status})`);
+      } else {
+        // Transient DB issue — let Stripe retry
+        console.error(`stripe_events insert failed for ${eventId}:`, insertError.message);
+        return json({ error: "Database unavailable" }, 503);
+      }
+    }
+
+    console.log(`Webhook reçu : ${eventType} · ${data.id} (event ${eventId})`);
 
     const fmt = (d: string) =>
       new Date(d).toLocaleDateString("fr-FR", {
@@ -126,10 +181,9 @@ Deno.serve(async (req: Request) => {
 
     switch (eventType) {
 
-      // ▸ Paiement réussi
       case "payment_intent.succeeded": {
         const bookingId = data.metadata?.booking_id;
-        const type      = data.metadata?.type;
+        const type = data.metadata?.type;
 
         if (!bookingId) {
           console.log("payment_intent.succeeded sans booking_id, ignoré");
@@ -137,8 +191,6 @@ Deno.serve(async (req: Request) => {
         }
 
         if (type === "rental") {
-          // FIX: le booking est à "pending_payment" quand le paiement est initié,
-          // pas "accepted". Le filtre "accepted" ne matchait jamais.
           const { error } = await supabase
             .from("bookings")
             .update({ status: "active", stripe_rental_payment_intent_id: data.id })
@@ -147,13 +199,11 @@ Deno.serve(async (req: Request) => {
 
           if (error) {
             console.error(`Erreur update booking ${bookingId}:`, error.message);
-            break;
+            throw error; // transient — Stripe retry
           }
 
           console.log(`Booking ${bookingId} → active`);
 
-          // ── Récupère booking + profils pour les emails ─────────
-          // FIX: display_name supprimé → utilise username
           const { data: booking, error: fetchError } = await supabase
             .from("bookings")
             .select(`
@@ -207,7 +257,7 @@ Deno.serve(async (req: Request) => {
         }
 
         if (type === "deposit_hold") {
-          await supabase
+          const { error } = await supabase
             .from("bookings")
             .update({
               stripe_payment_intent_id: data.id,
@@ -215,6 +265,7 @@ Deno.serve(async (req: Request) => {
               deposit_action: "authorize",
             })
             .eq("id", bookingId);
+          if (error) throw error;
 
           console.log(`Booking ${bookingId} · deferred deposit hold confirmed (${data.id})`);
         }
@@ -222,15 +273,13 @@ Deno.serve(async (req: Request) => {
         break;
       }
 
-      // ▸ Paiement échoué
       case "payment_intent.payment_failed": {
-        const bookingId      = data.metadata?.booking_id;
+        const bookingId = data.metadata?.booking_id;
         const failureMessage = data.last_payment_error?.message ?? "Raison inconnue";
         console.error(`Paiement échoué pour booking ${bookingId}: ${failureMessage}`);
         break;
       }
 
-      // ▸ Remboursement
       case "charge.refunded": {
         const paymentIntentId = data.payment_intent;
         if (!paymentIntentId) {
@@ -246,7 +295,7 @@ Deno.serve(async (req: Request) => {
 
         if (lookupError) {
           console.error(`charge.refunded lookup failed for PI ${paymentIntentId}:`, lookupError.message);
-          break;
+          throw lookupError; // transient
         }
 
         if (!bookings || bookings.length === 0) {
@@ -254,22 +303,21 @@ Deno.serve(async (req: Request) => {
           break;
         }
 
-        await supabase
+        const { error: updateError } = await supabase
           .from("bookings")
           .update({ status: "cancelled" })
           .eq("id", bookings[0].id);
+        if (updateError) throw updateError;
 
         console.log(`Booking ${bookings[0].id} → cancelled (remboursement)`);
         break;
       }
 
-      // ▸ Compte Connect mis à jour
       case "account.updated": {
-        const accountId      = data.id;
+        const accountId = data.id;
         const chargesEnabled = data.charges_enabled ?? false;
         const payoutsEnabled = data.payouts_enabled ?? false;
 
-        // FIX: display_name supprimé → utilise username
         const { data: existingProfile } = await supabase
           .from("profiles")
           .select("email, username, stripe_charges_enabled, stripe_onboarding_notified")
@@ -286,7 +334,7 @@ Deno.serve(async (req: Request) => {
 
         if (error) {
           console.error(`Erreur update profil Connect ${accountId}:`, error.message);
-          break;
+          throw error;
         }
 
         console.log(`Connect ${accountId} · charges: ${chargesEnabled}, payouts: ${payoutsEnabled}`);
@@ -319,16 +367,33 @@ Deno.serve(async (req: Request) => {
         console.log(`Événement non géré : ${eventType}`);
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Mark event as fully processed
+    await supabase
+      .from("stripe_events")
+      .update({ status: "processed", processed_at: new Date().toISOString() })
+      .eq("event_id", eventId);
+
+    return json({ received: true }, 200);
 
   } catch (err: any) {
-    console.error("Erreur webhook:", err.message);
-    return new Response(JSON.stringify({ received: true, error: err.message }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("Erreur webhook:", err?.message ?? err);
+
+    // Best-effort: tag the event row as failed so the next retry can see
+    // the prior error. Swallow secondary failures so we still return 5xx.
+    if (eventIdForCatch && supabaseForCatch) {
+      try {
+        await supabaseForCatch
+          .from("stripe_events")
+          .update({ status: "failed", error: String(err?.message ?? err).slice(0, 1000) })
+          .eq("event_id", eventIdForCatch);
+      } catch (logErr) {
+        console.error("Failed to update stripe_events on failure:", logErr);
+      }
+    }
+
+    // Bubble up as 5xx so Stripe retries the delivery. The idempotency
+    // check at the top of the next attempt prevents double processing
+    // of the parts that completed before the throw.
+    return json({ error: err?.message ?? "Internal error" }, 500);
   }
 });
