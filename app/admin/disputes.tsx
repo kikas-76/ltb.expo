@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import StatusBadge from '@/components/admin/StatusBadge';
+import { fetchAdminProfileEmails } from '@/lib/adminEmails';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 
@@ -24,6 +25,7 @@ interface Dispute {
   description: string;
   created_at: string;
   photo_urls: string[] | null;
+  reporter_id: string | null;
   reporter: { username: string | null; email: string | null } | null;
   booking: {
     id: string;
@@ -60,8 +62,8 @@ export default function AdminDisputes() {
     const { data } = await supabase
       .from('disputes')
       .select(`
-        id, status, description, created_at, photo_urls,
-        reporter:profiles!disputes_reporter_id_fkey(username, email),
+        id, status, description, created_at, photo_urls, reporter_id,
+        reporter:profiles!disputes_reporter_id_fkey(username),
         booking:bookings(
           id, stripe_payment_intent_id, deposit_amount, total_price,
           listing:listings(name),
@@ -70,7 +72,16 @@ export default function AdminDisputes() {
         )
       `)
       .order('created_at', { ascending: false });
-    setDisputes((data as any) ?? []);
+
+    const rows = (data as any[]) ?? [];
+    const emails = await fetchAdminProfileEmails(rows.map((d) => d.reporter_id));
+    const hydrated: Dispute[] = rows.map((d) => ({
+      ...d,
+      reporter: d.reporter
+        ? { ...d.reporter, email: d.reporter_id ? emails[d.reporter_id] ?? null : null }
+        : null,
+    }));
+    setDisputes(hydrated);
     setLoading(false);
   };
 

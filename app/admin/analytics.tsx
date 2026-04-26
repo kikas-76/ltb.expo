@@ -230,19 +230,19 @@ export default function AdminAnalytics() {
     ] = await Promise.all([
       supabase
         .from('bookings')
-        .select('id, status, total_price, deposit_amount, start_date, end_date, created_at, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username, email), owner:profiles!bookings_owner_id_fkey(username, email)')
+        .select('id, status, total_price, deposit_amount, start_date, end_date, created_at, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username), owner:profiles!bookings_owner_id_fkey(username)')
         .gte('created_at', monthStart)
         .lte('created_at', monthEnd)
         .order('created_at', { ascending: false }),
       supabase
         .from('disputes')
-        .select('id, status, description, created_at, reporter:profiles!disputes_reporter_id_fkey(username, email)')
+        .select('id, status, description, created_at, reporter:profiles!disputes_reporter_id_fkey(username)')
         .gte('created_at', monthStart)
         .lte('created_at', monthEnd)
         .order('created_at', { ascending: false }),
       supabase
         .from('reports')
-        .select('id, status, category, description, target_type, created_at, reporter:profiles!reports_reporter_id_fkey(username, email)')
+        .select('id, status, category, description, target_type, created_at, reporter:profiles!reports_reporter_id_fkey(username)')
         .gte('created_at', monthStart)
         .lte('created_at', monthEnd)
         .order('created_at', { ascending: false }),

@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import StatusBadge from '@/components/admin/StatusBadge';
+import { fetchAdminProfileEmails } from '@/lib/adminEmails';
 
 interface Report {
   id: string;
@@ -22,6 +23,7 @@ interface Report {
   target_type: string;
   target_id: string;
   created_at: string;
+  reporter_id: string | null;
   reporter: { username: string | null; email: string | null } | null;
 }
 
@@ -56,9 +58,18 @@ export default function AdminReports() {
     setLoading(true);
     const { data } = await supabase
       .from('reports')
-      .select('id, status, category, description, target_type, target_id, created_at, reporter:profiles!reports_reporter_id_fkey(username, email)')
+      .select('id, status, category, description, target_type, target_id, created_at, reporter_id, reporter:profiles!reports_reporter_id_fkey(username)')
       .order('created_at', { ascending: false });
-    setReports((data as any) ?? []);
+
+    const rows = (data as any[]) ?? [];
+    const emails = await fetchAdminProfileEmails(rows.map((r) => r.reporter_id));
+    const hydrated: Report[] = rows.map((r) => ({
+      ...r,
+      reporter: r.reporter
+        ? { ...r.reporter, email: r.reporter_id ? emails[r.reporter_id] ?? null : null }
+        : null,
+    }));
+    setReports(hydrated);
     setLoading(false);
   };
 

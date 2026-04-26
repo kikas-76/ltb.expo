@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import StatusBadge from '@/components/admin/StatusBadge';
+import { fetchAdminProfileEmails } from '@/lib/adminEmails';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
@@ -28,6 +29,8 @@ interface Booking {
   end_date: string;
   created_at: string;
   stripe_payment_intent_id: string | null;
+  renter_id: string | null;
+  owner_id: string | null;
   listing: { name: string } | null;
   renter: { username: string | null; email: string | null } | null;
   owner: { username: string | null; email: string | null } | null;
@@ -80,7 +83,7 @@ export default function AdminTransactions() {
     let query = supabase
       .from('bookings')
       .select(
-        'id, status, total_price, deposit_amount, start_date, end_date, created_at, stripe_payment_intent_id, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username, email), owner:profiles!bookings_owner_id_fkey(username, email)',
+        'id, status, total_price, deposit_amount, start_date, end_date, created_at, stripe_payment_intent_id, renter_id, owner_id, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username), owner:profiles!bookings_owner_id_fkey(username)',
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
@@ -91,7 +94,20 @@ export default function AdminTransactions() {
     }
 
     const { data, count } = await query;
-    let results: Booking[] = (data as any) ?? [];
+    const rows = (data as any[]) ?? [];
+
+    const emails = await fetchAdminProfileEmails(
+      rows.flatMap((b) => [b.renter_id, b.owner_id]),
+    );
+    let results: Booking[] = rows.map((b) => ({
+      ...b,
+      renter: b.renter
+        ? { ...b.renter, email: b.renter_id ? emails[b.renter_id] ?? null : null }
+        : null,
+      owner: b.owner
+        ? { ...b.owner, email: b.owner_id ? emails[b.owner_id] ?? null : null }
+        : null,
+    }));
 
     if (search.trim()) {
       const q = search.trim().toLowerCase();
