@@ -148,13 +148,14 @@ function buildCreateParams(
   return payload;
 }
 
+// Express accounts: Stripe owns the KYC fields (business_type, email,
+// individual.*). The platform may only refresh business_profile and the
+// company address — everything else is collected by the embedded onboarding.
 function buildUpdateParams(
   userEmail: string | undefined,
   profile: ProfileRow | null,
-  detailsSubmitted: boolean,
 ): Stripe.AccountUpdateParams {
   const phone = normalizePhone(profile?.phone_number);
-  const { firstName, lastName } = splitLegalName(profile);
   const locationData = profile?.location_data ?? null;
   const isProValue = isProfessional(profile);
 
@@ -167,25 +168,15 @@ function buildUpdateParams(
     ) as Stripe.AccountUpdateParams.BusinessProfile,
   };
 
-  if (!detailsSubmitted) {
-    if (userEmail) payload.email = userEmail;
-    payload.business_type = isProValue ? "company" : "individual";
-
-    if (isProValue) {
-      payload.company = {
-        name: profile?.business_name ?? undefined,
-        ...(phone ? { phone } : {}),
-        ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-      };
-    } else {
-      payload.individual = {
-        ...(firstName ? { first_name: firstName } : {}),
-        ...(lastName ? { last_name: lastName } : {}),
-        ...(userEmail ? { email: userEmail } : {}),
-        ...(phone ? { phone } : {}),
-        ...(locationData?.city ? { address: { city: locationData.city, country: "FR" } } : {}),
-      };
-    }
+  if (isProValue && profile?.business_address) {
+    payload.company = {
+      address: {
+        line1: profile.business_address,
+        ...(locationData?.city ? { city: locationData.city } : {}),
+        ...(locationData?.postal_code ? { postal_code: locationData.postal_code } : {}),
+        country: "FR",
+      },
+    };
   }
 
   return payload;
@@ -270,7 +261,7 @@ Deno.serve(async (req: Request) => {
         try {
           await stripe.accounts.update(
             accountId,
-            buildUpdateParams(user.email ?? undefined, profile, existingAccount.details_submitted ?? false),
+            buildUpdateParams(user.email ?? undefined, profile),
           );
         } catch (updateError) {
           const canReplaceAccount =
