@@ -7,13 +7,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-async function stripePost(path: string, body: URLSearchParams, key: string, stripeAccount?: string) {
+async function stripePost(
+  path: string,
+  body: URLSearchParams,
+  key: string,
+  options?: { stripeAccount?: string; idempotencyKey?: string },
+) {
   const headers: Record<string, string> = {
     "Authorization": `Bearer ${key}`,
     "Content-Type": "application/x-www-form-urlencoded",
     "Stripe-Version": "2024-06-20",
   };
-  if (stripeAccount) headers["Stripe-Account"] = stripeAccount;
+  if (options?.stripeAccount) headers["Stripe-Account"] = options.stripeAccount;
+  if (options?.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
     method: "POST",
     headers,
@@ -207,13 +213,29 @@ Deno.serve(async (req: Request) => {
       rentalBody.set("application_fee_amount", String(applicationFee));
     }
 
-    const rentalIntent = await stripePost("/payment_intents", rentalBody, stripeKey);
+    // Idempotency-Key prevents duplicate PaymentIntents on retries (network
+    // hiccup, double-click, refresh) within Stripe's 24h replay window.
+    const rentalIntent = await stripePost(
+      "/payment_intents",
+      rentalBody,
+      stripeKey,
+      { idempotencyKey: `booking_${booking_id}_rental` },
+    );
     if (rentalIntent.error) {
       return new Response(
         JSON.stringify({ error: rentalIntent.error.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Persist the PI id immediately so the cached-PI branch above (line 89)
+    // catches subsequent calls without recreating. The webhook / finalize
+    // flow used to be the only writer, leaving a window where retries piled
+    // up orphan PaymentIntents.
+    await supabaseAdmin
+      .from("bookings")
+      .update({ stripe_rental_payment_intent_id: rentalIntent.id })
+      .eq("id", booking_id);
 
     // Deposit is NOT charged at payment time. It will be held 2 days before
     // the rental ends via the hold-deposit cron function. The renter's card is
