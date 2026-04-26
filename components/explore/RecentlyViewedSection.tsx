@@ -159,6 +159,11 @@ function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
     );
   }
 
+  // ListingCard variant="horizontal" sets its own width to width * 0.7,
+  // so the wrapper must match to avoid the inner card overflowing and
+  // overlapping the next one.
+  const mobileCardWidth = Math.round(width * 0.7);
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -171,7 +176,7 @@ function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
           data={skeletons}
           keyExtractor={(i) => String(i)}
           renderItem={() => (
-            <View style={styles.cardWrapper}>
+            <View style={{ width: mobileCardWidth }}>
               <SkeletonCard variant="horizontal" />
             </View>
           )}
@@ -185,13 +190,13 @@ function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
           data={listings}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.cardWrapper}>
+            <View style={{ width: mobileCardWidth }}>
               <ListingCard listing={item} variant="horizontal" userLat={userLat} userLng={userLng} userId={userId} />
             </View>
           )}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          snapToInterval={Math.round(width * 0.7) + 12}
+          snapToInterval={mobileCardWidth + 12}
           decelerationRate="fast"
         />
       )}

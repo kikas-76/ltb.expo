@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardHorizontal: {
-    width: 180,
+    width: '100%',
   },
   imageArea: {
     width: '100%',
