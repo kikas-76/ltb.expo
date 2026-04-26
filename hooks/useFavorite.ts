@@ -1,51 +1,57 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useFavoritesContext } from '@/contexts/FavoritesContext';
 
-export function useFavorite(listingId: string, userId: string | null | undefined, listingName?: string) {
-  const [isFavorite, setIsFavorite] = useState(false);
+// Reads from the FavoritesContext cache (one batch SELECT per session)
+// instead of doing a per-card SELECT — see P2-3 in the audit.
+export function useFavorite(
+  listingId: string,
+  userId: string | null | undefined,
+  listingName?: string,
+) {
   const [loading, setLoading] = useState(false);
-  const { refreshKey, triggerRefresh, showSnackbar } = useFavoritesContext();
+  const { isFavorite: isFavInCtx, setFavoriteLocal, showSnackbar, triggerRefresh } =
+    useFavoritesContext();
 
-  useEffect(() => {
-    if (!userId || !listingId) return;
-
-    const check = async () => {
-      const { data } = await supabase
-        .from('saved_listings')
-        .select('listing_id')
-        .eq('user_id', userId)
-        .eq('listing_id', listingId)
-        .maybeSingle();
-      setIsFavorite(!!data);
-    };
-
-    check();
-  }, [listingId, userId, refreshKey]);
+  const isFavorite = isFavInCtx(listingId);
 
   const toggle = useCallback(async () => {
     if (!userId || loading) return;
     setLoading(true);
 
-    if (isFavorite) {
-      await supabase
+    // Optimistic update so the UI flips immediately.
+    const next = !isFavorite;
+    setFavoriteLocal(listingId, next);
+
+    if (next) {
+      const { error } = await supabase
+        .from('saved_listings')
+        .insert({ user_id: userId, listing_id: listingId });
+      if (error) {
+        setFavoriteLocal(listingId, false);
+      } else {
+        showSnackbar(
+          listingName ? `"${listingName}" ajouté aux favoris` : 'Ajouté aux favoris',
+          'favorite',
+        );
+      }
+    } else {
+      const { error } = await supabase
         .from('saved_listings')
         .delete()
         .eq('user_id', userId)
         .eq('listing_id', listingId);
-      setIsFavorite(false);
-      showSnackbar('Retiré des favoris', 'unfavorite');
-    } else {
-      await supabase
-        .from('saved_listings')
-        .insert({ user_id: userId, listing_id: listingId });
-      setIsFavorite(true);
-      showSnackbar(listingName ? `"${listingName}" ajouté aux favoris` : 'Ajouté aux favoris', 'favorite');
+      if (error) {
+        setFavoriteLocal(listingId, true);
+      } else {
+        showSnackbar('Retiré des favoris', 'unfavorite');
+      }
     }
 
+    // Reconcile any lists that key off refreshKey (e.g. /favorites screen).
     triggerRefresh();
     setLoading(false);
-  }, [userId, listingId, isFavorite, loading, listingName]);
+  }, [userId, listingId, isFavorite, loading, listingName, setFavoriteLocal, showSnackbar, triggerRefresh]);
 
   return { isFavorite, toggle, loading };
 }
