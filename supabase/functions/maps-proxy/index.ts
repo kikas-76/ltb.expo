@@ -1,10 +1,66 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, X-Maps-Key",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+// 60 requests per minute per authenticated user, all maps-proxy endpoints
+// combined. Google Maps API quotas are billed per request, so even a
+// generous cap protects against quota burn from a misbehaving client.
+const RATE_LIMIT_PER_MINUTE = 60;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+
+const ALLOWED_ENDPOINTS = new Set([
+  "autocomplete",
+  "details",
+  "geocode",
+  "staticmap",
+]);
+
+function jsonError(message: string, status = 400) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// Strict number-in-range validator. Returns null on any invalid input.
+function clampedNumber(raw: string | null, min: number, max: number, fallback?: number) {
+  if (raw === null || raw === "") return fallback ?? null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  if (n < min || n > max) return null;
+  return n;
+}
+
+function validateLatLng(latlng: string): { lat: number; lng: number } | null {
+  const parts = latlng.split(",");
+  if (parts.length !== 2) return null;
+  const lat = Number(parts[0]);
+  const lng = Number(parts[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90) return null;
+  if (lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
+function validateSize(size: string): { width: number; height: number } | null {
+  const m = /^(\d{1,4})x(\d{1,4})$/.exec(size);
+  if (!m) return null;
+  const width = Number(m[1]);
+  const height = Number(m[2]);
+  if (width < 50 || width > 800) return null;
+  if (height < 50 || height > 800) return null;
+  return { width, height };
+}
+
+// Place IDs from Google are alphanumeric with -_ separators, typically <100 chars.
+function isSafePlaceId(id: string): boolean {
+  return /^[A-Za-z0-9_-]{1,256}$/.test(id);
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -12,32 +68,44 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // ---- Auth: require an authenticated Supabase session ----
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (!token) return jsonError("Authentication required", 401);
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) return jsonError("Unauthorized", 401);
+
+    // ---- Server-side Maps key only (no client-supplied bypass) ----
+    const mapsKey = Deno.env.get("GOOGLE_MAPS_KEY") ?? "";
+    if (!mapsKey) return jsonError("Maps API key not configured", 500);
+
+    // ---- Endpoint whitelist ----
     const url = new URL(req.url);
-    const endpoint = url.searchParams.get("endpoint");
-
-    const mapsKey =
-      Deno.env.get("GOOGLE_MAPS_KEY") ??
-      req.headers.get("X-Maps-Key") ??
-      "";
-
-    if (!mapsKey) {
-      return new Response(JSON.stringify({ error: "Missing Maps API key" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const endpoint = url.searchParams.get("endpoint") ?? "";
+    if (!ALLOWED_ENDPOINTS.has(endpoint)) {
+      return jsonError("Unknown endpoint", 400);
     }
 
-    if (!endpoint) {
-      return new Response(JSON.stringify({ error: "Missing endpoint param" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // ---- Rate limit (per user, all endpoints combined) ----
+    const { data: allowed, error: rlErr } = await supabase.rpc("check_rate_limit", {
+      p_key: `maps:${user.id}`,
+      p_max_per_window: RATE_LIMIT_PER_MINUTE,
+      p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,
+    });
+    if (rlErr) return jsonError("Rate-limit check failed", 500);
+    if (!allowed) return jsonError("Rate limit exceeded", 429);
 
+    // ---- Endpoint-specific input validation + URL build ----
     let googleUrl: string;
 
     if (endpoint === "autocomplete") {
-      const input = url.searchParams.get("input") ?? "";
+      const input = (url.searchParams.get("input") ?? "").trim();
+      if (!input || input.length > 200) return jsonError("Invalid input", 400);
       googleUrl =
         `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
         `?input=${encodeURIComponent(input)}` +
@@ -45,29 +113,40 @@ Deno.serve(async (req: Request) => {
         `&key=${mapsKey}`;
     } else if (endpoint === "details") {
       const placeId = url.searchParams.get("place_id") ?? "";
+      if (!isSafePlaceId(placeId)) return jsonError("Invalid place_id", 400);
       googleUrl =
         `https://maps.googleapis.com/maps/api/place/details/json` +
-        `?place_id=${placeId}` +
+        `?place_id=${encodeURIComponent(placeId)}` +
         `&fields=formatted_address,geometry,address_components` +
         `&language=fr` +
         `&key=${mapsKey}`;
     } else if (endpoint === "geocode") {
-      const latlng = url.searchParams.get("latlng") ?? "";
+      const latlngRaw = url.searchParams.get("latlng") ?? "";
+      const latlng = validateLatLng(latlngRaw);
+      if (!latlng) return jsonError("Invalid latlng", 400);
       googleUrl =
         `https://maps.googleapis.com/maps/api/geocode/json` +
-        `?latlng=${latlng}` +
+        `?latlng=${latlng.lat},${latlng.lng}` +
         `&language=fr` +
         `&key=${mapsKey}`;
-    } else if (endpoint === "staticmap") {
-      const lat = url.searchParams.get("lat") ?? "";
-      const lng = url.searchParams.get("lng") ?? "";
-      const zoom = url.searchParams.get("zoom") ?? "13";
-      const size = url.searchParams.get("size") ?? "600x270";
+    } else {
+      // staticmap
+      const lat = clampedNumber(url.searchParams.get("lat"), -90, 90);
+      const lng = clampedNumber(url.searchParams.get("lng"), -180, 180);
+      if (lat === null || lng === null) return jsonError("Invalid lat/lng", 400);
+
+      const zoom = clampedNumber(url.searchParams.get("zoom"), 1, 21, 13);
+      if (zoom === null) return jsonError("Invalid zoom (1-21)", 400);
+
+      const sizeRaw = url.searchParams.get("size") ?? "600x270";
+      const size = validateSize(sizeRaw);
+      if (!size) return jsonError("Invalid size (50-800 each side)", 400);
+
       googleUrl =
         `https://maps.googleapis.com/maps/api/staticmap` +
         `?center=${lat},${lng}` +
         `&zoom=${zoom}` +
-        `&size=${size}` +
+        `&size=${size.width}x${size.height}` +
         `&scale=2` +
         `&maptype=roadmap` +
         `&style=feature:poi|visibility:off` +
@@ -76,10 +155,7 @@ Deno.serve(async (req: Request) => {
 
       const imgRes = await fetch(googleUrl);
       if (!imgRes.ok) {
-        return new Response(JSON.stringify({ error: `Google Maps error: ${imgRes.status}` }), {
-          status: imgRes.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonError(`Google Maps error: ${imgRes.status}`, imgRes.status);
       }
       const contentType = imgRes.headers.get("Content-Type") ?? "image/png";
       const imgBuffer = await imgRes.arrayBuffer();
@@ -90,11 +166,6 @@ Deno.serve(async (req: Request) => {
           "Cache-Control": "public, max-age=86400",
         },
       });
-    } else {
-      return new Response(JSON.stringify({ error: "Unknown endpoint" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     const googleRes = await fetch(googleUrl);
@@ -104,9 +175,6 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (_err) {
-    return new Response(JSON.stringify({ error: "Internal error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonError("Internal error", 500);
   }
 });

@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { supabase } from '@/lib/supabase';
 
 const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY as string;
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL as string;
@@ -23,12 +24,16 @@ export interface PlaceDetails {
 }
 
 async function proxyFetch(params: Record<string, string>): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    // Anonymous web visitors fall back to no-op; callers degrade gracefully.
+    return { status: 'NO_SESSION' };
+  }
   const qs = new URLSearchParams(params).toString();
   const res = await fetch(`${PROXY_BASE}?${qs}`, {
     headers: {
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Authorization: `Bearer ${session.access_token}`,
       apikey: SUPABASE_ANON_KEY,
-      "X-Maps-Key": GOOGLE_MAPS_KEY,
     },
   });
   return res.json();
