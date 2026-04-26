@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import SuccessOverlay from '@/components/listing/SuccessOverlay';
 import ShareLinkModal from '@/components/listing/ShareLinkModal';
+import { convertHeicToJpegIfPossible, inferMimeFromName } from '@/lib/heicConvert';
 
 const COMMISSION = 0.08;
 const TOTAL_STEPS = 4;
@@ -35,59 +36,6 @@ const ALLOWED_IMAGE_TYPES = [
   'image/heic',
   'image/heif',
 ];
-
-// Some mobile browsers (especially iOS Safari) leave file.type empty or
-// return a generic value. Fall back to the filename extension.
-function inferMimeFromName(name: string | undefined | null): string {
-  const ext = (name ?? '').toLowerCase().split('.').pop() ?? '';
-  switch (ext) {
-    case 'jpg':
-    case 'jpeg': return 'image/jpeg';
-    case 'png': return 'image/png';
-    case 'webp': return 'image/webp';
-    case 'heic': return 'image/heic';
-    case 'heif': return 'image/heif';
-    default: return 'image/jpeg';
-  }
-}
-
-// Best-effort HEIC → JPEG conversion using a canvas. Works on Safari
-// (native HEIC support). On other browsers the Image load fails and we
-// upload the HEIC as-is; Supabase accepts any blob, and the target
-// viewer may still render it.
-async function convertHeicToJpegIfPossible(file: File): Promise<File> {
-  const type = (file.type || inferMimeFromName(file.name)).toLowerCase();
-  if (type !== 'image/heic' && type !== 'image/heif') return file;
-  try {
-    const dataUrl: string = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-    // Web-only path (FileReader/canvas/File above are not available on native).
-    // RN's `Image` global differs from the DOM `HTMLImageElement`, so we go
-    // through `globalThis` to grab the browser constructor explicitly.
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new (globalThis as any).Image() as HTMLImageElement;
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error('heic decode failed'));
-      el.src = dataUrl;
-    });
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return file;
-    ctx.drawImage(img, 0, 0);
-    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.9));
-    if (!blob) return file;
-    const newName = file.name.replace(/\.hei[cf]$/i, '.jpg');
-    return new File([blob], newName, { type: 'image/jpeg' });
-  } catch {
-    return file;
-  }
-}
 
 type Step = 'DETAILS' | 'CATEGORY' | 'PHOTOS' | 'PRICING';
 const STEPS: Step[] = ['DETAILS', 'CATEGORY', 'PHOTOS', 'PRICING'];

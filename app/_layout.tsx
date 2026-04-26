@@ -25,6 +25,7 @@ import { UnreadProvider } from '@/contexts/UnreadContext';
 import { DeepLinkProvider, useDeepLink } from '@/contexts/DeepLinkContext';
 import { Colors } from '@/constants/colors';
 import StripeWrapper from '@/components/StripeWrapper';
+import { supabase } from '@/lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -45,8 +46,7 @@ function RootNavigator() {
 
         if (accessToken && refreshToken) {
           if (isAuthCallback) return;
-          const { supabase: sb } = await import('@/lib/supabase');
-          await sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
           return;
         }
 
