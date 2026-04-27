@@ -64,30 +64,20 @@ export default function AdminUsers() {
   const loadUsers = async () => {
     setLoading(true);
 
-    let query = supabase
-      .from('profiles')
-      .select('id, username, email, is_pro, role, account_status, stripe_charges_enabled, created_at', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+    // Call SECURITY DEFINER RPC: column-level grants on profiles.email/role/
+    // account_status/stripe_charges_enabled were revoked from the
+    // authenticated role, so a direct SELECT silently returns no rows.
+    const { data } = await supabase.rpc('admin_list_users', {
+      p_search: search.trim() || null,
+      p_status: statusFilter === 'all' ? null : statusFilter,
+      p_stripe_filter: stripeFilter === 'all' ? null : stripeFilter,
+      p_limit: PAGE_SIZE,
+      p_offset: page * PAGE_SIZE,
+    });
 
-    if (statusFilter !== 'all') {
-      query = query.eq('account_status', statusFilter);
-    }
-
-    if (stripeFilter === 'validated') {
-      query = query.eq('stripe_charges_enabled', true);
-    } else if (stripeFilter === 'unvalidated') {
-      // Treat NULL the same as false: not validated.
-      query = query.or('stripe_charges_enabled.is.null,stripe_charges_enabled.eq.false');
-    }
-
-    if (search.trim()) {
-      query = query.or(`username.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%`);
-    }
-
-    const { data, count } = await query;
-    setUsers((data as any) ?? []);
-    setTotal(count ?? 0);
+    const payload = (data as { rows?: AdminUser[]; total?: number } | null) ?? {};
+    setUsers(payload.rows ?? []);
+    setTotal(payload.total ?? 0);
     setLoading(false);
   };
 
