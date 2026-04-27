@@ -6,18 +6,8 @@ import { Colors } from '@/constants/colors';
 import { useFavorite } from '@/hooks/useFavorite';
 import ProBadge from '@/components/ProBadge';
 import { getOptimizedImageUrl } from '@/lib/imageUrl';
-
-function extractCityFromAddress(address?: string | null): string | null {
-  if (!address) return null;
-  const parts = address.split(',');
-  if (parts.length >= 2) {
-    const cityPart = parts[parts.length - 2].trim();
-    const match = cityPart.match(/^\d{4,6}\s+(.+)$/);
-    if (match) return match[1].trim();
-    return cityPart;
-  }
-  return null;
-}
+import { haversineKm, formatDistance } from '@/lib/distance';
+import { extractCityFromAddress } from '@/lib/address';
 
 interface Listing {
   id: string;
@@ -44,24 +34,6 @@ interface ListingCardProps {
   userLat?: number | null;
   userLng?: number | null;
   userId?: string | null;
-}
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function formatDistance(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)} m`;
-  if (km < 10) return `${km.toFixed(1)} km`;
-  return `${Math.round(km)} km`;
 }
 
 function FavoriteButton({ listingId, userId, listingName }: { listingId: string; userId: string; listingName: string }) {

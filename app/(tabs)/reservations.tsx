@@ -203,17 +203,7 @@ function formatDateShort(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
-function extractCityFromAddress(address?: string | null): string | null {
-  if (!address) return null;
-  const parts = address.split(',');
-  if (parts.length >= 2) {
-    const cityPart = parts[parts.length - 2].trim();
-    const match = cityPart.match(/^\d{4,6}\s+(.+)$/);
-    if (match) return match[1].trim();
-    return cityPart;
-  }
-  return null;
-}
+import { extractCityFromAddress } from '@/lib/address';
 
 function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }: ConversationRowProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
