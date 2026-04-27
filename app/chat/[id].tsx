@@ -252,7 +252,8 @@ export default function ChatScreen() {
           const looksLikeImageContent =
             !fileUrl &&
             (m.content?.startsWith('private://') ||
-              /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(m.content ?? ''));
+              /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(m.content ?? '') ||
+              /\/storage\/v1\/object\//.test(m.content ?? ''));
           if (looksLikeImageContent) {
             imageUrl = (await resolveAttachmentUrl(m.content)) ?? m.content;
             content = '';
@@ -369,7 +370,8 @@ export default function ChatScreen() {
           const looksLikeImageContent =
             !fileUrl &&
             (m.content?.startsWith('private://') ||
-              /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(m.content ?? ''));
+              /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(m.content ?? '') ||
+              /\/storage\/v1\/object\//.test(m.content ?? ''));
           if (looksLikeImageContent) {
             imageUrl = (await resolveAttachmentUrl(m.content)) ?? m.content;
             content = '';
@@ -454,7 +456,14 @@ export default function ChatScreen() {
     if (!user || !id) return;
     setUploading(true);
     setUploadError(null);
-    const ext = (asset.uri.split('.').pop() ?? 'jpg').split('?')[0].toLowerCase();
+    // Derive a clean image extension. On web, asset.uri is often a blob:
+    // URL with no extension, so split('.').pop() returns part of the host.
+    // Prefer the mimeType when available, fall back to 'jpg'.
+    const rawExt = (asset.uri.split('.').pop() ?? '').split('?')[0].toLowerCase();
+    const mimeExt = asset.mimeType?.split('/')[1]?.split(';')[0]?.toLowerCase();
+    const ext = /^[a-z0-9]{2,5}$/.test(rawExt)
+      ? rawExt
+      : (mimeExt && /^[a-z0-9]{2,5}$/.test(mimeExt) ? mimeExt : 'jpg');
     // Private bucket layout: <user_id>/<conversation_id>/<timestamp>.<ext>.
     // RLS reads (foldername)[1] = user_id (uploader) and (foldername)[2] =
     // conversation_id (read access via participant check).

@@ -31,7 +31,8 @@ function describeMessageContent(raw: string | null | undefined): string {
   } catch {}
   if (
     raw.startsWith('private://') ||
-    /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(raw)
+    /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(raw) ||
+    /\/storage\/v1\/object\//.test(raw)
   ) {
     return '📷 Photo';
   }
