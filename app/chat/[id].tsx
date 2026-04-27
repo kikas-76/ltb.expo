@@ -24,6 +24,7 @@ import { postSystemMessage } from '@/lib/postSystemMessage';
 import { updateBookingStatus, updateBookingConfirmationFields } from '@/lib/updateBookingStatus';
 import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
 import { getRentalDays } from '@/lib/pricing';
+import { privateUriFor, resolveAttachmentUrl } from '@/lib/signedUrl';
 import { Skeleton } from '@/components/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnread } from '@/contexts/UnreadContext';
@@ -232,8 +233,10 @@ export default function ChatScreen() {
       .order('created_at', { ascending: true });
 
     if (msgs) {
-      setMessages(
-        msgs.map((m: any) => {
+      // Resolve private:// URIs (chat-attachments bucket) to short-lived
+      // signed URLs in parallel. Legacy public URLs pass through unchanged.
+      const mapped = await Promise.all(
+        msgs.map(async (m: any) => {
           let content = m.content;
           let imageUrl: string | null = null;
           let fileUrl: string | null = null;
@@ -241,14 +244,17 @@ export default function ChatScreen() {
           try {
             const parsed = JSON.parse(m.content);
             if (parsed?.type === 'file') {
-              fileUrl = parsed.url;
+              fileUrl = (await resolveAttachmentUrl(parsed.url)) ?? parsed.url;
               fileName = parsed.name;
               content = '';
             }
           } catch {}
-          const looksLikeImage = !fileUrl && /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(m.content);
-          if (looksLikeImage) {
-            imageUrl = m.content;
+          const looksLikeImageContent =
+            !fileUrl &&
+            (m.content?.startsWith('private://') ||
+              /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(m.content ?? ''));
+          if (looksLikeImageContent) {
+            imageUrl = (await resolveAttachmentUrl(m.content)) ?? m.content;
             content = '';
           }
           return {
@@ -262,8 +268,9 @@ export default function ChatScreen() {
             createdAt: m.created_at,
             isOwn: m.sender_id === user.id,
           };
-        })
+        }),
       );
+      setMessages(mapped);
 
       const unreadIds = msgs
         .filter((m: any) => m.sender_id !== user.id && !m.is_read)
@@ -341,32 +348,37 @@ export default function ChatScreen() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `conversation_id=eq.${id}` },
-        (payload) => {
+        async (payload) => {
           const m = payload.new as any;
           const isOwn = m.sender_id === user?.id;
+          // Parse file/image content the same way as initial load. Private
+          // bucket URIs (private://...) need to be turned into a signed URL
+          // before display; legacy public URLs pass through unchanged.
+          let content = m.content;
+          let imageUrl: string | null = null;
+          let fileUrl: string | null = null;
+          let fileName: string | null = null;
+          try {
+            const parsed = JSON.parse(m.content);
+            if (parsed?.type === 'file') {
+              fileUrl = (await resolveAttachmentUrl(parsed.url)) ?? parsed.url;
+              fileName = parsed.name;
+              content = '';
+            }
+          } catch {}
+          const looksLikeImageContent =
+            !fileUrl &&
+            (m.content?.startsWith('private://') ||
+              /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(m.content ?? ''));
+          if (looksLikeImageContent) {
+            imageUrl = (await resolveAttachmentUrl(m.content)) ?? m.content;
+            content = '';
+          }
           setMessages((prev) => {
             const alreadyConfirmed = prev.some((msg) => msg.id === m.id && !msg.pending);
             if (alreadyConfirmed) return prev;
             const hasPending = isOwn && prev.some((msg) => msg.pending);
             if (hasPending) return prev;
-            // Parse file/image content the same way as initial load
-            let content = m.content;
-            let imageUrl: string | null = null;
-            let fileUrl: string | null = null;
-            let fileName: string | null = null;
-            try {
-              const parsed = JSON.parse(m.content);
-              if (parsed?.type === 'file') {
-                fileUrl = parsed.url;
-                fileName = parsed.name;
-                content = '';
-              }
-            } catch {}
-            const looksLikeImage = !fileUrl && /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(m.content);
-            if (looksLikeImage) {
-              imageUrl = m.content;
-              content = '';
-            }
             return [
               ...prev,
               {
@@ -443,9 +455,10 @@ export default function ChatScreen() {
     setUploading(true);
     setUploadError(null);
     const ext = (asset.uri.split('.').pop() ?? 'jpg').split('?')[0].toLowerCase();
-    // Path must start with auth.uid() to satisfy the listing-photos RLS
-    // policy (storage.foldername(name)[1] = auth.uid()::text).
-    const path = `${user.id}/chat/${id}/${Date.now()}.${ext}`;
+    // Private bucket layout: <user_id>/<conversation_id>/<timestamp>.<ext>.
+    // RLS reads (foldername)[1] = user_id (uploader) and (foldername)[2] =
+    // conversation_id (read access via participant check).
+    const path = `${user.id}/${id}/${Date.now()}.${ext}`;
 
     const tempId = `temp-photo-${Date.now()}`;
     const now = new Date().toISOString();
@@ -467,7 +480,7 @@ export default function ChatScreen() {
       const blob = await response.blob();
       const mimeType = asset.mimeType ?? `image/${ext}`;
       const { error: storageError } = await supabase.storage
-        .from('listing-photos')
+        .from('chat-attachments')
         .upload(path, blob, { contentType: mimeType });
 
       if (storageError) {
@@ -476,20 +489,22 @@ export default function ChatScreen() {
         return;
       }
 
-      const { data: urlData } = supabase.storage.from('listing-photos').getPublicUrl(path);
-      const publicUrl = urlData.publicUrl;
+      // Store the private:// URI in the message; the renderer resolves
+      // it to a short-lived signed URL via resolveAttachmentUrl().
+      const storedContent = privateUriFor('chat-attachments', path);
+      const signedUrl = (await resolveAttachmentUrl(storedContent)) ?? asset.uri;
 
       const { data } = await supabase.from('chat_messages').insert({
         conversation_id: id,
         sender_id: user.id,
-        content: publicUrl,
+        content: storedContent,
         is_system: false,
       }).select('id, created_at').maybeSingle();
 
       setMessages((prev) =>
         prev.map((m) =>
           m.id === tempId
-            ? { ...m, id: data?.id ?? tempId, imageUrl: publicUrl, createdAt: data?.created_at ?? now, pending: false }
+            ? { ...m, id: data?.id ?? tempId, imageUrl: signedUrl, createdAt: data?.created_at ?? now, pending: false }
             : m
         )
       );
@@ -506,9 +521,8 @@ export default function ChatScreen() {
     setUploading(true);
     setUploadError(null);
     const ext = name.split('.').pop() ?? 'bin';
-    // Path must start with auth.uid() to satisfy the listing-photos RLS
-    // policy (storage.foldername(name)[1] = auth.uid()::text).
-    const path = `${user.id}/chat/${id}/${Date.now()}-${name}`;
+    // Private bucket layout: <user_id>/<conversation_id>/<timestamp>-<filename>
+    const path = `${user.id}/${id}/${Date.now()}-${name}`;
 
     const tempId = `temp-file-${Date.now()}`;
     const now = new Date().toISOString();
@@ -530,7 +544,7 @@ export default function ChatScreen() {
       const response = await fetch(uri);
       const blob = await response.blob();
       const { error: storageError } = await supabase.storage
-        .from('listing-photos')
+        .from('chat-attachments')
         .upload(path, blob, { contentType: mimeType });
 
       if (storageError) {
@@ -539,10 +553,10 @@ export default function ChatScreen() {
         return;
       }
 
-      const { data: urlData } = supabase.storage.from('listing-photos').getPublicUrl(path);
-      const publicUrl = urlData.publicUrl;
+      const privateUri = privateUriFor('chat-attachments', path);
+      const signedUrl = (await resolveAttachmentUrl(privateUri)) ?? uri;
 
-      const messageContent = JSON.stringify({ type: 'file', url: publicUrl, name });
+      const messageContent = JSON.stringify({ type: 'file', url: privateUri, name });
 
       const { data } = await supabase.from('chat_messages').insert({
         conversation_id: id,
@@ -554,7 +568,7 @@ export default function ChatScreen() {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === tempId
-            ? { ...m, id: data?.id ?? tempId, fileUrl: publicUrl, fileName: name, createdAt: data?.created_at ?? now, pending: false }
+            ? { ...m, id: data?.id ?? tempId, fileUrl: signedUrl, fileName: name, createdAt: data?.created_at ?? now, pending: false }
             : m
         )
       );

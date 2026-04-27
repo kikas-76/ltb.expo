@@ -19,6 +19,7 @@ import { postSystemMessage } from '@/lib/postSystemMessage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
+import { privateUriFor, resolveAttachmentUrl } from '@/lib/signedUrl';
 
 export default function DisputePage() {
   const { booking_id, conversation_id } = useLocalSearchParams<{ booking_id: string; conversation_id: string }>();
@@ -26,7 +27,9 @@ export default function DisputePage() {
   const insets = useSafeAreaInsets();
 
   const [description, setDescription] = useState('');
-  const [photos, setPhotos] = useState<string[]>([]);
+  // preview = local URI for the on-screen thumbnail (Image src)
+  // stored  = private://dispute-evidence/<path> persisted to disputes.photo_urls
+  const [photos, setPhotos] = useState<{ preview: string; stored: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -43,27 +46,36 @@ export default function DisputePage() {
     setUploading(true);
     setError(null);
     try {
+      if (!user) throw new Error('Not authenticated');
       const ext = (asset.uri.split('.').pop() ?? 'jpg').split('?')[0].toLowerCase();
-      const path = `disputes/${booking_id}/${Date.now()}.${ext}`;
+      // Private bucket layout: <user_id>/<booking_id>/<timestamp>.<ext>.
+      // RLS reads (foldername)[1] = uploader user_id and (foldername)[2] =
+      // booking_id (read access via participant or admin check).
+      const path = `${user.id}/${booking_id}/${Date.now()}.${ext}`;
 
       if (Platform.OS === 'web') {
         const resp = await fetch(asset.uri);
         const blob = await resp.blob();
         const { error: upErr } = await supabase.storage
-          .from('listing-photos')
+          .from('dispute-evidence')
           .upload(path, blob, { contentType: `image/${ext}` });
         if (upErr) throw upErr;
       } else {
         const formData = new FormData();
         formData.append('file', { uri: asset.uri, name: `photo.${ext}`, type: `image/${ext}` } as any);
         const { error: upErr } = await supabase.storage
-          .from('listing-photos')
+          .from('dispute-evidence')
           .upload(path, formData);
         if (upErr) throw upErr;
       }
 
-      const { data: urlData } = supabase.storage.from('listing-photos').getPublicUrl(path);
-      setPhotos((prev) => [...prev, urlData.publicUrl]);
+      // Store a private:// URI for persistence (admin viewer resolves it
+      // through signedUrl.ts); keep the local picker URI for the inline
+      // preview so the user sees their photo immediately.
+      setPhotos((prev) => [
+        ...prev,
+        { preview: asset.uri, stored: privateUriFor('dispute-evidence', path) },
+      ]);
     } catch (e: any) {
       setError('Erreur lors du chargement de la photo.');
     } finally {
@@ -89,7 +101,7 @@ export default function DisputePage() {
         conversation_id: conversation_id ?? null,
         reporter_id: user.id,
         description: description.trim(),
-        photo_urls: photos,
+        photo_urls: photos.map((p) => p.stored),
         status: 'open',
       });
       if (insertErr) throw insertErr;
@@ -202,9 +214,9 @@ export default function DisputePage() {
         <Text style={styles.sectionHint}>Joignez des photos pour appuyer votre signalement.</Text>
 
         <View style={styles.photosGrid}>
-          {photos.map((uri, idx) => (
-            <View key={uri} style={styles.photoThumbWrap}>
-              <Image source={{ uri }} style={styles.photoThumb} resizeMode="cover" />
+          {photos.map((photo, idx) => (
+            <View key={photo.stored} style={styles.photoThumbWrap}>
+              <Image source={{ uri: photo.preview }} style={styles.photoThumb} resizeMode="cover" />
               <TouchableOpacity
                 style={styles.photoRemoveBtn}
                 onPress={() => removePhoto(idx)}
