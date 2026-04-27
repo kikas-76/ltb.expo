@@ -115,8 +115,8 @@ export default function ResetPasswordScreen() {
         Animated.spring(successScale, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
         Animated.timing(successFade, { toValue: 1, duration: 350, useNativeDriver: true }),
       ]).start();
-    } catch (e: any) {
-      setError(e.message ?? 'Erreur lors de la mise à jour.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur lors de la mise à jour.');
     } finally {
       setLoading(false);
     }

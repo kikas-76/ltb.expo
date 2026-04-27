@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -8,14 +9,12 @@ const FROM = "LoueTonBien <noreply@contact.louetonbien.fr>";
 const SUPPORT = "admin@louetonbien.fr";
 const APP_URL = "https://app.louetonbien.fr";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-internal-secret",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+const corsOpts: CorsOptions = {
+  methods: "POST, OPTIONS",
+  headers: "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
-function jsonResponse(payload: unknown, status = 200) {
+function jsonResponse(corsHeaders: Record<string, string>, payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
@@ -470,22 +469,23 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return preflightResponse(req, corsOpts);
   }
+  const corsHeaders = buildCorsHeaders(req, corsOpts);
 
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Méthode non autorisée" }, 405);
+    return jsonResponse(corsHeaders, { error: "Méthode non autorisée" }, 405);
   }
 
   if (!RESEND_API_KEY) {
-    return jsonResponse({ error: "RESEND_API_KEY manquant" }, 500);
+    return jsonResponse(corsHeaders, { error: "RESEND_API_KEY manquant" }, 500);
   }
 
   try {
     const body = await req.json();
 
     if (!getAuthorized(req, body)) {
-      return jsonResponse({ error: "Accès non autorisé" }, 403);
+      return jsonResponse(corsHeaders, { error: "Accès non autorisé" }, 403);
     }
 
     const rawTo = body?.to;
@@ -493,7 +493,7 @@ serve(async (req: Request) => {
     const data = body?.data ?? {};
 
     if (!template || !templates[template]) {
-      return jsonResponse({ error: `Template "${template}" introuvable` }, 400);
+      return jsonResponse(corsHeaders, { error: `Template "${template}" introuvable` }, 400);
     }
 
     const recipients = Array.isArray(rawTo)
@@ -501,7 +501,7 @@ serve(async (req: Request) => {
       : [String(rawTo ?? "").trim()].filter(Boolean);
 
     if (!recipients.length || recipients.some((email) => !isValidEmail(email))) {
-      return jsonResponse({ error: "Destinataire invalide" }, 400);
+      return jsonResponse(corsHeaders, { error: "Destinataire invalide" }, 400);
     }
 
     const { subject, html } = templates[template](data);
@@ -524,12 +524,12 @@ serve(async (req: Request) => {
 
     if (!res.ok) {
       console.error("Resend error:", result);
-      return jsonResponse({ error: result }, res.status);
+      return jsonResponse(corsHeaders, { error: result }, res.status);
     }
 
-    return jsonResponse({ success: true, id: result.id }, 200);
+    return jsonResponse(corsHeaders, { success: true, id: result.id }, 200);
   } catch (err) {
     console.error("send-email error:", err);
-    return jsonResponse({ error: String(err) }, 500);
+    return jsonResponse(corsHeaders, { error: String(err) }, 500);
   }
 });

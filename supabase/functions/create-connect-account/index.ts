@@ -1,12 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
+import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+const corsOpts: CorsOptions = { methods: "POST, OPTIONS" };
 
 const APP_BASE_URL = "https://app.louetonbien.fr";
 // MCC 7394 = Equipment, Tool, Furniture, and Appliance Rental and Leasing.
@@ -34,8 +31,9 @@ function splitLegalName(profile: { display_name?: string | null; username?: stri
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return preflightResponse(req, corsOpts);
   }
+  const corsHeaders = buildCorsHeaders(req, corsOpts);
 
   try {
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {

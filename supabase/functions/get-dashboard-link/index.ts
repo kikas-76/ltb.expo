@@ -1,5 +1,8 @@
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts"
+
+const corsOpts: CorsOptions = { methods: "POST, OPTIONS" }
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
   apiVersion: '2023-10-16',
@@ -8,14 +11,9 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers':
-          'authorization, x-client-info, apikey, content-type',
-      },
-    })
+    return preflightResponse(req, corsOpts)
   }
+  const corsHeaders = buildCorsHeaders(req, corsOpts)
 
   try {
     const body = await req.json()
@@ -24,7 +22,7 @@ Deno.serve(async (req) => {
     if (!userToken) {
       return new Response(
         JSON.stringify({ error: 'Token manquant' }),
-        { status: 401, headers: { 'Access-Control-Allow-Origin': '*' } }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -38,7 +36,7 @@ Deno.serve(async (req) => {
     if (!user) {
       return new Response(
         JSON.stringify({ error: 'Non authentifié' }),
-        { status: 401, headers: { 'Access-Control-Allow-Origin': '*' } }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -56,7 +54,7 @@ Deno.serve(async (req) => {
     if (!profile?.stripe_account_id) {
       return new Response(
         JSON.stringify({ error: 'Compte Stripe non trouvé' }),
-        { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } }
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -68,21 +66,21 @@ Deno.serve(async (req) => {
       JSON.stringify({ url: loginLink.url }),
       {
         headers: {
+          ...corsHeaders,
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
         }
       }
     )
 
   } catch (error) {
-    console.error('Error:', error.message)
+    console.error('Error:', error instanceof Error ? error.message : error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       {
         status: 500,
         headers: {
+          ...corsHeaders,
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
         }
       }
     )

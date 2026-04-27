@@ -163,7 +163,7 @@ export default function PaymentScreen() {
         params: { booking_id: booking_id },
       } as any);
 
-    } catch (err: any) {
+    } catch (err) {
       Alert.alert('Erreur paiement', translatePaymentError(err));
     } finally {
       setLoading(false);

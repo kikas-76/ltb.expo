@@ -14,8 +14,8 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   view_count: number;
   owner: {
     id?: string;
@@ -50,14 +50,19 @@ function PopularSection({ userLat, userLng, userId }: Props) {
       const { data } = await supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, views_count, saves_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, views_count, saves_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
         )
         .eq('is_active', true)
         .order('views_count', { ascending: false })
         .limit(10);
 
       if (data && data.length > 0) {
-        const mapped: Listing[] = data.map((l: any) => ({
+        type Owner = NonNullable<Listing['owner']>;
+        type Row = Omit<Listing, 'owner' | 'view_count'> & {
+          owner: Owner | Owner[] | null;
+          views_count?: number;
+        };
+        const mapped: Listing[] = (data as unknown as Row[]).map((l) => ({
           ...l,
           owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
           view_count: l.views_count ?? 0,

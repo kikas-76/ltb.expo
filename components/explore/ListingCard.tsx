@@ -16,9 +16,8 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  location_data?: { address?: string; city?: string } | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   owner: {
     id?: string;
     username: string | null;
@@ -74,13 +73,11 @@ function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: Li
     : '?';
 
   const distanceText = useMemo(() => {
-    if (userLat == null || userLng == null || listing.latitude == null || listing.longitude == null) return null;
-    return formatDistance(haversineKm(userLat, userLng, listing.latitude, listing.longitude));
-  }, [userLat, userLng, listing.latitude, listing.longitude]);
+    if (userLat == null || userLng == null || listing.approx_latitude == null || listing.approx_longitude == null) return null;
+    return formatDistance(haversineKm(userLat, userLng, listing.approx_latitude, listing.approx_longitude));
+  }, [userLat, userLng, listing.approx_latitude, listing.approx_longitude]);
 
   const cityText =
-    listing.location_data?.city ||
-    extractCityFromAddress(listing.location_data?.address) ||
     listing.owner?.location_data?.city ||
     extractCityFromAddress(listing.owner?.location_data?.address) ||
     null;

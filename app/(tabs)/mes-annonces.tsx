@@ -30,7 +30,9 @@ interface Listing {
   price: number;
   photos_url: string[];
   category_name: string | null;
-  location_data: { address?: string } | null;
+  // The listing's address is no longer joined here — it's only revealed
+  // via get_listing_exact_location once a renter has an active booking.
+  // The owner's profile address is fetched via the AuthContext profile.
   is_active: boolean;
   created_at: string;
   view_count: number;
@@ -137,7 +139,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
   }, []);
 
   const photo = item.photos_url?.[0] ?? null;
-  const address = item.location_data?.address ?? null;
+  const address: string | null = null;
 
   return (
     <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -288,7 +290,7 @@ export default function MesAnnoncesScreen() {
 
     const { data } = await supabase
       .from('listings')
-      .select('id, name, price, photos_url, category_name, location_data, is_active, created_at, views_count, saves_count')
+      .select('id, name, price, photos_url, category_name, is_active, created_at, views_count, saves_count')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
 

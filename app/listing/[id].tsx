@@ -72,9 +72,14 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  location_data: any;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
+  // Only populated for the owner / admin / a renter with an active
+  // booking on this listing — fetched separately via the
+  // get_listing_exact_location RPC. Never selected directly.
+  exact_latitude?: number | null;
+  exact_longitude?: number | null;
+  exact_location_data?: { address?: string | null; city?: string | null } | null;
   created_at: string;
   owner: {
     id: string;
@@ -228,7 +233,7 @@ export default function ListingDetailScreen() {
         .from('listings')
         .select(
           `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
-           latitude, longitude, location_data, created_at, owner_id, views_count, saves_count,
+           approx_latitude, approx_longitude, created_at, owner_id, views_count, saves_count,
            owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, location_data, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number),
            category:categories!listings_category_id_fkey(value)`
         )
@@ -241,6 +246,20 @@ export default function ListingDetailScreen() {
           owner: Array.isArray(data.owner) ? (data.owner[0] ?? null) : data.owner,
           category: Array.isArray(data.category) ? (data.category[0] ?? null) : data.category,
         } as any;
+
+        // Owner / admin / renter with an active booking can fetch the
+        // exact GPS + address through the SECURITY DEFINER RPC. The
+        // RPC returns 0 rows for everyone else (defense in depth).
+        const { data: exact } = await supabase.rpc('get_listing_exact_location', {
+          p_listing_id: id!,
+        });
+        const exactRow = Array.isArray(exact) ? exact[0] : exact;
+        if (exactRow) {
+          mapped.exact_latitude = exactRow.latitude ?? null;
+          mapped.exact_longitude = exactRow.longitude ?? null;
+          mapped.exact_location_data = exactRow.location_data ?? null;
+        }
+
         setListing(mapped);
         setLikeCount((data as any).saves_count ?? 0);
         setViewCount((data as any).views_count ?? 0);
@@ -249,8 +268,12 @@ export default function ListingDetailScreen() {
         const ownerId = mapped.owner?.id ?? null;
         const isOwnListing = !!(userId && ownerId && userId === ownerId);
 
-        const listingLatRaw = mapped.latitude ?? mapped.owner?.location_data?.lat ?? null;
-        const listingLngRaw = mapped.longitude ?? mapped.owner?.location_data?.lng ?? null;
+        // Reverse-geocode the *approximate* pin for non-owners. The exact
+        // address is only revealed after booking; until then the city is
+        // computed from the blurred coords (still accurate to within a
+        // few hundred metres).
+        const listingLatRaw = mapped.approx_latitude ?? mapped.owner?.location_data?.lat ?? null;
+        const listingLngRaw = mapped.approx_longitude ?? mapped.owner?.location_data?.lng ?? null;
         if (!isOwnListing && listingLatRaw && listingLngRaw) {
           getCityFromCoords(listingLatRaw, listingLngRaw).then((city) => {
             if (city) setCityName(city);
@@ -480,8 +503,11 @@ export default function ListingDetailScreen() {
 
   const userLat = profile?.location_data?.lat ?? null;
   const userLng = profile?.location_data?.lng ?? null;
-  const listingLat = listing.latitude ?? listing.owner?.location_data?.lat ?? null;
-  const listingLng = listing.longitude ?? listing.owner?.location_data?.lng ?? null;
+  // Prefer the exact pin when the caller is authorised to see it
+  // (owner / admin / renter with active booking — surfaced via
+  // get_listing_exact_location). Otherwise fall back to the blurred pin.
+  const listingLat = listing.exact_latitude ?? listing.approx_latitude ?? listing.owner?.location_data?.lat ?? null;
+  const listingLng = listing.exact_longitude ?? listing.approx_longitude ?? listing.owner?.location_data?.lng ?? null;
 
   const distanceText =
     userLat && userLng && listingLat && listingLng

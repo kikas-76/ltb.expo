@@ -161,8 +161,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { error: null };
-    } catch (e: any) {
-      return { error: e?.message ?? 'Erreur lors de la connexion Google.' };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Erreur lors de la connexion Google.';
+      return { error: message };
     }
   };
 

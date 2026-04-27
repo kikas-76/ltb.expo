@@ -36,10 +36,9 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   owner_type: string | null;
-  location_data?: { address?: string; city?: string } | null;
   rank?: number;
   owner: {
     id?: string;
@@ -77,8 +76,8 @@ function highlightMatch(text: string, query: string): { parts: { text: string; b
 function HighlightedText({ text, query, style, boldStyle }: {
   text: string;
   query: string;
-  style?: any;
-  boldStyle?: any;
+  style?: import('react-native').StyleProp<import('react-native').TextStyle>;
+  boldStyle?: import('react-native').StyleProp<import('react-native').TextStyle>;
 }) {
   const { parts } = highlightMatch(text, query);
   return (
@@ -247,21 +246,22 @@ export default function SearchScreen() {
         return;
       }
 
-      let results: any[] = ftsData ?? [];
+      type FtsRow = Omit<Listing, 'owner'> & { owner?: never };
+      let results: FtsRow[] = (ftsData ?? []) as FtsRow[];
 
       if (selectedCategoryIds.length > 0) {
-        results = results.filter((l: any) => selectedCategoryIds.includes(l.category_id));
+        results = results.filter((l) => selectedCategoryIds.includes(l.category_id ?? ''));
       }
 
       if (appliedFilters.ownerType !== 'all') {
-        results = results.filter((l: any) => l.owner_type === appliedFilters.ownerType);
+        results = results.filter((l) => l.owner_type === appliedFilters.ownerType);
       }
 
       if (appliedFilters.priceMin !== '') {
-        results = results.filter((l: any) => Number(l.price) >= Number(appliedFilters.priceMin));
+        results = results.filter((l) => Number(l.price) >= Number(appliedFilters.priceMin));
       }
       if (appliedFilters.priceMax !== '') {
-        results = results.filter((l: any) => Number(l.price) <= Number(appliedFilters.priceMax));
+        results = results.filter((l) => Number(l.price) <= Number(appliedFilters.priceMax));
       }
 
       if (appliedFilters.sortKey === 'price_asc') {
@@ -270,7 +270,7 @@ export default function SearchScreen() {
         results.sort((a, b) => Number(b.price) - Number(a.price));
       }
 
-      const ids = results.map((l: any) => l.id);
+      const ids = results.map((l) => l.id);
       if (ids.length > 0) {
         const { data: ownersData } = await supabase
           .from('listings')
@@ -278,22 +278,22 @@ export default function SearchScreen() {
           .in('id', ids);
 
         if (ownersData) {
-          ownersData.forEach((row: any) => {
+          type OwnerRow = { id: string; owner: Listing['owner'] | NonNullable<Listing['owner']>[] | null };
+          (ownersData as OwnerRow[]).forEach((row) => {
             ownersMap[row.id] = Array.isArray(row.owner) ? (row.owner[0] ?? null) : row.owner;
           });
         }
       }
 
-      const mapped: Listing[] = results.map((l: any) => ({
+      const mapped: Listing[] = results.map((l) => ({
         id: l.id,
         name: l.name,
         price: l.price,
         photos_url: l.photos_url,
         category_name: l.category_name,
         category_id: l.category_id,
-        latitude: l.latitude,
-        longitude: l.longitude,
-        location_data: l.location_data,
+        approx_latitude: l.approx_latitude,
+        approx_longitude: l.approx_longitude,
         owner_type: l.owner_type,
         rank: l.rank,
         owner: ownersMap[l.id] ?? null,
@@ -367,14 +367,14 @@ export default function SearchScreen() {
     const ref = getRefCoords();
     if (ref && appliedFilters.locationMode !== 'none') {
       result = result.filter((l) => {
-        if (!l.latitude || !l.longitude) return true;
-        return haversineKm(ref.lat, ref.lng, l.latitude, l.longitude) <= appliedFilters.radiusKm;
+        if (!l.approx_latitude || !l.approx_longitude) return true;
+        return haversineKm(ref.lat, ref.lng, l.approx_latitude, l.approx_longitude) <= appliedFilters.radiusKm;
       });
     }
     if (appliedFilters.sortKey === 'nearest' && ref) {
       result.sort((a, b) => {
-        const dA = a.latitude && a.longitude ? haversineKm(ref.lat, ref.lng, a.latitude, a.longitude) : 9999;
-        const dB = b.latitude && b.longitude ? haversineKm(ref.lat, ref.lng, b.latitude, b.longitude) : 9999;
+        const dA = a.approx_latitude && a.approx_longitude ? haversineKm(ref.lat, ref.lng, a.approx_latitude, a.approx_longitude) : 9999;
+        const dB = b.approx_latitude && b.approx_longitude ? haversineKm(ref.lat, ref.lng, b.approx_latitude, b.approx_longitude) : 9999;
         return dA - dB;
       });
     }

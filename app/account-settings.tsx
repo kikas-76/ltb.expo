@@ -169,7 +169,7 @@ export default function AccountSettingsScreen() {
       await refreshProfile();
       setPhotoSuccess(true);
       setTimeout(() => setSection('menu'), 1200);
-    } catch (e: any) {
+    } catch {
       setPhotoError("Erreur lors de l'upload de la photo.");
     } finally {
       setPhotoLoading(false);

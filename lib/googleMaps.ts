@@ -23,11 +23,40 @@ export interface PlaceDetails {
   city: string | null;
 }
 
-async function proxyFetch(params: Record<string, string>): Promise<any> {
+// Google Places / Geocoding response shapes (only the fields we read).
+interface AddressComponent {
+  long_name: string;
+  short_name: string;
+  types: string[];
+}
+
+interface PlaceDetailsResponse {
+  status: string;
+  result?: {
+    formatted_address?: string;
+    geometry?: { location?: { lat: number; lng: number } };
+    address_components?: AddressComponent[];
+  };
+}
+
+interface AutocompleteResponse {
+  status: string;
+  predictions?: PlaceSuggestion[];
+}
+
+interface GeocodeResponse {
+  status: string;
+  results?: {
+    formatted_address?: string;
+    address_components?: AddressComponent[];
+  }[];
+}
+
+async function proxyFetch<T>(params: Record<string, string>): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     // Anonymous web visitors fall back to no-op; callers degrade gracefully.
-    return { status: 'NO_SESSION' };
+    return { status: 'NO_SESSION' } as T;
   }
   const qs = new URLSearchParams(params).toString();
   const res = await fetch(`${PROXY_BASE}?${qs}`, {
@@ -36,28 +65,33 @@ async function proxyFetch(params: Record<string, string>): Promise<any> {
       apikey: SUPABASE_ANON_KEY,
     },
   });
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
-async function directFetch(url: string): Promise<any> {
+async function directFetch<T>(url: string): Promise<T> {
   const res = await fetch(url);
-  return res.json();
+  return res.json() as Promise<T>;
 }
+
+const findCityComponent = (components: AddressComponent[]): AddressComponent | undefined =>
+  components.find((c) => c.types.includes('locality')) ||
+  components.find((c) => c.types.includes('postal_town')) ||
+  components.find((c) => c.types.includes('administrative_area_level_2'));
 
 export async function fetchPlaceSuggestions(input: string): Promise<PlaceSuggestion[]> {
   if (input.trim().length < 3) return [];
   try {
-    let data: any;
+    let data: AutocompleteResponse;
     if (Platform.OS === 'web') {
-      data = await proxyFetch({ endpoint: 'autocomplete', input });
+      data = await proxyFetch<AutocompleteResponse>({ endpoint: 'autocomplete', input });
     } else {
       const url =
         `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
         `?input=${encodeURIComponent(input)}&language=fr&key=${GOOGLE_MAPS_KEY}`;
-      data = await directFetch(url);
+      data = await directFetch<AutocompleteResponse>(url);
     }
     if (data.status === 'OK' && Array.isArray(data.predictions)) {
-      return data.predictions as PlaceSuggestion[];
+      return data.predictions;
     }
     return [];
   } catch {
@@ -67,24 +101,20 @@ export async function fetchPlaceSuggestions(input: string): Promise<PlaceSuggest
 
 export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
   try {
-    let data: any;
+    let data: PlaceDetailsResponse;
     if (Platform.OS === 'web') {
-      data = await proxyFetch({ endpoint: 'details', place_id: placeId });
+      data = await proxyFetch<PlaceDetailsResponse>({ endpoint: 'details', place_id: placeId });
     } else {
       const url =
         `https://maps.googleapis.com/maps/api/place/details/json` +
         `?place_id=${placeId}&fields=formatted_address,geometry,address_components&language=fr&key=${GOOGLE_MAPS_KEY}`;
-      data = await directFetch(url);
+      data = await directFetch<PlaceDetailsResponse>(url);
     }
     if (data.status === 'OK' && data.result) {
       const r = data.result;
       const lat = r.geometry?.location?.lat ?? 0;
       const lng = r.geometry?.location?.lng ?? 0;
-      const components: any[] = r.address_components ?? [];
-      const cityComp =
-        components.find((c: any) => c.types.includes('locality')) ||
-        components.find((c: any) => c.types.includes('postal_town')) ||
-        components.find((c: any) => c.types.includes('administrative_area_level_2'));
+      const cityComp = findCityComponent(r.address_components ?? []);
       return {
         address: r.formatted_address ?? '',
         lat,
@@ -100,22 +130,18 @@ export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails |
 
 export async function reverseGeocode(lat: number, lng: number): Promise<PlaceDetails | null> {
   try {
-    let data: any;
+    let data: GeocodeResponse;
     if (Platform.OS === 'web') {
-      data = await proxyFetch({ endpoint: 'geocode', latlng: `${lat},${lng}` });
+      data = await proxyFetch<GeocodeResponse>({ endpoint: 'geocode', latlng: `${lat},${lng}` });
     } else {
       const url =
         `https://maps.googleapis.com/maps/api/geocode/json` +
         `?latlng=${lat},${lng}&language=fr&key=${GOOGLE_MAPS_KEY}`;
-      data = await directFetch(url);
+      data = await directFetch<GeocodeResponse>(url);
     }
-    if (data.status === 'OK' && data.results?.length > 0) {
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
       const r = data.results[0];
-      const components: any[] = r.address_components ?? [];
-      const cityComp =
-        components.find((c: any) => c.types.includes('locality')) ||
-        components.find((c: any) => c.types.includes('postal_town')) ||
-        components.find((c: any) => c.types.includes('administrative_area_level_2'));
+      const cityComp = findCityComponent(r.address_components ?? []);
       return {
         address: r.formatted_address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
         lat,

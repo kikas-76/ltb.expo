@@ -1,11 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+const corsOpts: CorsOptions = { methods: "POST, OPTIONS" };
 
 async function stripePost(path: string, body: URLSearchParams, key: string) {
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
@@ -22,8 +19,9 @@ async function stripePost(path: string, body: URLSearchParams, key: string) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return preflightResponse(req, corsOpts);
   }
+  const corsHeaders = buildCorsHeaders(req, corsOpts);
 
   try {
     const authHeader = req.headers.get("Authorization") ?? "";

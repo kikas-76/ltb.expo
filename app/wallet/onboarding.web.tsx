@@ -86,8 +86,8 @@ function WalletOnboardingContent() {
       } else {
         setStep('pre-onboarding');
       }
-    } catch (err: any) {
-      setErrorMessage(err?.message ?? 'Erreur lors du chargement');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Erreur lors du chargement');
       setStep('error');
     }
   };
@@ -143,8 +143,8 @@ function WalletOnboardingContent() {
 
       setStripeConnectInstance(instance);
       setStep('stripe');
-    } catch (err: any) {
-      setErrorMessage(err?.message ?? 'Erreur lors du chargement');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Erreur lors du chargement');
       setStep('error');
     }
   };

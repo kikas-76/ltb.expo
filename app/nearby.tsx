@@ -28,8 +28,8 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   distanceKm: number | null;
   owner_type: string | null;
   owner: {
@@ -101,9 +101,8 @@ export default function NearbyPage() {
         photos_url: l.photos_url,
         category_name: l.category_name,
         category_id: l.category_id,
-        latitude: l.latitude,
-        longitude: l.longitude,
-        location_data: l.location_data,
+        approx_latitude: l.approx_latitude,
+        approx_longitude: l.approx_longitude,
         owner_type: l.owner_type,
         distanceKm: l.distance_km ?? null,
         owner: null,

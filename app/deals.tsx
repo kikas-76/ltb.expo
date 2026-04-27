@@ -29,8 +29,8 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   owner_type: string | null;
   owner: {
     id?: string;
@@ -76,7 +76,7 @@ export default function DealsPage() {
       let query = supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
         )
         .eq('is_active', true)
         .order('price', { ascending: order === 'asc' });
@@ -92,7 +92,8 @@ export default function DealsPage() {
       const { data } = await query;
 
       if (data) {
-        let mapped: Listing[] = data.map((l: any) => ({
+        type Row = Listing & { owner: Listing['owner'] | Listing['owner'][] };
+        let mapped: Listing[] = (data as unknown as Row[]).map((l) => ({
           ...l,
           owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
         }));
@@ -107,8 +108,8 @@ export default function DealsPage() {
           }
           if (refLat !== null && refLng !== null) {
             mapped = mapped
-              .filter((l) => l.latitude != null && l.longitude != null)
-              .filter((l) => haversineKm(refLat!, refLng!, l.latitude!, l.longitude!) <= filters.radiusKm)
+              .filter((l) => l.approx_latitude != null && l.approx_longitude != null)
+              .filter((l) => haversineKm(refLat!, refLng!, l.approx_latitude!, l.approx_longitude!) <= filters.radiusKm)
               .slice(0, PAGE_SIZE);
           }
         } else {

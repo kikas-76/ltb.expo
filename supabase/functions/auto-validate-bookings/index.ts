@@ -3,8 +3,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-internal-secret",
 };
 
 Deno.serve(async (req: Request) => {
@@ -12,7 +12,24 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   try {
+    const internalSecret = req.headers.get("x-internal-secret");
+    const expectedSecret = Deno.env.get("INTERNAL_EDGE_SECRET");
+
+    if (!expectedSecret || internalSecret !== expectedSecret) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

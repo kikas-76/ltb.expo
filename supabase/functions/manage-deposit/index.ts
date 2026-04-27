@@ -1,14 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Client-Info, Apikey, x-internal-secret",
-};
+const corsOpts: CorsOptions = { methods: "POST, OPTIONS" };
 
-function jsonResponse(payload: unknown, status = 200) {
+function jsonResponse(corsHeaders: Record<string, string>, payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
@@ -84,11 +80,12 @@ async function sendEmailSafe(
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return preflightResponse(req, corsOpts);
   }
+  const corsHeaders = buildCorsHeaders(req, corsOpts);
 
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Méthode non autorisée" }, 405);
+    return jsonResponse(corsHeaders, { error: "Méthode non autorisée" }, 405);
   }
 
   try {
@@ -101,18 +98,18 @@ Deno.serve(async (req: Request) => {
     const accessToken = getAccessToken(req, body);
 
     if (!bookingId || !action) {
-      return jsonResponse({ error: "booking_id et action requis" }, 400);
+      return jsonResponse(corsHeaders, { error: "booking_id et action requis" }, 400);
     }
 
     if (!["release", "capture"].includes(action)) {
-      return jsonResponse(
+      return jsonResponse(corsHeaders, 
         { error: "action doit être 'release' ou 'capture'" },
         400
       );
     }
 
     if (!internal && !accessToken) {
-      return jsonResponse({ error: "Non authentifié" }, 401);
+      return jsonResponse(corsHeaders, { error: "Non authentifié" }, 401);
     }
 
     const supabaseAdmin = createClient(
@@ -125,7 +122,7 @@ Deno.serve(async (req: Request) => {
     if (!internal && accessToken) {
       const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
       if (error || !data?.user) {
-        return jsonResponse({ error: "Non authentifié" }, 401);
+        return jsonResponse(corsHeaders, { error: "Non authentifié" }, 401);
       }
       user = data.user;
     }
@@ -154,7 +151,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (bookingError || !booking) {
-      return jsonResponse({ error: "Réservation introuvable" }, 404);
+      return jsonResponse(corsHeaders, { error: "Réservation introuvable" }, 404);
     }
 
     const renterName = getPersonName(booking.renter, "le locataire");
@@ -168,7 +165,7 @@ Deno.serve(async (req: Request) => {
     if (action === "release") {
       if (!internal) {
         if (!user || booking.owner_id !== user.id) {
-          return jsonResponse(
+          return jsonResponse(corsHeaders, 
             { error: "Seul le propriétaire ou le backend interne peut libérer la caution" },
             403
           );
@@ -185,14 +182,14 @@ Deno.serve(async (req: Request) => {
       ];
 
       if (!allowedStatuses.includes(String(booking.status ?? ""))) {
-        return jsonResponse(
+        return jsonResponse(corsHeaders, 
           { error: `Impossible de libérer la caution pour le statut '${booking.status}'` },
           400
         );
       }
 
       if (depositAmount <= 0) {
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
           success: true,
           message: "Aucune caution à libérer.",
           deposit_action: "no_deposit",
@@ -205,7 +202,7 @@ Deno.serve(async (req: Request) => {
           deposit_action: "release",
           deposit_released_at: new Date().toISOString(),
         }).eq("id", bookingId);
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
           success: true,
           message: "Aucune caution Stripe active, marquée comme libérée.",
           deposit_action: "release",
@@ -214,13 +211,13 @@ Deno.serve(async (req: Request) => {
 
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (!stripeKey) {
-        return jsonResponse({ error: "Stripe non configuré" }, 500);
+        return jsonResponse(corsHeaders, { error: "Stripe non configuré" }, 500);
       }
 
       const existingIntent = await stripeGet(`/payment_intents/${depositPiId}`, stripeKey);
 
       if (existingIntent?.error) {
-        return jsonResponse({ error: existingIntent.error.message }, 400);
+        return jsonResponse(corsHeaders, { error: existingIntent.error.message }, 400);
       }
 
       const stripeStatus = String(existingIntent?.status ?? "");
@@ -234,7 +231,7 @@ Deno.serve(async (req: Request) => {
           })
           .eq("id", bookingId);
 
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
           success: true,
           message: "La caution était déjà libérée.",
           deposit_action: "release",
@@ -243,14 +240,14 @@ Deno.serve(async (req: Request) => {
       }
 
       if (stripeStatus === "succeeded") {
-        return jsonResponse(
+        return jsonResponse(corsHeaders, 
           { error: "La caution a déjà été capturée, elle ne peut plus être libérée." },
           400
         );
       }
 
       if (stripeStatus !== "requires_capture") {
-        return jsonResponse(
+        return jsonResponse(corsHeaders, 
           { error: `La caution n'est pas dans un état libérable (${stripeStatus}).` },
           400
         );
@@ -263,7 +260,7 @@ Deno.serve(async (req: Request) => {
       );
 
       if (cancelResult?.error) {
-        return jsonResponse({ error: cancelResult.error.message }, 400);
+        return jsonResponse(corsHeaders, { error: cancelResult.error.message }, 400);
       }
 
       await supabaseAdmin
@@ -285,7 +282,7 @@ Deno.serve(async (req: Request) => {
         amount: Math.round((Number(booking.total_price ?? 0) * (1 - (booking.listing?.owner_commission_percent ?? 8) / 100)) * 100) / 100,
       });
 
-      return jsonResponse({
+      return jsonResponse(corsHeaders, {
         success: true,
         message: "Caution libérée avec succès.",
         deposit_action: "release",
@@ -296,21 +293,21 @@ Deno.serve(async (req: Request) => {
     // CAPTURE = internal only
     if (action === "capture") {
       if (!internal) {
-        return jsonResponse(
+        return jsonResponse(corsHeaders, 
           { error: "La capture de caution est réservée au backend interne/admin." },
           403
         );
       }
 
       if (depositAmount <= 0) {
-        return jsonResponse(
+        return jsonResponse(corsHeaders, 
           { error: "Aucune caution à capturer pour cette réservation." },
           400
         );
       }
 
       if (!depositPiId) {
-        return jsonResponse(
+        return jsonResponse(corsHeaders, 
           { error: "Aucune caution Stripe associée à cette réservation" },
           400
         );
@@ -318,13 +315,13 @@ Deno.serve(async (req: Request) => {
 
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (!stripeKey) {
-        return jsonResponse({ error: "Stripe non configuré" }, 500);
+        return jsonResponse(corsHeaders, { error: "Stripe non configuré" }, 500);
       }
 
       const existingIntent = await stripeGet(`/payment_intents/${depositPiId}`, stripeKey);
 
       if (existingIntent?.error) {
-        return jsonResponse({ error: existingIntent.error.message }, 400);
+        return jsonResponse(corsHeaders, { error: existingIntent.error.message }, 400);
       }
 
       const stripeStatus = String(existingIntent?.status ?? "");
@@ -338,7 +335,7 @@ Deno.serve(async (req: Request) => {
           })
           .eq("id", bookingId);
 
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
           success: true,
           message: "La caution avait déjà été capturée.",
           deposit_action: "capture",
@@ -347,14 +344,14 @@ Deno.serve(async (req: Request) => {
       }
 
       if (stripeStatus === "canceled") {
-        return jsonResponse(
+        return jsonResponse(corsHeaders, 
           { error: "La caution est déjà annulée/libérée, elle ne peut plus être capturée." },
           400
         );
       }
 
       if (stripeStatus !== "requires_capture") {
-        return jsonResponse(
+        return jsonResponse(corsHeaders, 
           { error: `La caution n'est pas dans un état capturable (${stripeStatus}).` },
           400
         );
@@ -367,7 +364,7 @@ Deno.serve(async (req: Request) => {
       );
 
       if (captureResult?.error) {
-        return jsonResponse({ error: captureResult.error.message }, 400);
+        return jsonResponse(corsHeaders, { error: captureResult.error.message }, 400);
       }
 
       await supabaseAdmin
@@ -388,7 +385,7 @@ Deno.serve(async (req: Request) => {
         deposit: depositAmount,
       });
 
-      return jsonResponse({
+      return jsonResponse(corsHeaders, {
         success: true,
         message: `Caution de ${depositAmount} € capturée avec succès.`,
         deposit_action: "capture",
@@ -396,9 +393,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    return jsonResponse({ error: "Action non gérée" }, 400);
+    return jsonResponse(corsHeaders, { error: "Action non gérée" }, 400);
   } catch (err: any) {
     console.error("manage-deposit error:", err);
-    return jsonResponse({ error: err.message ?? "Erreur interne" }, 500);
+    return jsonResponse(corsHeaders, { error: err.message ?? "Erreur interne" }, 500);
   }
 });

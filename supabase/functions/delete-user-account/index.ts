@@ -23,15 +23,13 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // owner) : they must complete or cancel them first. Otherwise money is in
 // motion and we'd risk losing track of it.
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
+
+const corsOpts: CorsOptions = { methods: "POST, OPTIONS" };
 
 const BLOCKING_STATUSES = ["active", "in_progress", "pending_return", "pending_owner_validation", "disputed"];
 
-function jsonResponse(payload: unknown, status = 200) {
+function jsonResponse(corsHeaders: Record<string, string>, payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -52,18 +50,19 @@ async function deleteStorageFolder(supabase: any, bucket: string, prefix: string
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders });
-  if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
+  if (req.method === "OPTIONS") return preflightResponse(req, corsOpts);
+  const corsHeaders = buildCorsHeaders(req, corsOpts);
+  if (req.method !== "POST") return jsonResponse(corsHeaders, { error: "Method not allowed" }, 405);
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const authHeader = req.headers.get("Authorization") ?? "";
     const accessToken = authHeader.replace("Bearer ", "").trim();
-    if (!accessToken) return jsonResponse({ error: "Non authentifié" }, 401);
+    if (!accessToken) return jsonResponse(corsHeaders, { error: "Non authentifié" }, 401);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
-    if (authError || !user) return jsonResponse({ error: "Non authentifié" }, 401);
+    if (authError || !user) return jsonResponse(corsHeaders, { error: "Non authentifié" }, 401);
 
     const userId = user.id;
 
@@ -76,7 +75,7 @@ Deno.serve(async (req: Request) => {
       .limit(1);
 
     if (activeBookings && activeBookings.length > 0) {
-      return jsonResponse({
+      return jsonResponse(corsHeaders, {
         error: "Tu as une location en cours. Termine ou annule la location avant de supprimer ton compte.",
         blocking_booking_id: activeBookings[0].id,
         status: activeBookings[0].status,
@@ -159,7 +158,7 @@ Deno.serve(async (req: Request) => {
 
     if (anonError) {
       console.error(`Profile anonymization failed for ${userId}:`, anonError.message);
-      return jsonResponse({ error: "Anonymisation du profil échouée. Contacte le support." }, 500);
+      return jsonResponse(corsHeaders, { error: "Anonymisation du profil échouée. Contacte le support." }, 500);
     }
 
     // ── 10. Delete auth.users so login is impossible and email is freed ──
@@ -168,13 +167,13 @@ Deno.serve(async (req: Request) => {
       console.error(`auth.admin.deleteUser failed for ${userId}:`, authDelError.message);
     }
 
-    return jsonResponse({
+    return jsonResponse(corsHeaders, {
       success: true,
       tombstone_username: tombstoneUsername,
       auth_deleted: !authDelError,
     });
   } catch (err) {
     console.error("delete-user-account error:", err);
-    return jsonResponse({ error: err instanceof Error ? err.message : "Erreur interne" }, 500);
+    return jsonResponse(corsHeaders, { error: err instanceof Error ? err.message : "Erreur interne" }, 500);
   }
 });

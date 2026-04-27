@@ -283,7 +283,7 @@ function StripeEmbedForm({
           // Deposit is NOT charged at payment time. Hold-deposit cron handles it
 
           router.replace(`/payment-success?booking_id=${msg.bookingId}` as any);
-        } catch (err: any) {
+        } catch (err) {
           setError(translatePaymentError(err));
           setLoading(false);
         }
@@ -399,7 +399,7 @@ export default function PaymentScreen() {
         if (!data.rental_client_secret) throw new Error('Client secret manquant');
         setRentalClientSecret(data.rental_client_secret);
         setRentalPaymentIntentId(data.rental_payment_intent_id ?? null);
-      } catch (err: any) {
+      } catch (err) {
         setIntentError(translatePaymentError(err));
       } finally {
         setLoadingIntent(false);

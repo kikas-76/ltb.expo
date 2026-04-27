@@ -14,8 +14,8 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   owner: {
     id?: string;
     username: string | null;
@@ -62,13 +62,15 @@ function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
       const { data } = await supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
         )
         .in('id', ids)
         .eq('is_active', true);
 
       if (data) {
-        const mapped: Listing[] = data.map((l: any) => ({
+        type Owner = NonNullable<Listing['owner']>;
+        type Row = Omit<Listing, 'owner'> & { owner: Owner | Owner[] | null };
+        const mapped: Listing[] = (data as unknown as Row[]).map((l) => ({
           ...l,
           owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
         }));

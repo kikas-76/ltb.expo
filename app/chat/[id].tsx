@@ -133,9 +133,9 @@ export default function ChatScreen() {
         requester_id,
         owner_id,
         status,
-        listing:listings!conversations_listing_id_fkey(name, photos_url, price, location_data),
+        listing:listings!conversations_listing_id_fkey(name, photos_url, price),
         requester:profiles!conversations_requester_id_fkey(username, photo_url, avatar_url),
-        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url)
+        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url, location_data)
       `)
       .eq('id', id)
       .maybeSingle();
@@ -146,21 +146,10 @@ export default function ChatScreen() {
       const owner = Array.isArray(conv.owner) ? conv.owner[0] : conv.owner;
       const isRequester = conv.requester_id === user.id;
       const other = isRequester ? owner : requester;
-      const parseCity = (address: string | null | undefined): string | null => {
-        if (!address) return null;
-        const parts = address.split(',').map((p: string) => p.trim()).filter(Boolean);
-        if (parts.length >= 2) {
-          const cityPart = parts[parts.length - 2];
-          const match = cityPart.match(/^\d{4,6}\s+(.+)$/);
-          if (match) return match[1].trim();
-          return cityPart;
-        }
-        return parts[0] ?? null;
-      };
-      const city =
-        listing?.location_data?.city ??
-        parseCity(listing?.location_data?.address) ??
-        null;
+      // City is derived from the owner's profile (the listing's address is
+      // only revealed via get_listing_exact_location once a booking exists,
+      // and is intentionally not loaded here).
+      const city = (owner as { location_data?: { city?: string | null } } | null)?.location_data?.city ?? null;
 
       setMeta({
         listingId: conv.listing_id ?? '',

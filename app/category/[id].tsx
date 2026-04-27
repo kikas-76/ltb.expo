@@ -34,8 +34,8 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   owner_type: string | null;
   owner: {
     username: string | null;
@@ -101,7 +101,7 @@ export default function CategoryScreen() {
       const { data } = await supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, latitude, longitude, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)'
+          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)'
         )
         .eq('is_active', true)
         .eq('category_id', id)
@@ -167,8 +167,8 @@ export default function CategoryScreen() {
     const ref = getRefCoords();
     if (ref) {
       result = result.filter((l) => {
-        if (!l.latitude || !l.longitude) return true;
-        return haversineKm(ref.lat, ref.lng, l.latitude, l.longitude) <= 30;
+        if (!l.approx_latitude || !l.approx_longitude) return true;
+        return haversineKm(ref.lat, ref.lng, l.approx_latitude, l.approx_longitude) <= 30;
       });
     }
 
@@ -179,12 +179,12 @@ export default function CategoryScreen() {
     } else if (appliedFilters.sortKey === 'nearest' && ref) {
       result.sort((a, b) => {
         const dA =
-          a.latitude && a.longitude
-            ? haversineKm(ref.lat, ref.lng, a.latitude, a.longitude)
+          a.approx_latitude && a.approx_longitude
+            ? haversineKm(ref.lat, ref.lng, a.approx_latitude, a.approx_longitude)
             : 9999;
         const dB =
-          b.latitude && b.longitude
-            ? haversineKm(ref.lat, ref.lng, b.latitude, b.longitude)
+          b.approx_latitude && b.approx_longitude
+            ? haversineKm(ref.lat, ref.lng, b.approx_latitude, b.approx_longitude)
             : 9999;
         return dA - dB;
       });

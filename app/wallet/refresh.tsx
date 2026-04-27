@@ -82,8 +82,8 @@ export default function WalletRefreshScreen() {
         } else {
           Alert.alert('Erreur', data.error || 'URL manquante');
         }
-      } catch (err: any) {
-        Alert.alert('Erreur', err.message);
+      } catch (err) {
+        Alert.alert('Erreur', err instanceof Error ? err.message : 'Une erreur est survenue');
       } finally {
         setLoading(false);
       }

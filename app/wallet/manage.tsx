@@ -180,8 +180,8 @@ function WalletManageContent() {
         }
 
         setAccountData(data);
-      } catch (err: any) {
-        setError(err.message ?? 'Erreur lors du chargement');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
       } finally {
         setLoading(false);
       }

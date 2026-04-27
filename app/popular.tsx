@@ -29,8 +29,8 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   views_count: number;
   saves_count: number;
   score: number;
@@ -82,7 +82,7 @@ export default function PopularPage() {
       let query = supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner_type, views_count, saves_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner_type, views_count, saves_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
         )
         .eq('is_active', true)
         .order(orderCol, { ascending: false });
@@ -102,8 +102,8 @@ export default function PopularPage() {
         }
         if (refLat !== null && refLng !== null) {
           query = query
-            .not('latitude', 'is', null)
-            .not('longitude', 'is', null);
+            .not('approx_latitude', 'is', null)
+            .not('approx_longitude', 'is', null);
         }
       }
 
@@ -124,8 +124,8 @@ export default function PopularPage() {
           }
           if (refLat !== null && refLng !== null) {
             filtered = filtered.filter(
-              (l) => l.latitude != null && l.longitude != null &&
-                haversineKm(refLat!, refLng!, l.latitude, l.longitude) <= filters.radiusKm
+              (l) => l.approx_latitude != null && l.approx_longitude != null &&
+                haversineKm(refLat!, refLng!, l.approx_latitude, l.approx_longitude) <= filters.radiusKm
             );
           }
         }

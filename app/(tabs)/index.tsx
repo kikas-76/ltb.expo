@@ -44,8 +44,8 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   owner: {
     id?: string;
     username: string | null;
@@ -81,7 +81,7 @@ export default function ExploreScreen() {
       const hasLocation = lat !== null && lng !== null;
 
       const baseSelect =
-        'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)';
+        'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)';
 
       const [catRes, listingsRes, nearbyRes] = await Promise.all([
         supabase.from('categories').select('id, name, value, icon_path').order('order'),
@@ -104,21 +104,26 @@ export default function ExploreScreen() {
 
       if (catRes.data) setCategories(catRes.data);
 
-      const mapOwner = (l: any) => ({
+      type Owner = NonNullable<Listing['owner']>;
+      type RawListing = Omit<Listing, 'owner'> & {
+        owner: Owner | Owner[] | null;
+      };
+      const mapOwner = (l: RawListing): Listing => ({
         ...l,
         owner: Array.isArray(l.owner) ? (l.owner[0] ?? null) : l.owner,
       });
 
       const recentMapped: Listing[] = listingsRes.data
-        ? (listingsRes.data as any[]).map(mapOwner)
+        ? (listingsRes.data as unknown as RawListing[]).map(mapOwner)
         : [];
       setListings(recentMapped);
 
       // Nearby: RPC returns listings already sorted by distance ASC but
       // without owner. Hydrate owners via a follow-up SELECT keyed on the
       // returned ids, then re-order to preserve the distance ordering.
-      if (nearbyRes && (nearbyRes as any).data) {
-        const rows = (nearbyRes as any).data as any[];
+      const nearbyData = nearbyRes?.data as RawListing[] | null | undefined;
+      if (nearbyData) {
+        const rows = nearbyData;
         if (rows.length === 0) {
           setNearbyData([]);
         } else {
@@ -129,8 +134,8 @@ export default function ExploreScreen() {
               'id, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)',
             )
             .in('id', ids);
-          const ownerMap = new Map<string, any>();
-          (ownerRows ?? []).forEach((o: any) => {
+          const ownerMap = new Map<string, Owner | null>();
+          ((ownerRows ?? []) as { id: string; owner: Owner | Owner[] | null }[]).forEach((o) => {
             const owner = Array.isArray(o.owner) ? o.owner[0] : o.owner;
             ownerMap.set(o.id, owner ?? null);
           });

@@ -1,11 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+const corsOpts: CorsOptions = { methods: "GET, POST, OPTIONS" };
 
 // 60 requests per minute per authenticated user, all maps-proxy endpoints
 // combined. Google Maps API quotas are billed per request, so even a
@@ -20,7 +17,7 @@ const ALLOWED_ENDPOINTS = new Set([
   "staticmap",
 ]);
 
-function jsonError(message: string, status = 400) {
+function jsonError(corsHeaders: Record<string, string>, message: string, status = 400) {
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -64,31 +61,32 @@ function isSafePlaceId(id: string): boolean {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return preflightResponse(req, corsOpts);
   }
+  const corsHeaders = buildCorsHeaders(req, corsOpts);
 
   try {
     // ---- Auth: require an authenticated Supabase session ----
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-    if (!token) return jsonError("Authentication required", 401);
+    if (!token) return jsonError(corsHeaders, "Authentication required", 401);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) return jsonError("Unauthorized", 401);
+    if (authErr || !user) return jsonError(corsHeaders, "Unauthorized", 401);
 
     // ---- Server-side Maps key only (no client-supplied bypass) ----
     const mapsKey = Deno.env.get("GOOGLE_MAPS_KEY") ?? "";
-    if (!mapsKey) return jsonError("Maps API key not configured", 500);
+    if (!mapsKey) return jsonError(corsHeaders, "Maps API key not configured", 500);
 
     // ---- Endpoint whitelist ----
     const url = new URL(req.url);
     const endpoint = url.searchParams.get("endpoint") ?? "";
     if (!ALLOWED_ENDPOINTS.has(endpoint)) {
-      return jsonError("Unknown endpoint", 400);
+      return jsonError(corsHeaders, "Unknown endpoint", 400);
     }
 
     // ---- Rate limit (per user, all endpoints combined) ----
@@ -97,15 +95,15 @@ Deno.serve(async (req: Request) => {
       p_max_per_window: RATE_LIMIT_PER_MINUTE,
       p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,
     });
-    if (rlErr) return jsonError("Rate-limit check failed", 500);
-    if (!allowed) return jsonError("Rate limit exceeded", 429);
+    if (rlErr) return jsonError(corsHeaders, "Rate-limit check failed", 500);
+    if (!allowed) return jsonError(corsHeaders, "Rate limit exceeded", 429);
 
     // ---- Endpoint-specific input validation + URL build ----
     let googleUrl: string;
 
     if (endpoint === "autocomplete") {
       const input = (url.searchParams.get("input") ?? "").trim();
-      if (!input || input.length > 200) return jsonError("Invalid input", 400);
+      if (!input || input.length > 200) return jsonError(corsHeaders, "Invalid input", 400);
       googleUrl =
         `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
         `?input=${encodeURIComponent(input)}` +
@@ -113,7 +111,7 @@ Deno.serve(async (req: Request) => {
         `&key=${mapsKey}`;
     } else if (endpoint === "details") {
       const placeId = url.searchParams.get("place_id") ?? "";
-      if (!isSafePlaceId(placeId)) return jsonError("Invalid place_id", 400);
+      if (!isSafePlaceId(placeId)) return jsonError(corsHeaders, "Invalid place_id", 400);
       googleUrl =
         `https://maps.googleapis.com/maps/api/place/details/json` +
         `?place_id=${encodeURIComponent(placeId)}` +
@@ -123,7 +121,7 @@ Deno.serve(async (req: Request) => {
     } else if (endpoint === "geocode") {
       const latlngRaw = url.searchParams.get("latlng") ?? "";
       const latlng = validateLatLng(latlngRaw);
-      if (!latlng) return jsonError("Invalid latlng", 400);
+      if (!latlng) return jsonError(corsHeaders, "Invalid latlng", 400);
       googleUrl =
         `https://maps.googleapis.com/maps/api/geocode/json` +
         `?latlng=${latlng.lat},${latlng.lng}` +
@@ -133,14 +131,14 @@ Deno.serve(async (req: Request) => {
       // staticmap
       const lat = clampedNumber(url.searchParams.get("lat"), -90, 90);
       const lng = clampedNumber(url.searchParams.get("lng"), -180, 180);
-      if (lat === null || lng === null) return jsonError("Invalid lat/lng", 400);
+      if (lat === null || lng === null) return jsonError(corsHeaders, "Invalid lat/lng", 400);
 
       const zoom = clampedNumber(url.searchParams.get("zoom"), 1, 21, 13);
-      if (zoom === null) return jsonError("Invalid zoom (1-21)", 400);
+      if (zoom === null) return jsonError(corsHeaders, "Invalid zoom (1-21)", 400);
 
       const sizeRaw = url.searchParams.get("size") ?? "600x270";
       const size = validateSize(sizeRaw);
-      if (!size) return jsonError("Invalid size (50-800 each side)", 400);
+      if (!size) return jsonError(corsHeaders, "Invalid size (50-800 each side)", 400);
 
       googleUrl =
         `https://maps.googleapis.com/maps/api/staticmap` +
@@ -155,7 +153,7 @@ Deno.serve(async (req: Request) => {
 
       const imgRes = await fetch(googleUrl);
       if (!imgRes.ok) {
-        return jsonError(`Google Maps error: ${imgRes.status}`, imgRes.status);
+        return jsonError(corsHeaders, `Google Maps error: ${imgRes.status}`, imgRes.status);
       }
       const contentType = imgRes.headers.get("Content-Type") ?? "image/png";
       const imgBuffer = await imgRes.arrayBuffer();
@@ -175,6 +173,6 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (_err) {
-    return jsonError("Internal error", 500);
+    return jsonError(corsHeaders, "Internal error", 500);
   }
 });

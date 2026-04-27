@@ -25,6 +25,7 @@ import { UnreadProvider } from '@/contexts/UnreadContext';
 import { DeepLinkProvider, useDeepLink } from '@/contexts/DeepLinkContext';
 import { Colors } from '@/constants/colors';
 import StripeWrapper from '@/components/StripeWrapper';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { supabase } from '@/lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
@@ -320,17 +321,19 @@ export default function RootLayout() {
   }
 
   return (
-    <StripeWrapper>
-      <DeepLinkProvider>
-        <AuthProvider>
-          <UnreadProvider>
-            <FavoritesProvider>
-              <RootNavigator />
-            </FavoritesProvider>
-          </UnreadProvider>
-        </AuthProvider>
-      </DeepLinkProvider>
-    </StripeWrapper>
+    <ErrorBoundary>
+      <StripeWrapper>
+        <DeepLinkProvider>
+          <AuthProvider>
+            <UnreadProvider>
+              <FavoritesProvider>
+                <RootNavigator />
+              </FavoritesProvider>
+            </UnreadProvider>
+          </AuthProvider>
+        </DeepLinkProvider>
+      </StripeWrapper>
+    </ErrorBoundary>
   );
 }
 

@@ -30,8 +30,8 @@ interface FavoriteListing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   owner: {
     id?: string;
     username: string | null;
@@ -77,8 +77,8 @@ function FavoritesScreenContent() {
           photos_url,
           category_name,
           category_id,
-          latitude,
-          longitude,
+          approx_latitude,
+          approx_longitude,
           profiles!listings_owner_id_fkey(id, username, photo_url)
         )
       `)
@@ -89,11 +89,22 @@ function FavoritesScreenContent() {
     }
 
     if (data) {
-      const sorted = [...data].sort((a: any, b: any) =>
+      type SavedListingRow = {
+        saved_at: string;
+        listings:
+          | (Omit<FavoriteListing, 'owner'> & {
+              profiles: FavoriteListing['owner'] | FavoriteListing['owner'][] | null;
+            })
+          | (Omit<FavoriteListing, 'owner'> & {
+              profiles: FavoriteListing['owner'] | FavoriteListing['owner'][] | null;
+            })[]
+          | null;
+      };
+      const sorted = [...(data as SavedListingRow[])].sort((a, b) =>
         new Date(b.saved_at).getTime() - new Date(a.saved_at).getTime()
       );
       const mapped: FavoriteListing[] = sorted
-        .map((row: any) => {
+        .map((row) => {
           const l = Array.isArray(row.listings) ? row.listings[0] : row.listings;
           if (!l) return null;
           const owner = Array.isArray(l.profiles) ? l.profiles[0] : l.profiles;
@@ -104,12 +115,12 @@ function FavoritesScreenContent() {
             photos_url: l.photos_url,
             category_name: l.category_name,
             category_id: l.category_id,
-            latitude: l.latitude,
-            longitude: l.longitude,
+            approx_latitude: l.approx_latitude,
+            approx_longitude: l.approx_longitude,
             owner: owner ?? null,
           };
         })
-        .filter(Boolean) as FavoriteListing[];
+        .filter((x): x is FavoriteListing => x !== null);
       setListings(mapped);
     }
 
@@ -120,8 +131,8 @@ function FavoritesScreenContent() {
     fetchFavorites(refreshKey === 0);
   }, [fetchFavorites, refreshKey]);
 
-  const userLat = (profile as any)?.location_data?.latitude ?? null;
-  const userLng = (profile as any)?.location_data?.longitude ?? null;
+  const userLat = profile?.location_data?.lat ?? null;
+  const userLng = profile?.location_data?.lng ?? null;
 
   const renderItem = ({ item }: { item: FavoriteListing }) => (
     <View style={styles.cardWrapper}>

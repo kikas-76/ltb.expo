@@ -401,8 +401,8 @@ function WalletScreenContent() {
             .eq('status', 'active'),
         ]);
 
-      const calcNet = (bookings: any[]) =>
-        (bookings || []).reduce((sum: number, b: any) => sum + computeOwnerEarnings(b.total_price), 0);
+      const calcNet = (bookings: { total_price: number }[]) =>
+        (bookings || []).reduce((sum, b) => sum + computeOwnerEarnings(b.total_price), 0);
 
       setEarnings({
         monthly: calcNet(monthlyBookings ?? []),
@@ -439,7 +439,7 @@ function WalletScreenContent() {
         .maybeSingle();
 
       const pendingAmount = (pendingBookings ?? []).reduce(
-        (sum: number, b: any) => sum + computeOwnerEarnings(b.total_price),
+        (sum, b) => sum + computeOwnerEarnings(b.total_price),
         0
       );
 
@@ -481,24 +481,37 @@ function WalletScreenContent() {
           .order('created_at', { ascending: false }),
       ]);
 
-      const incomeTx: Transaction[] = (ownerBookings ?? []).map((b: any) => ({
+      type WalletBookingRow = {
+        id: string;
+        total_price: number;
+        created_at: string;
+        status: string;
+        listings: { name: string | null } | { name: string | null }[] | null;
+      };
+      const pickListingName = (l: WalletBookingRow['listings']): string | undefined => {
+        if (!l) return undefined;
+        const row = Array.isArray(l) ? l[0] : l;
+        return row?.name ?? undefined;
+      };
+
+      const incomeTx: Transaction[] = ((ownerBookings ?? []) as WalletBookingRow[]).map((b) => ({
         id: `income-${b.id}`,
         title: 'Revenu',
         date: formatDate(b.created_at),
         amount: Number(b.total_price) * 0.92,
         type: 'income' as const,
         status: b.status,
-        listingName: b.listings?.name,
+        listingName: pickListingName(b.listings),
       }));
 
-      const paymentTx: Transaction[] = (renterBookings ?? []).map((b: any) => ({
+      const paymentTx: Transaction[] = ((renterBookings ?? []) as WalletBookingRow[]).map((b) => ({
         id: `payment-${b.id}`,
         title: 'Paiement',
         date: formatDate(b.created_at),
         amount: Number(b.total_price),
         type: 'payment' as const,
         status: b.status,
-        listingName: b.listings?.name,
+        listingName: pickListingName(b.listings),
       }));
 
       const merged = [...incomeTx, ...paymentTx].sort(
@@ -572,8 +585,9 @@ function WalletScreenContent() {
           const freshToken = await getValidToken();
           if (freshToken) await checkAccountStatus(freshToken);
         }
-      } catch (err: any) {
-        Alert.alert('Erreur', err?.message ?? 'Une erreur est survenue');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Une erreur est survenue';
+        Alert.alert('Erreur', message);
       } finally {
         setActivateLoading(false);
       }

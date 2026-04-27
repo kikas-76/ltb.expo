@@ -76,7 +76,7 @@ export default function DisputePage() {
         ...prev,
         { preview: asset.uri, stored: privateUriFor('dispute-evidence', path) },
       ]);
-    } catch (e: any) {
+    } catch {
       setError('Erreur lors du chargement de la photo.');
     } finally {
       setUploading(false);
@@ -132,7 +132,7 @@ export default function DisputePage() {
       }
 
       setSubmitted(true);
-    } catch (e: any) {
+    } catch {
       setError('Une erreur est survenue. Réessayez.');
     } finally {
       setSubmitting(false);

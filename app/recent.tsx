@@ -29,8 +29,8 @@ interface Listing {
   photos_url: string[] | null;
   category_name: string | null;
   category_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  approx_latitude: number | null;
+  approx_longitude: number | null;
   created_at: string;
   owner_type: string | null;
   owner: {
@@ -71,7 +71,7 @@ export default function RecentPage() {
       let query = supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, latitude, longitude, location_data, created_at, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
+          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, created_at, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)'
         )
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -115,11 +115,11 @@ export default function RecentPage() {
 
           if (refLat !== null && refLng !== null) {
             mapped = mapped
-              .filter((l) => l.latitude != null && l.longitude != null)
-              .filter((l) => haversineKm(refLat!, refLng!, l.latitude!, l.longitude!) <= filters.radiusKm)
+              .filter((l) => l.approx_latitude != null && l.approx_longitude != null)
+              .filter((l) => haversineKm(refLat!, refLng!, l.approx_latitude!, l.approx_longitude!) <= filters.radiusKm)
               .sort((a, b) =>
-                haversineKm(refLat!, refLng!, a.latitude!, a.longitude!) -
-                haversineKm(refLat!, refLng!, b.latitude!, b.longitude!)
+                haversineKm(refLat!, refLng!, a.approx_latitude!, a.approx_longitude!) -
+                haversineKm(refLat!, refLng!, b.approx_latitude!, b.approx_longitude!)
               )
               .slice(0, PAGE_SIZE);
           }
