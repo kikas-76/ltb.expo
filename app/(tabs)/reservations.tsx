@@ -23,6 +23,21 @@ import { router, useFocusEffect } from 'expo-router';
 import { SkeletonConversationRow } from '@/components/Skeleton';
 
 
+function describeMessageContent(raw: string | null | undefined): string {
+  if (!raw) return '';
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed?.type === 'file') return `📎 ${parsed.name ?? 'Fichier'}`;
+  } catch {}
+  if (
+    raw.startsWith('private://') ||
+    /\.(jpg|jpeg|png|gif|webp|heic)(\?|$)/i.test(raw)
+  ) {
+    return '📷 Photo';
+  }
+  return raw;
+}
+
 function getReadIdsFromStorage(): Set<string> {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
     try {
@@ -386,7 +401,9 @@ export default function MessagesScreen() {
     const other = isRequester ? owner : requester;
     const otherUsername = other?.username ?? 'Utilisateur';
     const thumb = listing?.photos_url?.[0] ?? null;
-    const lastContent = lastMsg?.content ?? `Du ${conv.start_date} au ${conv.end_date}`;
+    const lastContent = lastMsg
+      ? describeMessageContent(lastMsg.content)
+      : `Du ${conv.start_date} au ${conv.end_date}`;
     const lastTimestamp = lastMsg ? new Date(lastMsg.created_at).getTime() : new Date(conv.created_at).getTime();
     const lastTime = lastMsg ? formatTime(lastMsg.created_at) : formatTime(conv.created_at);
     const lastIsOwn = lastMsg ? lastMsg.sender_id === userId : false;
