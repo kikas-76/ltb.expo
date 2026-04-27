@@ -38,7 +38,7 @@ interface UserProfile {
   stripe_payouts_enabled: boolean | null;
   location_data: any;
   business_name: string | null;
-  siren: string | null;
+  siren_number: string | null;
 }
 
 interface AccountEvent {
@@ -118,7 +118,7 @@ export default function AdminUserDetail() {
     ] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, username, display_name, email, phone_number, role, is_pro, created_at, bio, business_name, siren, stripe_account_id, stripe_charges_enabled, account_status, ban_reason, banned_until, location_data')
+        .select('id, username, display_name, email, phone_number, role, is_pro, created_at, bio, business_name, siren_number, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, account_status, ban_reason, banned_until, location_data')
         .eq('id', id)
         .maybeSingle(),
       supabase
@@ -332,10 +332,10 @@ export default function AdminUserDetail() {
             </View>
           ) : null}
 
-          {profile.siren ? (
+          {profile.siren_number ? (
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>SIREN</Text>
-              <Text style={styles.infoValue}>{profile.siren}</Text>
+              <Text style={styles.infoValue}>{profile.siren_number}</Text>
             </View>
           ) : null}
 

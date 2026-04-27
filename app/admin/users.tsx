@@ -27,12 +27,19 @@ interface AdminUser {
 }
 
 type StatusFilter = 'all' | 'active' | 'suspended' | 'banned';
+type StripeFilter = 'all' | 'validated' | 'unvalidated';
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Tous' },
   { key: 'active', label: 'Actifs' },
   { key: 'suspended', label: 'Suspendus' },
   { key: 'banned', label: 'Bannis' },
+];
+
+const STRIPE_FILTERS: { key: StripeFilter; label: string }[] = [
+  { key: 'all', label: 'Stripe : tous' },
+  { key: 'validated', label: 'Stripe validé' },
+  { key: 'unvalidated', label: 'Stripe non validé' },
 ];
 
 const PAGE_SIZE = 20;
@@ -42,16 +49,17 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [stripeFilter, setStripeFilter] = useState<StripeFilter>('all');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
     setPage(0);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, stripeFilter]);
 
   useEffect(() => {
     loadUsers();
-  }, [page, search, statusFilter]);
+  }, [page, search, statusFilter, stripeFilter]);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -64,6 +72,13 @@ export default function AdminUsers() {
 
     if (statusFilter !== 'all') {
       query = query.eq('account_status', statusFilter);
+    }
+
+    if (stripeFilter === 'validated') {
+      query = query.eq('stripe_charges_enabled', true);
+    } else if (stripeFilter === 'unvalidated') {
+      // Treat NULL the same as false: not validated.
+      query = query.or('stripe_charges_enabled.is.null,stripe_charges_enabled.eq.false');
     }
 
     if (search.trim()) {
@@ -128,6 +143,26 @@ export default function AdminUsers() {
         ))}
       </ScrollView>
 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterRow}
+      >
+        {STRIPE_FILTERS.map((f) => (
+          <TouchableOpacity
+            key={f.key}
+            style={[styles.filterChip, stripeFilter === f.key && styles.filterChipActive]}
+            onPress={() => setStripeFilter(f.key)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.filterChipText, stripeFilter === f.key && styles.filterChipTextActive]}>
+              {f.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={Colors.primaryDark} />
@@ -172,6 +207,25 @@ export default function AdminUsers() {
                     <Text style={[styles.badgeText, { color: Colors.warningDark }]}>Pro</Text>
                   </View>
                 )}
+                <View
+                  style={[
+                    styles.badge,
+                    {
+                      backgroundColor: u.stripe_charges_enabled
+                        ? Colors.successGreenLight
+                        : Colors.borderLight,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.badgeText,
+                      { color: u.stripe_charges_enabled ? Colors.successGreen : Colors.textMuted },
+                    ]}
+                  >
+                    {u.stripe_charges_enabled ? 'Stripe ✓' : 'Stripe ✗'}
+                  </Text>
+                </View>
               </View>
             </TouchableOpacity>
           ))}
