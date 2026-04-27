@@ -16,6 +16,7 @@ import StatusBadge from '@/components/admin/StatusBadge';
 
 interface Metrics {
   users: number;
+  activeListings: number;
   activeBookings: number;
   openDisputes: number;
   pendingReports: number;
@@ -62,6 +63,7 @@ export default function AdminDashboard() {
 
     const [
       { count: users },
+      { count: activeListings },
       { count: activeBookings },
       { count: openDisputes },
       { count: pendingReports },
@@ -72,6 +74,7 @@ export default function AdminDashboard() {
       { count: flagged },
     ] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      supabase.from('listings').select('*', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('bookings').select('*', { count: 'exact', head: true }).in('status', ['pending_payment', 'active', 'in_progress']),
       supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'open'),
       supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -93,6 +96,7 @@ export default function AdminDashboard() {
 
     setMetrics({
       users: users ?? 0,
+      activeListings: activeListings ?? 0,
       activeBookings: activeBookings ?? 0,
       openDisputes: openDisputes ?? 0,
       pendingReports: pendingReports ?? 0,
@@ -115,6 +119,7 @@ export default function AdminDashboard() {
 
   const metricCards = [
     { label: 'Utilisateurs', value: metrics?.users ?? 0, icon: 'people-outline', color: Colors.info },
+    { label: 'Annonces disponibles', value: metrics?.activeListings ?? 0, icon: 'pricetags-outline', color: Colors.primary },
     { label: 'Réservations actives', value: metrics?.activeBookings ?? 0, icon: 'calendar-outline', color: Colors.primaryDark },
     { label: 'Litiges ouverts', value: metrics?.openDisputes ?? 0, icon: 'warning-outline', color: Colors.error },
     { label: 'Signalements', value: metrics?.pendingReports ?? 0, icon: 'flag-outline', color: Colors.warning },
