@@ -93,7 +93,11 @@ export default function AdminDisputes() {
 
   const updateStatus = async (id: string, status: string) => {
     setActionLoading(id + '_status');
-    await supabase.from('disputes').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+    // Audited RPC: writes the change + an admin_audit_logs entry.
+    await supabase.rpc('admin_update_dispute_status', {
+      p_dispute_id: id,
+      p_new_status: status,
+    });
     await loadDisputes();
     setActionLoading(null);
   };

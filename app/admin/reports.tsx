@@ -75,7 +75,11 @@ export default function AdminReports() {
 
   const updateStatus = async (id: string, status: string) => {
     setActionLoading(id + '_' + status);
-    await supabase.from('reports').update({ status }).eq('id', id);
+    // Audited RPC: writes the change + an admin_audit_logs entry.
+    await supabase.rpc('admin_update_report_status', {
+      p_report_id: id,
+      p_new_status: status,
+    });
     await loadReports();
     setActionLoading(null);
   };

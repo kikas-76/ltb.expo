@@ -82,7 +82,7 @@ export default function AdminAnalytics() {
     const [
       { data: monthBookings },
       { count: newUsers },
-      { count: restrictedAccounts },
+      { data: restrictedAccountsRaw },
       { data: allMonthlyBookings },
       { data: allMonthlyDisputes },
       { data: listingBookings },
@@ -101,10 +101,10 @@ export default function AdminAnalytics() {
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', monthStart),
-      supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .in('account_status', ['suspended', 'banned']),
+      // account_status is restricted at the column level for authenticated;
+      // counting via direct SELECT silently returns 0. Use the SECURITY
+      // DEFINER RPC instead.
+      supabase.rpc('admin_count_restricted_accounts'),
       supabase
         .from('bookings')
         .select('created_at, total_price, status')
@@ -199,7 +199,7 @@ export default function AdminAnalytics() {
       monthlyRevenue,
       monthlyNewUsers: newUsers ?? 0,
       disputeRate,
-      restrictedAccounts: restrictedAccounts ?? 0,
+      restrictedAccounts: Number(restrictedAccountsRaw ?? 0),
       monthlyStats,
       topListings,
       topRenters,
