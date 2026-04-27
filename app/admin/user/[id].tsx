@@ -48,7 +48,7 @@ interface AccountEvent {
   duration_days: number | null;
   expires_at: string | null;
   created_at: string;
-  performed_by_profile: { username: string | null } | null;
+  performed_by_username: string | null;
 }
 
 interface Booking {
@@ -57,9 +57,8 @@ interface Booking {
   total_price: number;
   start_date: string;
   end_date: string;
-  listing: { name: string } | null;
-  renter: { username: string | null } | null;
-  owner: { username: string | null } | null;
+  listing_name: string | null;
+  other_username: string | null;
 }
 
 interface Listing {
@@ -75,7 +74,7 @@ interface Dispute {
   status: string;
   description: string;
   created_at: string;
-  booking: { listing: { name: string } | null } | null;
+  listing_name: string | null;
 }
 
 interface Report {
@@ -85,6 +84,27 @@ interface Report {
   description: string | null;
   created_at: string;
   target_type: string;
+  target_id: string | null;
+}
+
+interface Favorite {
+  listing_id: string;
+  saved_at: string;
+  listing_name: string | null;
+  is_active: boolean | null;
+  owner_username: string | null;
+}
+
+interface Conversation {
+  id: string;
+  status: string;
+  created_at: string;
+  start_date: string;
+  end_date: string;
+  listing_name: string | null;
+  is_requester: boolean;
+  other_username: string | null;
+  last_message_at: string | null;
 }
 
 export default function AdminUserDetail() {
@@ -96,6 +116,8 @@ export default function AdminUserDetail() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -107,65 +129,35 @@ export default function AdminUserDetail() {
     if (!id) return;
     setLoading(true);
 
-    const [
-      { data: profileData },
-      { data: eventsData },
-      { data: renterBookings },
-      { data: ownerBookings },
-      { data: listingsData },
-      { data: disputesData },
-      { data: reportsData },
-    ] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('id, username, display_name, email, phone_number, role, is_pro, created_at, bio, business_name, siren_number, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, account_status, ban_reason, banned_until, location_data')
-        .eq('id', id)
-        .maybeSingle(),
-      supabase
-        .from('user_account_events')
-        .select('id, event_type, reason, duration_days, expires_at, created_at, performed_by_profile:profiles!user_account_events_performed_by_fkey(username)')
-        .eq('user_id', id)
-        .order('created_at', { ascending: false })
-        .limit(20),
-      supabase
-        .from('bookings')
-        .select('id, status, total_price, start_date, end_date, listing:listings(name), owner:profiles!bookings_owner_id_fkey(username)')
-        .eq('renter_id', id)
-        .order('created_at', { ascending: false })
-        .limit(20),
-      supabase
-        .from('bookings')
-        .select('id, status, total_price, start_date, end_date, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username)')
-        .eq('owner_id', id)
-        .order('created_at', { ascending: false })
-        .limit(20),
-      supabase
-        .from('listings')
-        .select('id, name, is_active, price, created_at')
-        .eq('owner_id', id)
-        .order('created_at', { ascending: false })
-        .limit(20),
-      supabase
-        .from('disputes')
-        .select('id, status, description, created_at, booking:bookings(listing:listings(name))')
-        .eq('reporter_id', id)
-        .order('created_at', { ascending: false })
-        .limit(10),
-      supabase
-        .from('reports')
-        .select('id, status, category, description, created_at, target_type')
-        .eq('reporter_id', id)
-        .order('created_at', { ascending: false })
-        .limit(10),
-    ]);
+    // Single SECURITY DEFINER RPC: bypasses column-level grants on
+    // profiles (email, role, account_status, stripe_*) and consolidates
+    // every related dataset (events, bookings, listings, disputes,
+    // reports, favorites, conversations) the admin needs.
+    const { data } = await supabase.rpc('admin_get_user_details', {
+      p_user_id: id,
+    });
 
-    setProfile(profileData as any);
-    setEvents((eventsData as any) ?? []);
-    setBookingsAsRenter((renterBookings as any) ?? []);
-    setBookingsAsOwner((ownerBookings as any) ?? []);
-    setListings((listingsData as any) ?? []);
-    setDisputes((disputesData as any) ?? []);
-    setReports((reportsData as any) ?? []);
+    const payload = (data as {
+      profile: UserProfile | null;
+      events: AccountEvent[];
+      bookings_as_renter: Booking[];
+      bookings_as_owner: Booking[];
+      listings: Listing[];
+      disputes_filed: Dispute[];
+      reports_filed: Report[];
+      favorites: Favorite[];
+      conversations: Conversation[];
+    } | null) ?? null;
+
+    setProfile(payload?.profile ?? null);
+    setEvents(payload?.events ?? []);
+    setBookingsAsRenter(payload?.bookings_as_renter ?? []);
+    setBookingsAsOwner(payload?.bookings_as_owner ?? []);
+    setListings(payload?.listings ?? []);
+    setDisputes(payload?.disputes_filed ?? []);
+    setReports(payload?.reports_filed ?? []);
+    setFavorites(payload?.favorites ?? []);
+    setConversations(payload?.conversations ?? []);
     setLoading(false);
   }, [id]);
 
@@ -375,7 +367,7 @@ export default function AdminUserDetail() {
                     <Text style={styles.eventType}>{eventTypeLabel[ev.event_type] ?? ev.event_type}</Text>
                     {ev.reason ? <Text style={styles.eventReason} numberOfLines={2}>{ev.reason}</Text> : null}
                     <Text style={styles.eventMeta}>
-                      Par @{(ev.performed_by_profile as any)?.username ?? '?'} · {new Date(ev.created_at).toLocaleDateString('fr-FR')}
+                      Par @{ev.performed_by_username ?? '?'} · {new Date(ev.created_at).toLocaleDateString('fr-FR')}
                     </Text>
                   </View>
                 </View>
@@ -432,9 +424,9 @@ export default function AdminUserDetail() {
             <View key={b.id}>
               <View style={styles.listRow}>
                 <View style={styles.listRowContent}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.name ?? '-'}</Text>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing_name ?? '-'}</Text>
                   <Text style={styles.listRowSub}>
-                    {new Date(b.start_date).toLocaleDateString('fr-FR')} → {new Date(b.end_date).toLocaleDateString('fr-FR')} · {b.total_price}€
+                    @{b.other_username ?? '?'} · {new Date(b.start_date).toLocaleDateString('fr-FR')} → {new Date(b.end_date).toLocaleDateString('fr-FR')} · {b.total_price}€
                   </Text>
                 </View>
                 <StatusBadge status={b.status} small />
@@ -453,9 +445,9 @@ export default function AdminUserDetail() {
             <View key={b.id}>
               <View style={styles.listRow}>
                 <View style={styles.listRowContent}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing?.name ?? '-'}</Text>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing_name ?? '-'}</Text>
                   <Text style={styles.listRowSub}>
-                    @{(b as any).renter?.username ?? '?'} · {new Date(b.start_date).toLocaleDateString('fr-FR')} · {b.total_price}€
+                    @{b.other_username ?? '?'} · {new Date(b.start_date).toLocaleDateString('fr-FR')} · {b.total_price}€
                   </Text>
                 </View>
                 <StatusBadge status={b.status} small />
@@ -493,7 +485,7 @@ export default function AdminUserDetail() {
             <View key={d.id}>
               <View style={styles.listRow}>
                 <View style={styles.listRowContent}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{d.booking?.listing?.name ?? 'Annonce inconnue'}</Text>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{d.listing_name ?? 'Annonce inconnue'}</Text>
                   <Text style={styles.listRowSub} numberOfLines={2}>{d.description}</Text>
                 </View>
                 <StatusBadge status={d.status} small />
@@ -505,7 +497,7 @@ export default function AdminUserDetail() {
 
         {/* Reports */}
         <Text style={styles.sectionTitle}>Signalements ({reports.length})</Text>
-        <View style={[styles.card, { marginBottom: 48 }]}>
+        <View style={styles.card}>
           {reports.length === 0 ? (
             <Text style={styles.emptyText}>Aucun signalement</Text>
           ) : reports.map((r, i) => (
@@ -519,6 +511,55 @@ export default function AdminUserDetail() {
               </View>
               {i < reports.length - 1 && <View style={styles.rowDivider} />}
             </View>
+          ))}
+        </View>
+
+        {/* Favorites */}
+        <Text style={styles.sectionTitle}>Favoris ({favorites.length})</Text>
+        <View style={styles.card}>
+          {favorites.length === 0 ? (
+            <Text style={styles.emptyText}>Aucun favori</Text>
+          ) : favorites.map((f, i) => (
+            <View key={f.listing_id}>
+              <View style={styles.listRow}>
+                <View style={styles.listRowContent}>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{f.listing_name ?? 'Annonce supprimée'}</Text>
+                  <Text style={styles.listRowSub}>
+                    @{f.owner_username ?? '?'} · ajouté le {new Date(f.saved_at).toLocaleDateString('fr-FR')}
+                  </Text>
+                </View>
+                {f.is_active === false && <StatusBadge status="inactive" small />}
+              </View>
+              {i < favorites.length - 1 && <View style={styles.rowDivider} />}
+            </View>
+          ))}
+        </View>
+
+        {/* Conversations */}
+        <Text style={styles.sectionTitle}>Discussions ({conversations.length})</Text>
+        <View style={[styles.card, { marginBottom: 48 }]}>
+          {conversations.length === 0 ? (
+            <Text style={styles.emptyText}>Aucune discussion</Text>
+          ) : conversations.map((c, i) => (
+            <TouchableOpacity
+              key={c.id}
+              onPress={() => router.push(`/chat/${c.id}` as any)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.listRow}>
+                <View style={styles.listRowContent}>
+                  <Text style={styles.listRowTitle} numberOfLines={1}>{c.listing_name ?? 'Annonce'}</Text>
+                  <Text style={styles.listRowSub}>
+                    {c.is_requester ? 'Avec @' : 'De @'}{c.other_username ?? '?'} ·{' '}
+                    {c.last_message_at
+                      ? `dernier msg ${new Date(c.last_message_at).toLocaleDateString('fr-FR')}`
+                      : `créée ${new Date(c.created_at).toLocaleDateString('fr-FR')}`}
+                  </Text>
+                </View>
+                <StatusBadge status={c.status} small />
+              </View>
+              {i < conversations.length - 1 && <View style={styles.rowDivider} />}
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
