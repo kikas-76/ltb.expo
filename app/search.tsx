@@ -45,7 +45,6 @@ interface Listing {
     username: string | null;
     photo_url: string | null;
     is_pro?: boolean;
-    location_data?: { address?: string; city?: string } | null;
   } | null;
 }
 
@@ -274,7 +273,7 @@ export default function SearchScreen() {
       if (ids.length > 0) {
         const { data: ownersData } = await supabase
           .from('listings')
-          .select('id, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)')
+          .select('id, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)')
           .in('id', ids);
 
         if (ownersData) {

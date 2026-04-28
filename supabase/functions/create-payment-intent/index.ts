@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
+import { getAccessToken } from "../_shared/auth.ts";
 
 const corsOpts: CorsOptions = { methods: "POST, OPTIONS" };
 
@@ -42,11 +43,19 @@ Deno.serve(async (req: Request) => {
   const corsHeaders = buildCorsHeaders(req, corsOpts);
 
   try {
-    const { access_token, booking_id } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const access_token = getAccessToken(req, body);
+    const booking_id = typeof body?.booking_id === "string" ? body.booking_id : null;
 
-    if (!access_token || !booking_id) {
+    if (!access_token) {
       return new Response(
-        JSON.stringify({ error: "access_token et booking_id requis" }),
+        JSON.stringify({ error: "Non authentifié" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!booking_id) {
+      return new Response(
+        JSON.stringify({ error: "booking_id requis" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

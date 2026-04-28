@@ -73,11 +73,11 @@ function WalletOnboardingContent() {
 
       setUserId(session.user.id);
 
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('username, display_name, phone_number, location_data, is_pro, business_name')
-        .eq('id', session.user.id)
-        .maybeSingle();
+      // phone_number + location_data live behind column-level GRANTs
+      // that no longer expose them via direct SELECT to authenticated.
+      // get_my_profile() (SECURITY DEFINER) returns the full own row.
+      const { data: profileRows } = await supabase.rpc('get_my_profile');
+      const p = (Array.isArray(profileRows) ? profileRows[0] : profileRows) ?? null;
 
       setProfile(p);
 

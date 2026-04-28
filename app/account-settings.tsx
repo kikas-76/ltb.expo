@@ -299,9 +299,9 @@ export default function AccountSettingsScreen() {
       setPasswordError('Erreur : ' + error.message);
       return;
     }
-    await supabase.auth.resetPasswordForEmail(userEmail, {
-      redirectTo: undefined,
-    });
+    // No resetPasswordForEmail here: the password change already
+    // succeeded above. Sending a reset email afterwards would only
+    // confuse the user (and could be mistaken for a phishing attempt).
     setPasswordSaving(false);
     setPasswordSuccess(true);
     setTimeout(() => {
@@ -742,7 +742,8 @@ export default function AccountSettingsScreen() {
             <Ionicons name="alert-circle-outline" size={28} color={Colors.error} />
             <Text style={styles.deleteWarningTitle}>Action irréversible</Text>
             <Text style={styles.deleteWarningText}>
-              La suppression de votre compte effacera définitivement toutes vos données, annonces et messages. Cette action ne peut pas être annulée.
+              La suppression rend impossible la connexion à votre compte et efface votre profil, vos annonces, vos favoris, vos conversations et les fichiers que vous avez uploadés.{'\n\n'}
+              Pour des raisons légales et comptables, votre historique de réservations est conservé sous forme anonymisée (sans nom, email ni téléphone). Cette action ne peut pas être annulée.
             </Text>
           </View>
           {deleteError && <ErrorBanner message={deleteError} />}

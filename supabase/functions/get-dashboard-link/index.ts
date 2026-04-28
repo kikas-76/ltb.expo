@@ -1,6 +1,7 @@
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts"
+import { getAccessToken } from "../_shared/auth.ts"
 
 const corsOpts: CorsOptions = { methods: "POST, OPTIONS" }
 
@@ -16,8 +17,8 @@ Deno.serve(async (req) => {
   const corsHeaders = buildCorsHeaders(req, corsOpts)
 
   try {
-    const body = await req.json()
-    const userToken = body.access_token
+    const body = await req.json().catch(() => ({}))
+    const userToken = getAccessToken(req, body)
 
     if (!userToken) {
       return new Response(
@@ -32,7 +33,7 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: `Bearer ${userToken}` } } }
     )
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser(userToken)
     if (!user) {
       return new Response(
         JSON.stringify({ error: 'Non authentifié' }),

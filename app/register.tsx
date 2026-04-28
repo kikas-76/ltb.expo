@@ -93,7 +93,7 @@ export default function RegisterScreen() {
     }
 
     if (data.user && !data.session) {
-      router.push({ pathname: '/verify-email', params: { email: email.trim().toLowerCase(), password } });
+      router.push({ pathname: '/verify-email', params: { email: email.trim().toLowerCase() } });
       return;
     }
 

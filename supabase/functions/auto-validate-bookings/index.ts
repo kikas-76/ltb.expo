@@ -1,5 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { constantTimeEquals, requireEnv } from "../_shared/auth.ts";
+
+// Crash at boot if cron secret is missing — better than silently 401-ing
+// every cron tick and never being noticed.
+const INTERNAL_SECRET = requireEnv("INTERNAL_EDGE_SECRET");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,9 +26,8 @@ Deno.serve(async (req: Request) => {
 
   try {
     const internalSecret = req.headers.get("x-internal-secret");
-    const expectedSecret = Deno.env.get("INTERNAL_EDGE_SECRET");
 
-    if (!expectedSecret || internalSecret !== expectedSecret) {
+    if (!constantTimeEquals(internalSecret, INTERNAL_SECRET)) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }

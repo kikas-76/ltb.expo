@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
+import { getAccessToken, isInternalCall as sharedIsInternalCall } from "../_shared/auth.ts";
 
 const corsOpts: CorsOptions = { methods: "POST, OPTIONS" };
 
@@ -14,24 +15,10 @@ function jsonResponse(corsHeaders: Record<string, string>, payload: unknown, sta
   });
 }
 
-function getAccessToken(req: Request, body: Record<string, any>): string | null {
-  const authHeader = req.headers.get("authorization") ?? "";
-  if (authHeader.startsWith("Bearer ")) {
-    return authHeader.slice(7).trim();
-  }
-  const fromBody = String(body?.access_token ?? "").trim();
-  return fromBody || null;
-}
-
 function isInternalCall(req: Request, body: Record<string, any>): boolean {
   const expected = Deno.env.get("INTERNAL_EDGE_SECRET");
   if (!expected) return false;
-
-  const provided =
-    req.headers.get("x-internal-secret")?.trim() ??
-    String(body?.internal_secret ?? "").trim();
-
-  return !!provided && provided === expected;
+  return sharedIsInternalCall(req, body, expected);
 }
 
 function getPersonName(profile: any, fallback: string): string {
@@ -92,7 +79,6 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const bookingId = String(body?.booking_id ?? "").trim();
     const action = String(body?.action ?? "").trim();
-    const paymentIntentIdFromBody = String(body?.payment_intent_id ?? "").trim() || null;
 
     const internal = isInternalCall(req, body);
     const accessToken = getAccessToken(req, body);
@@ -159,7 +145,9 @@ Deno.serve(async (req: Request) => {
     const listingName = booking.listing?.name ?? "Location";
 
     const depositAmount = Number(booking.deposit_amount ?? 0);
-    const depositPiId = booking.stripe_payment_intent_id || paymentIntentIdFromBody;
+    // Source of truth = DB. Never trust a client-supplied PI id: an owner
+    // could pass another booking's PI and trigger a cancel on it.
+    const depositPiId = booking.stripe_payment_intent_id || null;
 
     // RELEASE = owner or internal only
     if (action === "release") {
@@ -218,6 +206,15 @@ Deno.serve(async (req: Request) => {
 
       if (existingIntent?.error) {
         return jsonResponse(corsHeaders, { error: existingIntent.error.message }, 400);
+      }
+
+      // Defense in depth: even though depositPiId comes from the DB row of
+      // this booking, double-check Stripe metadata before any cancel/capture.
+      if (existingIntent?.metadata?.booking_id !== bookingId) {
+        console.error(
+          `manage-deposit release: metadata mismatch booking=${bookingId} pi=${depositPiId} pi_meta=${existingIntent?.metadata?.booking_id}`,
+        );
+        return jsonResponse(corsHeaders, { error: "Caution Stripe incohérente avec la réservation." }, 400);
       }
 
       const stripeStatus = String(existingIntent?.status ?? "");
@@ -322,6 +319,13 @@ Deno.serve(async (req: Request) => {
 
       if (existingIntent?.error) {
         return jsonResponse(corsHeaders, { error: existingIntent.error.message }, 400);
+      }
+
+      if (existingIntent?.metadata?.booking_id !== bookingId) {
+        console.error(
+          `manage-deposit capture: metadata mismatch booking=${bookingId} pi=${depositPiId} pi_meta=${existingIntent?.metadata?.booking_id}`,
+        );
+        return jsonResponse(corsHeaders, { error: "Caution Stripe incohérente avec la réservation." }, 400);
       }
 
       const stripeStatus = String(existingIntent?.status ?? "");

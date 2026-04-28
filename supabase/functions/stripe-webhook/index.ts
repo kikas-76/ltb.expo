@@ -38,6 +38,18 @@ const sendEmail = async (
   }
 };
 
+// Constant-time string compare. Returns false on length mismatch (length is
+// not secret here — signatures are fixed-size SHA256 hex). Avoids an
+// early-exit `===` that could leak the matching prefix length via timing.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
 async function verifyStripeSignature(
   payload: string,
   sigHeader: string,
@@ -56,8 +68,14 @@ async function verifyStripeSignature(
 
     if (!parts.timestamp || parts.signatures.length === 0) return false;
 
+    // Strict numeric parse: parseInt("abc") returns NaN, which silently
+    // bypasses `Math.abs(now - NaN) > 300` (NaN comparisons are always
+    // false). That would let an attacker replay a captured payload with a
+    // garbled timestamp. Refuse anything non-finite.
+    const ts = Number(parts.timestamp);
+    if (!Number.isFinite(ts)) return false;
     const now = Math.floor(Date.now() / 1000);
-    if (Math.abs(now - parseInt(parts.timestamp)) > 300) return false;
+    if (Math.abs(now - ts) > 300) return false;
 
     const signedPayload = `${parts.timestamp}.${payload}`;
     const encoder = new TextEncoder();
@@ -73,7 +91,7 @@ async function verifyStripeSignature(
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    return parts.signatures.some((sig) => sig === expectedSig);
+    return parts.signatures.some((sig) => timingSafeEqual(sig, expectedSig));
   } catch {
     return false;
   }
@@ -287,9 +305,25 @@ Deno.serve(async (req: Request) => {
           break;
         }
 
+        // Only cancel the booking on a *full* refund. Partial refunds keep
+        // the rental active — Stripe sends one charge.refunded event per
+        // refund operation, so a series of partial refunds would
+        // erroneously cancel the booking on the first one. data.refunded
+        // is the boolean Stripe sets when amount_refunded === amount.
+        const fullyRefunded =
+          data.refunded === true ||
+          (typeof data.amount === "number" &&
+            typeof data.amount_refunded === "number" &&
+            data.amount_refunded >= data.amount);
+
+        if (!fullyRefunded) {
+          console.log(`charge.refunded partiel pour PI ${paymentIntentId}, booking laissé en l'état`);
+          break;
+        }
+
         const { data: bookings, error: lookupError } = await supabase
           .from("bookings")
-          .select("id, status")
+          .select("id, status, stripe_payment_intent_id, deposit_action")
           .eq("stripe_rental_payment_intent_id", paymentIntentId)
           .limit(1);
 
@@ -303,13 +337,63 @@ Deno.serve(async (req: Request) => {
           break;
         }
 
+        const refundedBooking = bookings[0];
+
+        // If a deposit hold is sitting in requires_capture, cancel it too
+        // — the rental is fully refunded so we can't legitimately keep
+        // the renter's caution authorized. Without this, the hold dangles
+        // until Stripe auto-expires it after 7 days.
+        if (refundedBooking.stripe_payment_intent_id) {
+          try {
+            const depositPi = await fetch(
+              `https://api.stripe.com/v1/payment_intents/${refundedBooking.stripe_payment_intent_id}`,
+              { headers: { "Authorization": `Bearer ${stripeKey}`, "Stripe-Version": "2024-06-20" } },
+            ).then((r) => r.json());
+
+            if (depositPi?.status === "requires_capture") {
+              const cancelRes = await fetch(
+                `https://api.stripe.com/v1/payment_intents/${refundedBooking.stripe_payment_intent_id}/cancel`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${stripeKey}`,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Stripe-Version": "2024-06-20",
+                  },
+                },
+              );
+              const cancelData = await cancelRes.json();
+              if (cancelRes.ok || cancelData?.error?.code === "payment_intent_unexpected_state") {
+                await supabase
+                  .from("bookings")
+                  .update({
+                    deposit_action: "release",
+                    deposit_released_at: new Date().toISOString(),
+                  })
+                  .eq("id", refundedBooking.id);
+                console.log(`Booking ${refundedBooking.id} · deposit hold canceled after rental refund`);
+              } else {
+                console.error(
+                  `Booking ${refundedBooking.id}: deposit cancel failed after refund:`,
+                  cancelData?.error,
+                );
+              }
+            }
+          } catch (e) {
+            // Don't throw — webhook idempotency should not retry forever
+            // for a deposit cleanup failure. Log and let the booking flip
+            // to cancelled; admin can release manually if needed.
+            console.error(`Booking ${refundedBooking.id}: deposit cancel threw:`, e);
+          }
+        }
+
         const { error: updateError } = await supabase
           .from("bookings")
           .update({ status: "cancelled" })
-          .eq("id", bookings[0].id);
+          .eq("id", refundedBooking.id);
         if (updateError) throw updateError;
 
-        console.log(`Booking ${bookings[0].id} → cancelled (remboursement)`);
+        console.log(`Booking ${refundedBooking.id} → cancelled (remboursement)`);
         break;
       }
 
@@ -357,7 +441,13 @@ Deno.serve(async (req: Request) => {
             .update({ stripe_onboarding_notified: true })
             .eq("stripe_account_id", accountId);
 
-          console.log(`Email activation Stripe envoyé à ${existingProfile.email}`);
+          // Mask the local part to keep an audit-useful trace (domain) without
+          // putting the full PII email into Supabase logs.
+          const maskedEmail = String(existingProfile.email ?? "").replace(
+            /^([^@]{1,2})[^@]*(@.*)$/,
+            "$1***$2",
+          );
+          console.log(`Email activation Stripe envoyé à ${maskedEmail || "<unknown>"}`);
         }
 
         break;

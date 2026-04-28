@@ -444,14 +444,11 @@ export default function MessagesScreen() {
       displayStatus = rawStatus as ConvDisplayStatus;
     }
 
-    // Listing city falls back to the owner profile city; the listing's
-    // exact address is only available via get_listing_exact_location once
-    // a booking exists, so we don't load it here.
-    const ownerLoc = (owner as { location_data?: { city?: string | null; address?: string | null } } | null)?.location_data;
-    const listingCity =
-      ownerLoc?.city ||
-      extractCityFromAddress(ownerLoc?.address ?? null) ||
-      null;
+    // Owner's location_data is no longer joinable (RGPD: revoked from
+    // authenticated GRANT). City label is left blank in the conversation
+    // list; the listing's exact address only appears via
+    // get_listing_exact_location after a booking exists.
+    const listingCity: string | null = null;
 
     // Owner Stripe readiness pulled from the batch-fetched map (filled in fetchConversations)
     const ownerStripeReady = isRequester && displayStatus === 'accepted'
@@ -504,7 +501,7 @@ export default function MessagesScreen() {
         status,
         listing:listings!conversations_listing_id_fkey(name, photos_url, is_active),
         requester:profiles!conversations_requester_id_fkey(username, photo_url, avatar_url),
-        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url, location_data),
+        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url),
         chat_messages(id, content, sender_id, is_system, is_read, created_at),
         bookings(id, total_price, status, start_date, end_date)
       `)

@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabase';
 const RESEND_COOLDOWN = 60;
 
 export default function VerifyEmailScreen() {
-  const params = useLocalSearchParams<{ email: string; password: string }>();
+  const params = useLocalSearchParams<{ email: string }>();
   const email = params.email ?? '';
 
   const [resending, setResending] = useState(false);

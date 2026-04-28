@@ -523,7 +523,16 @@ serve(async (req: Request) => {
     const result = await res.json();
 
     if (!res.ok) {
-      console.error("Resend error:", result);
+      // Don't log `result` directly: on Resend failures the response can
+      // echo back the full email payload (recipient, subject, HTML body
+      // with template variables — names, amounts, etc.). Log only the
+      // upstream-provided error metadata.
+      const safeError = {
+        status: res.status,
+        name: typeof result?.name === "string" ? result.name : undefined,
+        message: typeof result?.message === "string" ? result.message : undefined,
+      };
+      console.error("Resend error:", safeError);
       return jsonResponse(corsHeaders, { error: result }, res.status);
     }
 

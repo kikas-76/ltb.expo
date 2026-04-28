@@ -1,5 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { constantTimeEquals, requireEnv } from "../_shared/auth.ts";
+
+// Fail loudly at boot if the cron secret isn't configured. Previously the
+// function returned a generic 401 every call instead of crashing, masking
+// a missing-env-var deploy.
+const INTERNAL_SECRET = requireEnv("INTERNAL_EDGE_SECRET");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,14 +23,21 @@ async function stripeGet(path: string, key: string) {
   return res.json();
 }
 
-async function stripePost(path: string, body: URLSearchParams, key: string) {
+async function stripePost(
+  path: string,
+  body: URLSearchParams,
+  key: string,
+  options?: { idempotencyKey?: string },
+) {
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${key}`,
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Stripe-Version": "2024-06-20",
+  };
+  if (options?.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${key}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Stripe-Version": "2024-06-20",
-    },
+    headers,
     body: body.toString(),
   });
   return res.json();
@@ -36,29 +49,28 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const internalSecret = Deno.env.get("INTERNAL_EDGE_SECRET");
+    const internalSecret = INTERNAL_SECRET;
     const providedSecret = req.headers.get("x-internal-secret")?.trim() ?? "";
     let bookingIdsFilter: string[] | null = null;
 
-    // Accept either internal secret (cron) or specific booking_ids (from finalize)
+    // Accept either internal secret (cron) or specific booking_ids (from finalize).
+    // Header check first; body check as fallback for callers that can't set headers.
+    let body: any = null;
     try {
-      const body = await req.json();
+      body = await req.json();
       bookingIdsFilter = body?.booking_ids ?? null;
-      if (!internalSecret || providedSecret !== internalSecret) {
-        if (!body?.internal_secret || body.internal_secret !== internalSecret) {
-          return new Response(
-            JSON.stringify({ error: "Non autorise" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
     } catch {
-      if (!internalSecret || providedSecret !== internalSecret) {
-        return new Response(
-          JSON.stringify({ error: "Non autorise" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      // body parse failure is fine for cron with no payload; header secret
+      // alone is sufficient to authenticate
+    }
+
+    const headerOk = constantTimeEquals(providedSecret, internalSecret);
+    const bodyOk = constantTimeEquals(typeof body?.internal_secret === "string" ? body.internal_secret : "", internalSecret);
+    if (!headerOk && !bodyOk) {
+      return new Response(
+        JSON.stringify({ error: "Non autorise" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -74,26 +86,33 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Find bookings needing deposit hold
+    // Find bookings needing deposit hold. Note: we no longer filter on
+    // `deposit_hold_failed = false` in cron mode — that flag used to be
+    // sticky and locked the renter out of any retry even if they later
+    // added a working card. We still filter `end_date >= now()` so we
+    // don't retry bookings whose rental window has fully passed (where
+    // a hold is moot). The flag is now used purely as an "already
+    // notified" marker, not a hard exclusion.
     let query = supabase
       .from("bookings")
       .select(`
-        id, renter_id, deposit_amount, end_date, conversation_id,
+        id, renter_id, deposit_amount, end_date, conversation_id, deposit_hold_failed,
         listing:listings(name),
         renter:profiles!bookings_renter_id_fkey(stripe_customer_id, email, username),
         owner:profiles!bookings_owner_id_fkey(email, username)
       `)
       .in("status", ["active", "in_progress", "pending_return"])
       .gt("deposit_amount", 0)
-      .is("stripe_payment_intent_id", null)
-      .eq("deposit_hold_failed", false);
+      .is("stripe_payment_intent_id", null);
 
     if (bookingIdsFilter && bookingIdsFilter.length > 0) {
       query = query.in("id", bookingIdsFilter);
     } else {
-      // Cron mode: only bookings ending within 2 days
+      // Cron mode: only bookings ending within 2 days, but still in
+      // their rental window (end_date >= now). Past end_date is moot.
+      const nowIso = new Date().toISOString();
       const twoDaysFromNow = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
-      query = query.lte("end_date", twoDaysFromNow);
+      query = query.gte("end_date", nowIso).lte("end_date", twoDaysFromNow);
     }
 
     const { data: bookings, error } = await query;
@@ -107,10 +126,35 @@ Deno.serve(async (req: Request) => {
 
     const results: any[] = [];
 
+    // Notify both renter and owner that the hold failed — but only the
+    // first time, so daily cron retries don't spam them. The
+    // `deposit_hold_failed` column doubles as the "already notified"
+    // marker now that we no longer use it as a hard exclusion.
+    async function notifyHoldFailureOnce(booking: any) {
+      if (booking.deposit_hold_failed) return;
+      const listingName = (booking.listing as any)?.name ?? "Location";
+      const renterEmail = (booking.renter as any)?.email;
+      const ownerEmail = (booking.owner as any)?.email;
+      const data = { listing_name: listingName, deposit: booking.deposit_amount };
+      const headers = internalSecret ? { "x-internal-secret": internalSecret } : {};
+      for (const to of [renterEmail, ownerEmail]) {
+        if (!to) continue;
+        try {
+          await supabase.functions.invoke("send-email", {
+            headers,
+            body: { to, template: "deposit_hold_failed", data },
+          });
+        } catch (e) {
+          console.error("Email failed:", e);
+        }
+      }
+    }
+
     for (const booking of bookings ?? []) {
       const customerId = (booking.renter as any)?.stripe_customer_id;
       if (!customerId) {
         console.error(`Booking ${booking.id}: renter has no stripe_customer_id`);
+        await notifyHoldFailureOnce(booking);
         await supabase.from("bookings").update({ deposit_hold_failed: true }).eq("id", booking.id);
         results.push({ id: booking.id, status: "failed", reason: "no_customer_id" });
         continue;
@@ -124,38 +168,8 @@ Deno.serve(async (req: Request) => {
 
       if (paymentMethods.error || !paymentMethods.data?.length) {
         console.error(`Booking ${booking.id}: no saved payment method`);
+        await notifyHoldFailureOnce(booking);
         await supabase.from("bookings").update({ deposit_hold_failed: true }).eq("id", booking.id);
-
-        // Notify both parties
-        const listingName = (booking.listing as any)?.name ?? "Location";
-        const renterEmail = (booking.renter as any)?.email;
-        const ownerEmail = (booking.owner as any)?.email;
-
-        if (renterEmail) {
-          try {
-            await supabase.functions.invoke("send-email", {
-              headers: internalSecret ? { "x-internal-secret": internalSecret } : {},
-              body: {
-                to: renterEmail,
-                template: "deposit_hold_failed",
-                data: { listing_name: listingName, deposit: booking.deposit_amount },
-              },
-            });
-          } catch (e) { console.error("Email failed:", e); }
-        }
-        if (ownerEmail) {
-          try {
-            await supabase.functions.invoke("send-email", {
-              headers: internalSecret ? { "x-internal-secret": internalSecret } : {},
-              body: {
-                to: ownerEmail,
-                template: "deposit_hold_failed",
-                data: { listing_name: listingName, deposit: booking.deposit_amount },
-              },
-            });
-          } catch (e) { console.error("Email failed:", e); }
-        }
-
         results.push({ id: booking.id, status: "failed", reason: "no_payment_method" });
         continue;
       }
@@ -176,50 +190,31 @@ Deno.serve(async (req: Request) => {
         "metadata[type]": "deposit_hold",
       });
 
-      const pi = await stripePost("/payment_intents", piBody, stripeKey);
+      // Idempotency-Key prevents a double off_session authorization on the
+      // renter's card if cron and the synchronous call from
+      // finalize-booking-payment race for the same booking.
+      const pi = await stripePost(
+        "/payment_intents",
+        piBody,
+        stripeKey,
+        { idempotencyKey: `deposit_hold_${booking.id}` },
+      );
 
       if (pi.error) {
         console.error(`Booking ${booking.id}: Stripe PI creation failed:`, pi.error.message);
+        await notifyHoldFailureOnce(booking);
         await supabase.from("bookings").update({ deposit_hold_failed: true }).eq("id", booking.id);
-
-        const listingName = (booking.listing as any)?.name ?? "Location";
-        const renterEmail = (booking.renter as any)?.email;
-        const ownerEmail = (booking.owner as any)?.email;
-
-        if (renterEmail) {
-          try {
-            await supabase.functions.invoke("send-email", {
-              headers: internalSecret ? { "x-internal-secret": internalSecret } : {},
-              body: {
-                to: renterEmail,
-                template: "deposit_hold_failed",
-                data: { listing_name: listingName, deposit: booking.deposit_amount },
-              },
-            });
-          } catch (e) { console.error("Email failed:", e); }
-        }
-        if (ownerEmail) {
-          try {
-            await supabase.functions.invoke("send-email", {
-              headers: internalSecret ? { "x-internal-secret": internalSecret } : {},
-              body: {
-                to: ownerEmail,
-                template: "deposit_hold_failed",
-                data: { listing_name: listingName, deposit: booking.deposit_amount },
-              },
-            });
-          } catch (e) { console.error("Email failed:", e); }
-        }
-
         results.push({ id: booking.id, status: "failed", reason: pi.error.message });
         continue;
       }
 
-      // Success: update booking with the new deposit PI
+      // Success: clear the failed flag (in case this was a retry after
+      // the renter added a working card) and store the PI.
       await supabase.from("bookings").update({
         stripe_payment_intent_id: pi.id,
         deposit_authorized_at: new Date().toISOString(),
         deposit_action: "authorize",
+        deposit_hold_failed: false,
       }).eq("id", booking.id);
 
       // Notify renter

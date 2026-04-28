@@ -11,8 +11,9 @@ Deno.serve(async (req: Request) => {
   const corsHeaders = buildCorsHeaders(req, corsOpts);
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const accessToken = authHeader.replace("Bearer ", "").trim();
+    if (!accessToken) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -21,12 +22,9 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const adminClient = createClient(supabaseUrl, serviceKey);
 
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    const { data: { user }, error: userError } = await adminClient.auth.getUser(accessToken);
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -34,15 +32,23 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const role = user.app_metadata?.role;
-    if (role !== "admin") {
+    // Authoritative admin check: read profiles.role via service-role.
+    // This used to read user.app_metadata?.role, but the project flags
+    // admins via profiles.role only (raw_app_meta_data is empty), so the
+    // old check silently denied legitimate admins. Aligns with the SQL
+    // RPCs (is_current_user_admin / admin_*_status) and admin-manage-deposit.
+    const { data: adminProfile } = await adminClient
+      .from("profiles")
+      .select("id, username, email, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (adminProfile?.role !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden: admin only" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const adminClient = createClient(supabaseUrl, serviceKey);
 
     const { action, target_id, reason, details } = await req.json();
 
@@ -52,12 +58,6 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const { data: adminProfile } = await adminClient
-      .from("profiles")
-      .select("id, username, email")
-      .eq("id", user.id)
-      .maybeSingle();
 
     let result: any = {};
 

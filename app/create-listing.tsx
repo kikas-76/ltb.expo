@@ -457,11 +457,11 @@ export default function CreateListingScreen() {
       return;
     }
 
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('location_data, is_pro')
-      .eq('id', user.id)
-      .maybeSingle();
+    // location_data + is_pro live behind column-level GRANTs that no
+    // longer expose them via direct SELECT. get_my_profile() is the
+    // SECURITY DEFINER read-own path that returns the full row.
+    const { data: profileRows } = await supabase.rpc('get_my_profile');
+    const profileData = Array.isArray(profileRows) ? profileRows[0] : profileRows;
     const lat = profileData?.location_data?.lat ?? null;
     const lng = profileData?.location_data?.lng ?? null;
     const ownerType = profileData?.is_pro ? 'professionnel' : 'particulier';

@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
+import { getAccessToken } from "../_shared/auth.ts";
 
 const corsOpts: CorsOptions = { methods: "GET, POST, OPTIONS" };
 
@@ -24,11 +25,12 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { access_token } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const access_token = getAccessToken(req, body);
     if (!access_token) {
       return new Response(
-        JSON.stringify({ error: "access_token requis" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Non authentifié" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

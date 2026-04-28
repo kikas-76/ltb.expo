@@ -81,7 +81,7 @@ export default function ExploreScreen() {
       const hasLocation = lat !== null && lng !== null;
 
       const baseSelect =
-        'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)';
+        'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)';
 
       const [catRes, listingsRes, nearbyRes] = await Promise.all([
         supabase.from('categories').select('id, name, value, icon_path').order('order'),
@@ -131,7 +131,7 @@ export default function ExploreScreen() {
           const { data: ownerRows } = await supabase
             .from('listings')
             .select(
-              'id, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)',
+              'id, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)',
             )
             .in('id', ids);
           const ownerMap = new Map<string, Owner | null>();

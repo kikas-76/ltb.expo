@@ -135,7 +135,7 @@ export default function ChatScreen() {
         status,
         listing:listings!conversations_listing_id_fkey(name, photos_url, price),
         requester:profiles!conversations_requester_id_fkey(username, photo_url, avatar_url),
-        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url, location_data)
+        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url)
       `)
       .eq('id', id)
       .maybeSingle();
@@ -146,10 +146,11 @@ export default function ChatScreen() {
       const owner = Array.isArray(conv.owner) ? conv.owner[0] : conv.owner;
       const isRequester = conv.requester_id === user.id;
       const other = isRequester ? owner : requester;
-      // City is derived from the owner's profile (the listing's address is
-      // only revealed via get_listing_exact_location once a booking exists,
-      // and is intentionally not loaded here).
-      const city = (owner as { location_data?: { city?: string | null } } | null)?.location_data?.city ?? null;
+      // The listing's exact address is only revealed via
+      // get_listing_exact_location once a booking exists. Owner's
+      // location_data is no longer joinable here (RGPD: revoked from
+      // authenticated GRANT). City label is left blank pre-booking.
+      const city = null;
 
       setMeta({
         listingId: conv.listing_id ?? '',
@@ -445,14 +446,31 @@ export default function ChatScreen() {
     if (!user || !id) return;
     setUploading(true);
     setUploadError(null);
-    // Derive a clean image extension. On web, asset.uri is often a blob:
-    // URL with no extension, so split('.').pop() returns part of the host.
-    // Prefer the mimeType when available, fall back to 'jpg'.
+    // Map picker output to a real mime that matches the bucket
+    // allowed_mime_types. ImagePicker may return image/jpg (invalid),
+    // and on web asset.uri is a blob: URL so split('.').pop() is unsafe.
+    const EXT_TO_MIME: Record<string, string> = {
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp',
+      heic: 'image/heic',
+      heif: 'image/heif',
+      gif: 'image/gif',
+    };
     const rawExt = (asset.uri.split('.').pop() ?? '').split('?')[0].toLowerCase();
-    const mimeExt = asset.mimeType?.split('/')[1]?.split(';')[0]?.toLowerCase();
-    const ext = /^[a-z0-9]{2,5}$/.test(rawExt)
-      ? rawExt
-      : (mimeExt && /^[a-z0-9]{2,5}$/.test(mimeExt) ? mimeExt : 'jpg');
+    const declared = asset.mimeType?.split(';')[0]?.toLowerCase();
+    const declaredFromExt = EXT_TO_MIME[rawExt];
+    const mimeType =
+      (declared && Object.values(EXT_TO_MIME).includes(declared))
+        ? declared
+        : declaredFromExt;
+    if (!mimeType) {
+      setUploadError("Format d'image non pris en charge.");
+      setUploading(false);
+      return;
+    }
+    const ext = mimeType.split('/')[1] === 'jpeg' ? 'jpg' : mimeType.split('/')[1];
     // Private bucket layout: <user_id>/<conversation_id>/<timestamp>.<ext>.
     // RLS reads (foldername)[1] = user_id (uploader) and (foldername)[2] =
     // conversation_id (read access via participant check).
@@ -476,7 +494,6 @@ export default function ChatScreen() {
     try {
       const response = await fetch(asset.uri);
       const blob = await response.blob();
-      const mimeType = asset.mimeType ?? `image/${ext}`;
       const { error: storageError } = await supabase.storage
         .from('chat-attachments')
         .upload(path, blob, { contentType: mimeType });
@@ -611,15 +628,34 @@ export default function ChatScreen() {
     await uploadAndSendImage(result.assets[0]);
   };
 
+  // Aligned with the chat-attachments bucket allowed_mime_types. Anything
+  // outside this set is rejected upfront so users see a friendly error
+  // rather than a 400 from storage. SVG/HTML/exec are excluded on
+  // purpose — they could be used to host phishing pages on supabase.co.
+  const CHAT_FILE_ALLOWED_MIMES = new Set([
+    'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+  ]);
+
   const sendFromFiles = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: '*/*',
+      type: Array.from(CHAT_FILE_ALLOWED_MIMES),
       copyToCacheDirectory: true,
       multiple: false,
     });
     if (result.canceled || !result.assets?.length) return;
     const file = result.assets[0];
-    await uploadAndSendFile(file.uri, file.name, file.mimeType ?? 'application/octet-stream');
+    const mime = (file.mimeType ?? '').split(';')[0].toLowerCase();
+    if (!CHAT_FILE_ALLOWED_MIMES.has(mime)) {
+      setUploadError('Format de fichier non pris en charge.');
+      return;
+    }
+    await uploadAndSendFile(file.uri, file.name, mime);
   };
 
   const handleStatusUpdate = async (newStatus: 'accepted' | 'refused') => {
@@ -671,10 +707,9 @@ export default function ChatScreen() {
           .eq('conversation_id', id);
       }
 
-      const systemMsg = newStatus === 'accepted'
-        ? `Demande acceptée par ${meta.ownerUsername}`
-        : `Demande refusée par ${meta.ownerUsername}`;
-      await postSystemMessage(id as string, systemMsg);
+      await postSystemMessage(id as string, {
+        event: newStatus === 'accepted' ? 'request_accepted' : 'request_refused',
+      });
       setMeta((prev) => prev ? { ...prev, status: newStatus } : prev);
 
       const { data: { session: notifySession } } = await supabase.auth.getSession();
@@ -755,11 +790,10 @@ export default function ChatScreen() {
 
       if (newOwnerVal && newRenterVal) {
         await updateBookingStatus(bookingId, 'in_progress', confirmField);
-        await postSystemMessage(id as string, 'Remise confirmée par les deux parties. Location en cours');
+        await postSystemMessage(id as string, { event: 'handover_confirmed_both' });
       } else {
         await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'accepted', confirmField);
-        const who = isOwner ? meta.ownerUsername : meta.requesterUsername;
-        await postSystemMessage(id as string, `Remise confirmée par ${who}. En attente de l'autre partie`);
+        await postSystemMessage(id as string, { event: 'handover_confirmed_one' });
       }
     } finally {
       setConfirmLoading(false);
@@ -776,22 +810,19 @@ export default function ChatScreen() {
       const newRenterVal = !isOwner ? true : returnConfirmedRenter;
 
       if (newOwnerVal && newRenterVal) {
+        // return_confirmed_at is stamped server-side in the RPC (now()) to
+        // prevent client-supplied dates from triggering early auto-validation.
+        // The local clock is used here only for the UI countdown — close
+        // enough; the cron uses the authoritative server timestamp.
+        await updateBookingStatus(bookingId, 'pending_owner_validation', returnField);
         const confirmedAt = new Date().toISOString();
-        await updateBookingStatus(bookingId, 'pending_owner_validation', {
-          ...returnField,
-          return_confirmed_at: confirmedAt,
-        });
         setReturnConfirmedAt(confirmedAt);
         setValidationDeadlineMs(new Date(confirmedAt).getTime() + 24 * 3600 * 1000);
-        await postSystemMessage(
-          id as string,
-          "Retour confirmé par les deux parties. Le propriétaire a 24h pour signaler un problème, sinon la location est validée automatiquement."
-        );
+        await postSystemMessage(id as string, { event: 'return_confirmed_both' });
         if (isOwner) setShowValidationModal(true);
       } else {
         await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'in_progress', returnField);
-        const who = isOwner ? meta.ownerUsername : meta.requesterUsername;
-        await postSystemMessage(id as string, `Retour confirmé par ${who}. En attente de l'autre partie`);
+        await postSystemMessage(id as string, { event: 'return_confirmed_one' });
       }
     } finally {
       setConfirmLoading(false);
@@ -808,7 +839,9 @@ export default function ChatScreen() {
         .eq('id', bookingId)
         .maybeSingle();
 
-      await updateBookingStatus(bookingId, 'completed', { owner_validated: true });
+      // owner_validated is stamped server-side in the RPC when the owner
+      // triggers pending_owner_validation -> completed. Clients can't forge it.
+      await updateBookingStatus(bookingId, 'completed');
 
       if (bookingData?.stripe_payment_intent_id) {
         const { data: { session } } = await supabase.auth.getSession();
@@ -825,17 +858,13 @@ export default function ChatScreen() {
               body: JSON.stringify({
                 action: 'release',
                 booking_id: bookingId,
-                payment_intent_id: bookingData.stripe_payment_intent_id,
               }),
             }
           );
         }
       }
 
-      await postSystemMessage(
-        id as string,
-        "Location terminée. L'objet a été validé par le propriétaire. La caution a été libérée."
-      );
+      await postSystemMessage(id as string, { event: 'owner_validated_ok' });
 
       setShowValidationModal(false);
       setOwnerValidated(true);

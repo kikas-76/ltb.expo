@@ -234,7 +234,7 @@ export default function ListingDetailScreen() {
         .select(
           `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
            approx_latitude, approx_longitude, created_at, owner_id, views_count, saves_count,
-           owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, location_data, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number),
+           owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number),
            category:categories!listings_category_id_fkey(value)`
         )
         .eq('id', id)
@@ -272,8 +272,8 @@ export default function ListingDetailScreen() {
         // address is only revealed after booking; until then the city is
         // computed from the blurred coords (still accurate to within a
         // few hundred metres).
-        const listingLatRaw = mapped.approx_latitude ?? mapped.owner?.location_data?.lat ?? null;
-        const listingLngRaw = mapped.approx_longitude ?? mapped.owner?.location_data?.lng ?? null;
+        const listingLatRaw = mapped.approx_latitude ?? null;
+        const listingLngRaw = mapped.approx_longitude ?? null;
         if (!isOwnListing && listingLatRaw && listingLngRaw) {
           getCityFromCoords(listingLatRaw, listingLngRaw).then((city) => {
             if (city) setCityName(city);
@@ -416,9 +416,11 @@ export default function ListingDetailScreen() {
       .single();
 
     if (!convErr && conv) {
-      const startLabel = selectedStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-      const endLabel = selectedEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-      await postSystemMessage(conv.id, `Nouvelle demande du ${startLabel} au ${endLabel}`);
+      await postSystemMessage(conv.id, {
+        event: 'new_request',
+        start_date: toISO(selectedStart),
+        end_date: toISO(selectedEnd),
+      });
       if (customMessage) {
         await supabase.from('chat_messages').insert({
           conversation_id: conv.id,
@@ -506,8 +508,8 @@ export default function ListingDetailScreen() {
   // Prefer the exact pin when the caller is authorised to see it
   // (owner / admin / renter with active booking — surfaced via
   // get_listing_exact_location). Otherwise fall back to the blurred pin.
-  const listingLat = listing.exact_latitude ?? listing.approx_latitude ?? listing.owner?.location_data?.lat ?? null;
-  const listingLng = listing.exact_longitude ?? listing.approx_longitude ?? listing.owner?.location_data?.lng ?? null;
+  const listingLat = listing.exact_latitude ?? listing.approx_latitude ?? null;
+  const listingLng = listing.exact_longitude ?? listing.approx_longitude ?? null;
 
   const distanceText =
     userLat && userLng && listingLat && listingLng
