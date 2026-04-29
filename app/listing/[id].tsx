@@ -454,6 +454,30 @@ export default function ListingDetailScreen() {
           is_system: false,
         });
       }
+
+      // Fire the email notifications (owner gets the alert, renter gets
+      // the confirmation). Fire-and-forget — the request itself is
+      // already in the database; an email failure shouldn't block the
+      // navigation to the chat.
+      const { data: { session: notifySession } } = await supabase.auth.getSession();
+      if (notifySession?.access_token) {
+        fetch(
+          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat-notify`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${notifySession.access_token}`,
+            },
+            body: JSON.stringify({
+              event: 'booking_request',
+              conversation_id: conv.id,
+              message: customMessage || undefined,
+            }),
+          }
+        ).catch((e) => console.error('chat-notify booking_request failed:', e));
+      }
     }
 
     setRequesting(false);

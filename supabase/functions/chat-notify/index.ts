@@ -137,6 +137,99 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (event === "booking_request") {
+      // Fired right after a renter creates a conversation on a listing.
+      // Sends two emails: notification to the owner, confirmation to
+      // the renter. Caller must be the requester (defence in depth on
+      // top of the auth.uid() check the conversation's RLS already does
+      // when the row was inserted).
+      if (!conversation_id) {
+        return new Response(
+          JSON.stringify({ error: "conversation_id requis" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: conv } = await supabaseAdmin
+        .from("conversations")
+        .select(`
+          id, owner_id, requester_id, start_date, end_date, listing_id,
+          listing:listings(name, price, deposit_amount, renter_fee_percent, owner_commission_percent),
+          owner:profiles!conversations_owner_id_fkey(username, email),
+          requester:profiles!conversations_requester_id_fkey(username, email)
+        `)
+        .eq("id", conversation_id)
+        .maybeSingle();
+
+      if (!conv) {
+        return new Response(
+          JSON.stringify({ error: "Conversation introuvable" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if ((conv as any).requester_id !== user.id) {
+        return new Response(
+          JSON.stringify({ error: "Accès refusé : seul le locataire peut déclencher cet événement" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const listing = (conv as any).listing ?? {};
+      const owner = (conv as any).owner ?? {};
+      const requester = (conv as any).requester ?? {};
+
+      // Mirror the pricing logic in lib/pricing.ts and the
+      // create_booking_for_payment RPC so the email shows the same
+      // numbers the rest of the app does.
+      const startMs = new Date((conv as any).start_date).getTime();
+      const endMs = new Date((conv as any).end_date).getTime();
+      const days = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)));
+      const discount = days >= 7 ? 0.20 : days >= 3 ? 0.10 : 0;
+      const price = Number(listing.price ?? 0);
+      const rental = Math.round(price * days * (1 - discount));
+      const renterFeePct = Number(listing.renter_fee_percent ?? 7);
+      const ownerCommissionPct = Number(listing.owner_commission_percent ?? 8);
+      const renterFee = Math.round(rental * renterFeePct / 100);
+      const ownerCommission = Math.round(rental * ownerCommissionPct / 100);
+      const ownerEarnings = rental - ownerCommission;
+      const totalRenterPays = rental + renterFee;
+      const deposit = Number(listing.deposit_amount ?? 0);
+
+      const renterMessage = typeof body?.message === "string" ? body.message.trim() : "";
+
+      if (owner.email) {
+        await dispatchEmail(owner.email, "booking_request_owner", {
+          renter_name: requester.username ?? "Un locataire",
+          listing_name: listing.name ?? "Objet",
+          start_date: formatDate((conv as any).start_date),
+          end_date: formatDate((conv as any).end_date),
+          duration: days,
+          owner_earnings: ownerEarnings,
+          deposit,
+          renter_message: renterMessage,
+          conversation_id: conv.id,
+        });
+      }
+
+      if (requester.email) {
+        await dispatchEmail(requester.email, "booking_request_renter", {
+          listing_name: listing.name ?? "Objet",
+          start_date: formatDate((conv as any).start_date),
+          end_date: formatDate((conv as any).end_date),
+          total_price: totalRenterPays,
+          deposit,
+          owner_name: owner.username ?? "Le propriétaire",
+          conversation_id: conv.id,
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, event }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (event === "deposit_released") {
       if (!booking_id) {
         return new Response(
