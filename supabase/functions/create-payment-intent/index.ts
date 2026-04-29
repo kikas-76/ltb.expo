@@ -98,12 +98,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Idempotency: if a rental PI already exists for this booking, return it instead of creating a new one
+    // Idempotency: if a rental PI already exists for this booking, return it
+    // — but only if it's still card-only. Older PIs (created before the
+    // card-only restriction landed) accept Link, which renders an extra email
+    // field that overflows the iframe on desktop. Recreating in that case
+    // avoids leaving early bookings stuck on the buggy form.
     if (booking.stripe_rental_payment_intent_id) {
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (stripeKey) {
         const existingPI = await stripeGet(`/payment_intents/${booking.stripe_rental_payment_intent_id}`, stripeKey);
-        if (existingPI && !existingPI.error && existingPI.client_secret) {
+        const hasOnlyCard =
+          Array.isArray(existingPI?.payment_method_types) &&
+          existingPI.payment_method_types.length === 1 &&
+          existingPI.payment_method_types[0] === "card";
+        if (existingPI && !existingPI.error && existingPI.client_secret && hasOnlyCard) {
           return new Response(
             JSON.stringify({
               rental_client_secret: existingPI.client_secret,
@@ -112,6 +120,19 @@ Deno.serve(async (req: Request) => {
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
+        }
+        // Existing PI accepts more than card → cancel it and fall through
+        // to the create branch below. cancel is best-effort.
+        if (existingPI && !existingPI.error && existingPI.id && !hasOnlyCard) {
+          await stripePost(
+            `/payment_intents/${existingPI.id}/cancel`,
+            new URLSearchParams({ cancellation_reason: "abandoned" }),
+            stripeKey,
+          ).catch(() => {});
+          await supabaseAdmin
+            .from("bookings")
+            .update({ stripe_rental_payment_intent_id: null })
+            .eq("id", booking_id);
         }
       }
     }
@@ -215,6 +236,15 @@ Deno.serve(async (req: Request) => {
       "metadata[type]": "rental",
     });
 
+    // Pin the PaymentIntent to card-only. Without this, Stripe falls
+    // back to automatic_payment_methods (every method enabled in the
+    // dashboard, including Link) — and Link injects its own email
+    // field at the top of the PaymentElement that the client can't
+    // turn off via `fields`. That extra field used to overflow the
+    // fixed-height iframe on desktop and trapped the caret in an
+    // un-scrollable region.
+    rentalBody.append("payment_method_types[]", "card");
+
     if (ownerStripeAccountId) {
       rentalBody.set("transfer_data[destination]", ownerStripeAccountId);
       rentalBody.set("application_fee_amount", String(applicationFee));
@@ -222,11 +252,15 @@ Deno.serve(async (req: Request) => {
 
     // Idempotency-Key prevents duplicate PaymentIntents on retries (network
     // hiccup, double-click, refresh) within Stripe's 24h replay window.
+    // The `_v2` suffix flushes Stripe's cached response from the v1 era
+    // (Link enabled, no payment_method_types restriction). Without the
+    // bump, recreating after cancelling a v1 PI would just hand back the
+    // cancelled PI from Stripe's idempotency cache.
     const rentalIntent = await stripePost(
       "/payment_intents",
       rentalBody,
       stripeKey,
-      { idempotencyKey: `booking_${booking_id}_rental` },
+      { idempotencyKey: `booking_${booking_id}_rental_v2` },
     );
     if (rentalIntent.error) {
       return new Response(
