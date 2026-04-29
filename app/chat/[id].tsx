@@ -104,6 +104,7 @@ export default function ChatScreen() {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [stripeReady, setStripeReady] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [bookingTotal, setBookingTotal] = useState<number | null>(null);
@@ -661,6 +662,7 @@ export default function ChatScreen() {
   const handleStatusUpdate = async (newStatus: 'accepted' | 'refused') => {
     if (!id || !meta) return;
     setStatusUpdating(true);
+    setStatusError(null);
 
     const previousStatus = meta.status;
 
@@ -669,65 +671,72 @@ export default function ChatScreen() {
       .update({ status: newStatus })
       .eq('id', id);
 
-    if (!error) {
-      if (newStatus === 'accepted') {
-        const days = getRentalDays(meta.startDate, meta.endDate);
-        const totalPrice = meta.listingPrice != null
-          ? computeRentalTotal(meta.listingPrice, days)
-          : 0;
+    if (error) {
+      setStatusError("Impossible de mettre à jour la demande. Réessayez.");
+      setStatusUpdating(false);
+      return;
+    }
 
-        const { data: existingBooking } = await supabase
-          .from('bookings')
-          .select('id')
-          .eq('conversation_id', id)
-          .maybeSingle();
+    if (newStatus === 'accepted') {
+      const { data: existingBooking } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('conversation_id', id)
+        .maybeSingle();
 
-        if (!existingBooking) {
-          const { error: bookingError } = await createPendingPaymentBooking({
-            listingId: meta.listingId,
-            startDate: meta.startDate,
-            endDate: meta.endDate,
-            conversationId: id as string,
-          });
+      if (!existingBooking) {
+        const { error: bookingError } = await createPendingPaymentBooking({
+          listingId: meta.listingId,
+          startDate: meta.startDate,
+          endDate: meta.endDate,
+          conversationId: id as string,
+        });
 
-          if (bookingError) {
-            await supabase
-              .from('conversations')
-              .update({ status: previousStatus })
-              .eq('id', id);
-            console.error('createPendingPaymentBooking failed:', bookingError);
-            setStatusUpdating(false);
-            return;
-          }
+        if (bookingError) {
+          await supabase
+            .from('conversations')
+            .update({ status: previousStatus })
+            .eq('id', id);
+          // Surface a readable reason. The RPC raises labelled errors
+          // ("start_date cannot be in the past", "Listing is not active",
+          // "Selected dates overlap an existing booking") that are safe
+          // to show — they describe the request, not internal state.
+          const raw = (bookingError as { message?: string })?.message ?? '';
+          const friendly = raw.includes('start_date cannot be in the past')
+            ? 'Ces dates sont déjà passées. Demandez au locataire de mettre à jour sa demande.'
+            : raw.includes('overlap')
+            ? 'Ces dates sont déjà réservées sur cette annonce.'
+            : raw.includes('Listing is not active')
+            ? 'Cette annonce n’est plus active.'
+            : 'Impossible d’accepter la demande. Réessayez.';
+          setStatusError(friendly);
+          console.error('createPendingPaymentBooking failed:', bookingError);
+          setStatusUpdating(false);
+          return;
         }
-      } else if (newStatus === 'refused') {
-        await supabase
-          .from('bookings')
-          .delete()
-          .eq('conversation_id', id);
       }
+    }
 
-      await postSystemMessage(id as string, {
-        event: newStatus === 'accepted' ? 'request_accepted' : 'request_refused',
-      });
-      setMeta((prev) => prev ? { ...prev, status: newStatus } : prev);
+    await postSystemMessage(id as string, {
+      event: newStatus === 'accepted' ? 'request_accepted' : 'request_refused',
+    });
+    setMeta((prev) => prev ? { ...prev, status: newStatus } : prev);
 
-      const { data: { session: notifySession } } = await supabase.auth.getSession();
-      if (notifySession?.access_token) {
-        const event = newStatus === 'accepted' ? 'booking_accepted' : 'booking_rejected';
-        fetch(
-          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat-notify`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-              'Authorization': `Bearer ${notifySession.access_token}`,
-            },
-            body: JSON.stringify({ event, conversation_id: id }),
-          }
-        ).catch((e) => console.error('chat-notify failed:', e));
-      }
+    const { data: { session: notifySession } } = await supabase.auth.getSession();
+    if (notifySession?.access_token) {
+      const event = newStatus === 'accepted' ? 'booking_accepted' : 'booking_rejected';
+      fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat-notify`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+            'Authorization': `Bearer ${notifySession.access_token}`,
+          },
+          body: JSON.stringify({ event, conversation_id: id }),
+        }
+      ).catch((e) => console.error('chat-notify failed:', e));
     }
     setStatusUpdating(false);
   };
@@ -1114,6 +1123,9 @@ export default function ChatScreen() {
               )}
             </TouchableOpacity>
           </View>
+          {statusError && (
+            <Text style={styles.actionBarError}>{statusError}</Text>
+          )}
         </View>
       )}
 
@@ -1990,6 +2002,13 @@ const styles = StyleSheet.create({
   actionBarButtons: {
     flexDirection: 'row',
     gap: 10,
+  },
+  actionBarError: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: '#C0392B',
+    textAlign: 'center',
+    marginTop: 6,
   },
   actionBtn: {
     flex: 1,

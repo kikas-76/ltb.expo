@@ -49,7 +49,7 @@ function FavoritesSection({ userId, userLat, userLng }: Props) {
         .select(
           `listing:listings!saved_listings_listing_id_fkey(
             id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude,
-            owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro, location_data)
+            owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)
           )`
         )
         .eq('user_id', userId)

@@ -399,6 +399,20 @@ export default function ListingDetailScreen() {
 
   const handleRequest = async (customMessage: string) => {
     if (!selectedStart || !selectedEnd || !listing || !userId || !listing.owner?.id) return;
+
+    // Guard against stale calendar selections: the picker blocks past
+    // days when the modal opens, but a tab left open across midnight
+    // can still submit yesterday's date. The owner-side accept then
+    // hits the RPC's "start_date cannot be in the past" rejection,
+    // which surfaces as a silent failure on the chat page.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    if (selectedStart < startOfToday) {
+      setRequesting(false);
+      setMessageModalVisible(false);
+      return;
+    }
+
     setRequesting(true);
 
     const toISO = (d: Date) => d.toISOString().split('T')[0];
