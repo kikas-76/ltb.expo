@@ -47,7 +47,30 @@ export default function DisputePage() {
     setError(null);
     try {
       if (!user) throw new Error('Not authenticated');
-      const ext = (asset.uri.split('.').pop() ?? 'jpg').split('?')[0].toLowerCase();
+      // Map the picker's extension/asset.mimeType to a real mime that
+      // matches the bucket's allowed_mime_types (image/jpeg, not
+      // image/jpg). Anything outside the allowlist is rejected upfront
+      // so the user gets an explicit error rather than a 400 from
+      // Supabase storage.
+      const rawExt = (asset.uri.split('.').pop() ?? '').split('?')[0].toLowerCase();
+      const EXT_TO_MIME: Record<string, string> = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        webp: 'image/webp',
+        heic: 'image/heic',
+        heif: 'image/heif',
+        gif: 'image/gif',
+      };
+      const contentType =
+        (asset.mimeType && Object.values(EXT_TO_MIME).includes(asset.mimeType.split(';')[0]))
+          ? asset.mimeType.split(';')[0]
+          : EXT_TO_MIME[rawExt] ?? '';
+      if (!contentType) {
+        setError('Format non pris en charge. Utilisez JPG, PNG, WEBP, HEIC ou GIF.');
+        return;
+      }
+      const ext = rawExt && EXT_TO_MIME[rawExt] ? rawExt : contentType.split('/')[1];
       // Private bucket layout: <user_id>/<booking_id>/<timestamp>.<ext>.
       // RLS reads (foldername)[1] = uploader user_id and (foldername)[2] =
       // booking_id (read access via participant or admin check).
@@ -58,11 +81,11 @@ export default function DisputePage() {
         const blob = await resp.blob();
         const { error: upErr } = await supabase.storage
           .from('dispute-evidence')
-          .upload(path, blob, { contentType: `image/${ext}` });
+          .upload(path, blob, { contentType });
         if (upErr) throw upErr;
       } else {
         const formData = new FormData();
-        formData.append('file', { uri: asset.uri, name: `photo.${ext}`, type: `image/${ext}` } as any);
+        formData.append('file', { uri: asset.uri, name: `photo.${ext}`, type: contentType } as any);
         const { error: upErr } = await supabase.storage
           .from('dispute-evidence')
           .upload(path, formData);
@@ -109,10 +132,7 @@ export default function DisputePage() {
       await updateBookingStatus(booking_id, 'disputed');
 
       if (conversation_id) {
-        await postSystemMessage(
-          conversation_id,
-          "Un litige a été ouvert par le propriétaire. La caution reste bloquée jusqu'à résolution"
-        );
+        await postSystemMessage(conversation_id, { event: 'dispute_opened' });
       }
 
       const { data: { session: disputeSession } } = await supabase.auth.getSession();

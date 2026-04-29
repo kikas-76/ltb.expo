@@ -276,10 +276,7 @@ export default function MesAnnoncesScreen() {
     if (!convs || convs.length === 0) return;
     await Promise.all(
       convs.map((c: any) =>
-        postSystemMessage(
-          c.id,
-          "L'annonce a été supprimée ou masquée. Cette demande n'est plus disponible"
-        )
+        postSystemMessage(c.id, { event: 'listing_unavailable' })
       )
     );
   };

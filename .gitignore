@@ -36,3 +36,6 @@ yarn-error.*
 
 # claude code local config
 .claude/
+
+# supabase cli local state
+supabase/.temp/

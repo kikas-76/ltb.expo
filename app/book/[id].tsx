@@ -167,10 +167,11 @@ export default function DirectBookPage() {
         return;
       }
 
-      await postSystemMessage(
-        conv.id,
-        `Réservation directe via lien · Du ${formatDate(startDate)} au ${formatDate(endDate)}`
-      );
+      await postSystemMessage(conv.id, {
+        event: 'direct_booking_link',
+        start_date: startDate,
+        end_date: endDate,
+      });
 
       router.replace(`/payment/${bookingData.id}` as any);
     } catch {

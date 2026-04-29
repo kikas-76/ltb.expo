@@ -139,11 +139,23 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // Always record the deposit release on the booking.
       await supabaseAdmin.from("bookings").update({
-        status: "completed",
         deposit_action: "release",
         deposit_released_at: new Date().toISOString(),
       }).eq("id", booking_id);
+
+      // Only flip status to "completed" from end-of-rental states. Don't
+      // overwrite "cancelled" / "expired" / "refused" — releasing the hold
+      // on those is fine but the booking lifecycle is already terminal.
+      const completableStatuses = ["disputed", "pending_owner_validation", "active", "in_progress", "pending_return"];
+      await supabaseAdmin
+        .from("bookings")
+        .update({ status: "completed" })
+        .eq("id", booking_id)
+        .in("status", completableStatuses);
+
       return new Response(
         JSON.stringify({ success: true, action: "release", payment_intent: result.id }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
