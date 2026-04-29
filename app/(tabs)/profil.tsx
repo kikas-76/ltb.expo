@@ -168,6 +168,11 @@ export default function ProfilScreen() {
 
   const supportRows: MenuRow[] = [
     {
+      icon: <Ionicons name="flag-outline" size={isDesktop ? 20 : 17} color={Colors.primaryDark} />,
+      label: 'Mes signalements',
+      onPress: () => router.push('/my-reports' as any),
+    },
+    {
       icon: <Ionicons name="help-circle-outline" size={isDesktop ? 20 : 17} color={Colors.primaryDark} />,
       label: "Centre d'aide",
       onPress: () => router.push('/help-center' as any),

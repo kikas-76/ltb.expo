@@ -61,17 +61,40 @@ export default function AdminReports() {
 
   const loadReports = async () => {
     setLoading(true);
+    // The reporter join used to embed via reports_reporter_id_fkey, but
+    // that FK targets auth.users, not public.profiles, so PostgREST
+    // can't resolve `profiles!reports_reporter_id_fkey`. Fetch the rows
+    // bare and hydrate username + email separately by id (mirrors the
+    // adminEmails pattern).
     const { data } = await supabase
       .from('reports')
-      .select('id, status, category, description, target_type, target_id, created_at, reporter_id, reporter:profiles!reports_reporter_id_fkey(username)')
+      .select('id, status, category, description, target_type, target_id, created_at, reporter_id')
       .order('created_at', { ascending: false });
 
-    const rows = (data as any[]) ?? [];
-    const emails = await fetchAdminProfileEmails(rows.map((r) => r.reporter_id));
+    const rows = (data as Array<Omit<Report, 'reporter'>>) ?? [];
+    const reporterIds = rows
+      .map((r) => r.reporter_id)
+      .filter((x): x is string => !!x);
+
+    const [{ data: profiles }, emails] = await Promise.all([
+      reporterIds.length > 0
+        ? supabase.from('profiles').select('id, username').in('id', reporterIds)
+        : Promise.resolve({ data: [] as { id: string; username: string | null }[] }),
+      fetchAdminProfileEmails(reporterIds),
+    ]);
+
+    const usernameMap = new Map<string, string | null>();
+    for (const p of (profiles ?? []) as Array<{ id: string; username: string | null }>) {
+      usernameMap.set(p.id, p.username ?? null);
+    }
+
     const hydrated: Report[] = rows.map((r) => ({
       ...r,
-      reporter: r.reporter
-        ? { ...r.reporter, email: r.reporter_id ? emails[r.reporter_id] ?? null : null }
+      reporter: r.reporter_id
+        ? {
+            username: usernameMap.get(r.reporter_id) ?? null,
+            email: emails[r.reporter_id] ?? null,
+          }
         : null,
     }));
     setReports(hydrated);
