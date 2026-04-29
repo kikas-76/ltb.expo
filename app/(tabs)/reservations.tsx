@@ -517,15 +517,20 @@ export default function MessagesScreen() {
 
     const ownerStripeReadyMap = new Map<string, boolean>();
     if (ownerIdsToCheck.length > 0) {
-      const { data: ownerProfiles } = await supabase
-        .from('profiles')
-        .select('id, stripe_onboarding_complete, stripe_charges_enabled')
-        .in('id', ownerIdsToCheck);
-      for (const p of ownerProfiles ?? []) {
-        ownerStripeReadyMap.set(
-          p.id,
-          p.stripe_onboarding_complete === true && p.stripe_charges_enabled === true,
-        );
+      // stripe_* columns aren't in the authenticated grant on profiles.
+      // Resolve each accepted-conversation owner through the
+      // get_owner_stripe_ready RPC (auth-checked: only counterparties
+      // can ask). The list is bounded by the user's accepted requests,
+      // which is small in practice.
+      const results = await Promise.all(
+        ownerIdsToCheck.map((ownerId) =>
+          supabase
+            .rpc('get_owner_stripe_ready', { p_owner_id: ownerId })
+            .then(({ data }) => [ownerId, data === true] as const),
+        ),
+      );
+      for (const [ownerId, ready] of results) {
+        ownerStripeReadyMap.set(ownerId, ready);
       }
     }
 

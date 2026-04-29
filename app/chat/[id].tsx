@@ -181,19 +181,16 @@ export default function ChatScreen() {
             .eq('conversation_id', id)
             .maybeSingle(),
         ];
-        // Check OWNER's Stripe status (not renter's: renters don't need Stripe accounts)
+        // Check OWNER's Stripe status (not renter's: renters don't need
+        // Stripe accounts). The two stripe_* columns are not granted to
+        // authenticated, so we go through the get_owner_stripe_ready
+        // SECURITY DEFINER RPC instead.
         if (isRequester) {
-          queries.push(
-            supabase
-              .from('profiles')
-              .select('stripe_onboarding_complete, stripe_charges_enabled')
-              .eq('id', conv.owner_id)
-              .maybeSingle()
-          );
+          queries.push(supabase.rpc('get_owner_stripe_ready', { p_owner_id: conv.owner_id }));
         } else {
           queries.push(Promise.resolve({ data: null }));
         }
-        const [{ data: booking }, { data: profile }] = await Promise.all(queries);
+        const [{ data: booking }, { data: stripeReadyValue }] = await Promise.all(queries);
         if (booking) {
           setBookingId(booking.id);
           setBookingTotal(booking.total_price ?? null);
@@ -209,10 +206,7 @@ export default function ChatScreen() {
           }
         }
         if (isRequester) {
-          setStripeReady(
-            profile?.stripe_onboarding_complete === true &&
-            profile?.stripe_charges_enabled === true
-          );
+          setStripeReady(stripeReadyValue === true);
         }
       }
     }

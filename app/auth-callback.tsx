@@ -5,16 +5,16 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 
-async function redirectByProfile(userId: string) {
-  const { data } = await supabase
-    .from('profiles')
-    .select('onboarding_completed, role')
-    .eq('id', userId)
-    .maybeSingle();
+async function redirectByProfile() {
+  // onboarding_completed and role are not in the authenticated SELECT
+  // grant on profiles (20260426202603). Read them through the
+  // SECURITY DEFINER RPC, same as AuthContext.
+  const { data } = await supabase.rpc('get_my_profile');
+  const me = Array.isArray(data) ? data[0] : data;
 
-  if (!data?.onboarding_completed) {
+  if (!me?.onboarding_completed) {
     router.replace('/onboarding/profile' as any);
-  } else if (PRELAUNCH_MODE && data.role !== 'admin') {
+  } else if (PRELAUNCH_MODE && me.role !== 'admin') {
     router.replace('/(tabs)/mes-annonces' as any);
   } else {
     router.replace('/(tabs)');
@@ -42,7 +42,7 @@ export default function AuthCallbackScreen() {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
         processed.current = true;
         clearTimeout(timeout);
-        (async () => { await redirectByProfile(session.user.id); })();
+        (async () => { await redirectByProfile(); })();
       }
     });
 
@@ -74,7 +74,7 @@ export default function AuthCallbackScreen() {
       if (session) {
         processed.current = true;
         clearTimeout(timeout);
-        (async () => { await redirectByProfile(session.user.id); })();
+        (async () => { await redirectByProfile(); })();
       }
     });
 
