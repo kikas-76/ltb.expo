@@ -72,14 +72,15 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
     }
 
     if (locationDataPatch) {
-      const { data: existing } = await supabase
-        .from('profiles')
-        .select('location_data')
-        .eq('id', userId)
-        .maybeSingle();
+      // location_data is revoked from authenticated SELECT (RGPD,
+      // 20260428140000). Read the caller's own profile via the
+      // SECURITY DEFINER RPC instead so we don't clobber existing
+      // address/lat/lng when patching the city.
+      const { data: meRows } = await supabase.rpc('get_my_profile');
+      const me = Array.isArray(meRows) ? meRows[0] : meRows;
 
       patch.location_data = {
-        ...(existing?.location_data ?? {}),
+        ...(me?.location_data ?? {}),
         city: city.trim(),
       };
     }
