@@ -35,12 +35,17 @@ const TAB_FILTERS: Record<string, string[]> = {
   'Rejetés': ['rejected'],
 };
 
+// Keep this map in sync with the keys submitted by app/report.tsx
+// (LISTING_CATEGORIES + CONVERSATION_CATEGORIES). The DB CHECK on
+// reports.category enforces the same whitelist.
 const CATEGORY_LABELS: Record<string, string> = {
+  fraud: 'Arnaque / Fraude',
+  inappropriate_content: 'Contenu inapproprié',
   spam: 'Spam',
-  scam: 'Arnaque',
-  inappropriate: 'Contenu inapproprié',
-  fake: 'Annonce fausse',
+  counterfeit: 'Contrefaçon',
+  dangerous: 'Objet dangereux',
   harassment: 'Harcèlement',
+  no_show: 'Absence / No-show',
   other: 'Autre',
 };
 
@@ -137,7 +142,9 @@ export default function AdminReports() {
                   <View style={styles.categoryBadge}>
                     <Text style={styles.categoryText}>{CATEGORY_LABELS[r.category] ?? r.category}</Text>
                   </View>
-                  <Text style={styles.targetType}>{r.target_type === 'listing' ? 'Annonce' : 'Utilisateur'}</Text>
+                  <Text style={styles.targetType}>
+                  {r.target_type === 'listing' ? 'Annonce' : 'Conversation'}
+                </Text>
                 </View>
                 <Text style={styles.cardMeta}>
                   Par @{r.reporter?.username ?? '?'} · {new Date(r.created_at).toLocaleDateString('fr-FR')}
@@ -158,14 +165,14 @@ export default function AdminReports() {
                 <Text style={styles.linkText}>Voir l'annonce signalée</Text>
               </TouchableOpacity>
             )}
-            {r.target_type === 'user' && (
+            {r.target_type === 'conversation' && (
               <TouchableOpacity
                 style={styles.linkRow}
-                onPress={() => router.push(`/owner/${r.target_id}` as any)}
+                onPress={() => router.push(`/chat/${r.target_id}` as any)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="open-outline" size={13} color={Colors.info} />
-                <Text style={styles.linkText}>Voir le profil signalé</Text>
+                <Text style={styles.linkText}>Voir la conversation signalée</Text>
               </TouchableOpacity>
             )}
 
