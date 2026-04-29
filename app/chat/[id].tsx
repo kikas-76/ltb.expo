@@ -172,13 +172,18 @@ export default function ChatScreen() {
         status: (conv.status as 'pending' | 'accepted' | 'refused') ?? 'pending',
       });
 
-      // Fetch booking data whenever conversation is accepted (booking exists)
+      // Fetch booking data whenever conversation is accepted (booking exists).
+      // Order desc + limit 1 because a re-accept after the cron auto-cancels
+      // leaves the old cancelled booking behind — we want the most recent
+      // one (the live pending_payment row, if any).
       if (conv.status === 'accepted') {
         const queries: any[] = [
           supabase
             .from('bookings')
             .select('id, total_price, status, renter_id, handover_confirmed_owner, handover_confirmed_renter, return_confirmed_owner, return_confirmed_renter, owner_validated, return_confirmed_at')
             .eq('conversation_id', id)
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle(),
         ];
         // Check OWNER's Stripe status (not renter's: renters don't need
@@ -672,13 +677,27 @@ export default function ChatScreen() {
     }
 
     if (newStatus === 'accepted') {
+      // Fetch the *latest* booking on this conversation. If the previous
+      // attempt was cancelled by the expire-stale-pending-payments cron
+      // (or refused/expired), we want to recreate so the renter can pay
+      // again — otherwise the chat shows accepted with no payable PI
+      // attached. Only "live" statuses block recreation.
       const { data: existingBooking } = await supabase
         .from('bookings')
-        .select('id')
+        .select('id, status')
         .eq('conversation_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (!existingBooking) {
+      const TERMINAL_BOOKING_STATUSES = new Set([
+        'cancelled', 'expired', 'refused',
+      ]);
+      const needsNewBooking =
+        !existingBooking ||
+        TERMINAL_BOOKING_STATUSES.has(existingBooking.status as string);
+
+      if (needsNewBooking) {
         const { error: bookingError } = await createPendingPaymentBooking({
           listingId: meta.listingId,
           startDate: meta.startDate,
@@ -749,9 +768,14 @@ export default function ChatScreen() {
         .from('bookings')
         .select('id, total_price, status')
         .eq('conversation_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (existingBooking) {
+      // Reuse a live booking; treat cancelled/refused/expired as "create
+      // a fresh one" — those are terminal and can't be paid for.
+      const PAYABLE_STATUSES = new Set(['pending_payment']);
+      if (existingBooking && PAYABLE_STATUSES.has(existingBooking.status as string)) {
         setBookingId(existingBooking.id);
         setBookingTotal(existingBooking.total_price ?? null);
         setBookingStatus(existingBooking.status ?? null);
