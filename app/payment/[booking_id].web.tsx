@@ -58,10 +58,17 @@ function StripeEmbedForm({
   const iframeRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Stripe's PaymentElement reflows when the user picks a different
+  // method, when 3DS challenges appear, or when validation messages
+  // expand. A fixed iframe height clips that content and traps the
+  // caret inside an invisible region (the previous bug: the optional
+  // email field rendered below the 340px fold and the user couldn't
+  // scroll back). Track the inner body height via postMessage and
+  // size the iframe to it. The fallback below is the height we ship
+  // with before the iframe reports back, plus a small buffer for the
+  // method-tabs row.
+  const [iframeHeight, setIframeHeight] = useState(420);
   const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
-  const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
-  const iframeHeight = isDesktop ? 340 : 380;
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -192,9 +199,27 @@ function StripeEmbedForm({
 
   var paymentElement = elements.create('payment', {
     layout: 'tabs',
-    fields: { billingDetails: { name: 'never' } },
+    // The cardholder name lives in our own textfield above the
+    // PaymentElement; Stripe's billing-details fields are skipped so
+    // the iframe stays compact (the optional email field used to
+    // overflow the iframe and trap the caret out of view).
+    fields: { billingDetails: { name: 'never', email: 'never' } },
   });
   paymentElement.mount('#payment-element');
+
+  // Report body height to the parent so it can resize the iframe
+  // exactly to the content. ResizeObserver fires whenever Stripe
+  // expands the layout (method tabs, 3DS panel, error text…).
+  function reportHeight() {
+    var h = Math.ceil(document.body.scrollHeight);
+    window.parent.postMessage({ type: 'stripe_height', height: h }, '*');
+  }
+  reportHeight();
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(reportHeight).observe(document.body);
+  } else {
+    window.addEventListener('resize', reportHeight);
+  }
 
   var form = document.getElementById('payment-form');
   var btn = document.getElementById('submit');
@@ -250,6 +275,14 @@ function StripeEmbedForm({
       if (msg.type === 'stripe_loading') {
         setLoading(msg.value);
         setError(null);
+      }
+
+      if (msg.type === 'stripe_height' && typeof msg.height === 'number') {
+        // Clamp the reported height to a sane band. Stripe occasionally
+        // measures 0 during reflows; a tight floor avoids the iframe
+        // collapsing to nothing during transitions.
+        const next = Math.min(800, Math.max(360, msg.height));
+        setIframeHeight((prev) => (Math.abs(prev - next) > 1 ? next : prev));
       }
 
       if (msg.type === 'stripe_success') {
@@ -629,9 +662,10 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   scrollContentDesktop: {
-    paddingHorizontal: 40,
-    paddingTop: 32,
-    maxWidth: 1100,
+    paddingHorizontal: 48,
+    paddingTop: 40,
+    paddingBottom: 56,
+    maxWidth: 1200,
     alignSelf: 'center' as any,
     width: '100%',
   },
@@ -641,16 +675,31 @@ const styles = StyleSheet.create({
   },
   twoColDesktop: {
     flexDirection: 'row',
-    gap: 32,
+    gap: 40,
     alignItems: 'flex-start',
   },
   colLeft: {},
+  // Récap is purely informational — keep it compact so the eye lands on
+  // the payment form. flexBasis caps the column at a comfortable width;
+  // flexShrink: 1 lets it give way on narrow desktops (1024-1200).
   colLeftDesktop: {
-    flex: 1,
+    flexBasis: 380,
+    flexShrink: 1,
+    flexGrow: 0,
+    ...Platform.select({
+      web: {
+        position: 'sticky' as any,
+        top: 24,
+      },
+    }),
   },
   colRight: {},
+  // Payment form gets the remaining horizontal space — it carries the
+  // Stripe iframe, the cardholder textbox and the call-to-action. On a
+  // 1200-wide canvas this lands ~720px wide, which Stripe likes.
   colRightDesktop: {
     flex: 1,
+    minWidth: 0,
   },
   section: {
     gap: 10,
