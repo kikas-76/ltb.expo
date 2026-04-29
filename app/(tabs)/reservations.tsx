@@ -236,7 +236,16 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
   }, []);
 
   const isUnread = item.unreadCount > 0 || item.hasUnreadDot;
-  const isDeletable = item.displayStatus === 'completed' || item.status === 'refused' || item.listingUnavailable;
+  // Anything that's reached a terminal state can be wiped from the
+  // user's list. Without 'cancelled' here, an auto-expired
+  // pending_payment booking lingered forever because the trash icon
+  // never showed up.
+  const isDeletable =
+    item.displayStatus === 'completed' ||
+    item.displayStatus === 'cancelled' ||
+    item.status === 'refused' ||
+    item.status === 'cancelled' ||
+    item.listingUnavailable;
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
