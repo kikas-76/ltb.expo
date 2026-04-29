@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,16 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { supabase } from '@/lib/supabase';
 import { translatePaymentError } from '@/lib/paymentErrors';
 import { Colors } from '@/constants/colors';
+
+// Singleton: loadStripe must be called once at module scope. Re-creating
+// the promise on every render would tear down and rebuild the Stripe
+// runtime each time React re-renders the payment screen.
+const stripePromise = loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '');
 
 
 interface BookingData {
@@ -49,142 +56,197 @@ interface StripeEmbedProps {
   totalNow: number;
 }
 
+// Inner form rendered inside <Elements>. Splits cleanly so we can use
+// useStripe / useElements (must be a child of Elements). Renders real
+// DOM elements so Stripe's runtime can mount the PaymentElement
+// directly into the React tree — no wrapping iframe, no srcdoc, no
+// `null` origin (the previous srcdoc setup broke hCaptcha's
+// postMessage when Stripe ran fraud checks, which silently froze the
+// form before it could even submit).
+function CheckoutForm({
+  bookingId,
+  rentalPaymentIntentId,
+  totalNow,
+}: {
+  bookingId: string;
+  rentalPaymentIntentId: string | null;
+  totalNow: number;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+    if (!stripe || !elements || loading) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          payment_method_data: { billing_details: { name: name.trim() || '' } },
+        },
+        redirect: 'if_required',
+      });
+
+      if (stripeError) {
+        throw new Error(stripeError.message ?? 'Erreur paiement');
+      }
+      if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+        throw new Error('Paiement location échoué');
+      }
+
+      // Verify + activate booking server-side. Webhook also handles this
+      // path idempotently, but the explicit call closes the redirect-
+      // less success window that would otherwise leave the user on a
+      // spinner waiting for the webhook to arrive.
+      const { data: { session } } = await supabase.auth.getSession();
+      const finalizeRes = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/finalize-booking-payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            rental_payment_intent_id: rentalPaymentIntentId ?? paymentIntent.id,
+          }),
+        },
+      );
+      const finalizeJson = await finalizeRes.json();
+      if (!finalizeRes.ok || finalizeJson.success !== true) {
+        throw new Error(
+          finalizeJson.error ??
+            "Le paiement a été traité mais la réservation n'a pas pu être finalisée. Contacte le support.",
+        );
+      }
+
+      router.replace(`/payment-success?booking_id=${bookingId}` as any);
+    } catch (err) {
+      setError(translatePaymentError(err));
+      setLoading(false);
+    }
+  };
+
+  // DOM-only styles — this branch only ever renders on web.
+  const labelStyle: any = {
+    display: 'block',
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#30313D',
+    marginBottom: 6,
+    letterSpacing: '0.01em',
+    fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+  };
+  const inputStyle: any = {
+    width: '100%',
+    height: 44,
+    borderRadius: 6,
+    border: '1.5px solid #E0E0E0',
+    padding: '0 12px',
+    fontSize: 15,
+    color: '#30313D',
+    outline: 'none',
+    marginBottom: 16,
+    background: '#fff',
+    fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+    boxSizing: 'border-box',
+  };
+  const submitStyle: any = {
+    width: '100%',
+    height: 52,
+    borderRadius: 6,
+    background: !stripe || !elements || loading ? '#7BA3DC' : '#0570DE',
+    color: '#fff',
+    border: 'none',
+    fontSize: 15,
+    fontWeight: 700,
+    cursor: !stripe || !elements || loading ? 'not-allowed' : 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    letterSpacing: '-0.1px',
+    marginTop: 20,
+    fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+  };
+  const secureRow: any = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    color: '#8A8A9A',
+    fontSize: 11,
+    fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <label htmlFor="ltb-cardholder-name" style={labelStyle}>Nom complet</label>
+      <input
+        id="ltb-cardholder-name"
+        type="text"
+        placeholder="Prénom et nom"
+        autoComplete="cc-name"
+        value={name}
+        onChange={(e: any) => setName(e.target.value)}
+        style={inputStyle}
+      />
+      <PaymentElement
+        options={{
+          layout: 'tabs',
+          // We collect the cardholder name in our own input above, and
+          // we pinned the PaymentIntent to card-only so Link doesn't
+          // ask for an email either. Result: the PaymentElement is
+          // exactly card / expiry / CVC, no auxiliary fields.
+          fields: { billingDetails: { name: 'never', email: 'never' } },
+        }}
+      />
+      <button type="submit" disabled={!stripe || !elements || loading} style={submitStyle}>
+        {loading ? (
+          <span style={{ display: 'inline-block', width: 18, height: 18, border: '2.5px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'ltb-spin 0.6s linear infinite' } as any} />
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 } as any}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Confirmer le paiement — {totalNow} €
+          </span>
+        )}
+      </button>
+      {error && (
+        <div style={{ color: '#DF1B41', fontSize: 13, marginTop: 10, textAlign: 'center', lineHeight: 1.5, fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif' } as any}>
+          {error}
+        </div>
+      )}
+      <div style={secureRow}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8A8A9A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Paiement sécurisé par Stripe. Données jamais stockées sur nos serveurs.
+      </div>
+      <style>{`@keyframes ltb-spin { to { transform: rotate(360deg); } }`}</style>
+    </form>
+  );
+}
+
 function StripeEmbedForm({
   rentalClientSecret,
   bookingId,
   rentalPaymentIntentId,
   totalNow,
 }: StripeEmbedProps) {
-  const iframeRef = useRef<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Stripe's PaymentElement reflows when the user picks a different
-  // method, when 3DS challenges appear, or when validation messages
-  // expand. A fixed iframe height clips that content and traps the
-  // caret inside an invisible region (the previous bug: the optional
-  // email field rendered below the 340px fold and the user couldn't
-  // scroll back). Track the inner body height via postMessage and
-  // size the iframe to it. The fallback below is the height we ship
-  // with before the iframe reports back, plus a small buffer for the
-  // method-tabs row.
-  const [iframeHeight, setIframeHeight] = useState(420);
-  const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
-
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="https://js.stripe.com/v3/"></script>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: transparent;
-    padding: 0 2px;
-  }
-  label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #30313D;
-    margin-bottom: 6px;
-    letter-spacing: 0.01em;
-  }
-  #cardholder-name {
-    width: 100%;
-    height: 44px;
-    border-radius: 6px;
-    border: 1.5px solid #E0E0E0;
-    padding: 0 12px;
-    font-size: 15px;
-    color: #30313D;
-    outline: none;
-    margin-bottom: 16px;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    background: #fff;
-  }
-  #cardholder-name:focus {
-    border-color: #0570DE;
-    box-shadow: 0 0 0 3px rgba(5,112,222,0.12);
-  }
-  #cardholder-name::placeholder { color: #A3A3A3; }
-  #payment-element {
-    margin-bottom: 20px;
-  }
-  #submit {
-    width: 100%;
-    height: 52px;
-    border-radius: 6px;
-    background: #0570DE;
-    color: #fff;
-    border: none;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    letter-spacing: -0.1px;
-    transition: background 0.15s, opacity 0.15s;
-  }
-  #submit:hover:not(:disabled) { background: #0461C1; }
-  #submit:disabled { opacity: 0.55; cursor: not-allowed; }
-  #error-msg {
-    color: #DF1B41;
-    font-size: 13px;
-    margin-top: 10px;
-    text-align: center;
-    line-height: 1.5;
-    min-height: 18px;
-  }
-  .secure-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 12px;
-    color: #8A8A9A;
-    font-size: 11px;
-  }
-  .spinner {
-    display: none;
-    width: 18px; height: 18px;
-    border: 2.5px solid rgba(255,255,255,0.4);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading .spinner { display: block; }
-  .loading .btn-text { display: none; }
-</style>
-</head>
-<body>
-<form id="payment-form">
-  <label for="cardholder-name">Nom complet</label>
-  <input id="cardholder-name" type="text" placeholder="Prénom et nom" autocomplete="cc-name" />
-  <div id="payment-element"></div>
-  <button id="submit" type="submit">
-    <div class="spinner"></div>
-    <span class="btn-text">
-      <svg style="display:inline;vertical-align:middle;margin-right:7px" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Confirmer le paiement &mdash; ${totalNow}&nbsp;€
-    </span>
-  </button>
-  <div id="error-msg"></div>
-  <div class="secure-row">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8A8A9A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-    Paiement sécurisé par Stripe. Données jamais stockées sur nos serveurs.
-  </div>
-</form>
-<script>
-(async function() {
-  var stripe = Stripe(${JSON.stringify(publishableKey)});
-  var elements = stripe.elements({
-    clientSecret: ${JSON.stringify(rentalClientSecret)},
-    locale: 'fr',
+  // Memoised options; passing the same shape on every render avoids
+  // remounting the underlying Stripe elements on parent re-renders.
+  const options = {
+    clientSecret: rentalClientSecret,
+    locale: 'fr' as const,
     appearance: {
-      theme: 'stripe',
+      theme: 'stripe' as const,
       variables: {
         colorPrimary: '#0570DE',
         colorBackground: '#ffffff',
@@ -195,165 +257,19 @@ function StripeEmbedForm({
         fontSizeBase: '15px',
       },
     },
-  });
-
-  var paymentElement = elements.create('payment', {
-    layout: 'tabs',
-    // The cardholder name lives in our own textfield above the
-    // PaymentElement; Stripe's billing-details fields are skipped so
-    // the iframe stays compact (the optional email field used to
-    // overflow the iframe and trap the caret out of view).
-    fields: { billingDetails: { name: 'never', email: 'never' } },
-  });
-  paymentElement.mount('#payment-element');
-
-  // Report body height to the parent so it can resize the iframe
-  // exactly to the content. ResizeObserver fires whenever Stripe
-  // expands the layout (method tabs, 3DS panel, error text…).
-  function reportHeight() {
-    var h = Math.ceil(document.body.scrollHeight);
-    window.parent.postMessage({ type: 'stripe_height', height: h }, '*');
-  }
-  reportHeight();
-  if (typeof ResizeObserver !== 'undefined') {
-    new ResizeObserver(reportHeight).observe(document.body);
-  } else {
-    window.addEventListener('resize', reportHeight);
-  }
-
-  var form = document.getElementById('payment-form');
-  var btn = document.getElementById('submit');
-  var errDiv = document.getElementById('error-msg');
-
-  form.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    var name = document.getElementById('cardholder-name').value.trim();
-    btn.disabled = true;
-    btn.classList.add('loading');
-    errDiv.textContent = '';
-    window.parent.postMessage({ type: 'stripe_loading', value: true }, '*');
-
-    try {
-      var rentalResult = await stripe.confirmPayment({
-        elements: elements,
-        confirmParams: {
-          payment_method_data: { billing_details: { name: name || '' } },
-        },
-        redirect: 'if_required',
-      });
-
-      if (rentalResult.error) throw new Error(rentalResult.error.message);
-      var rentalPI = rentalResult.paymentIntent;
-      if (!rentalPI || rentalPI.status !== 'succeeded') throw new Error('Paiement location échoué');
-
-      // Deposit is NOT charged at payment time. Held automatically 2 days before rental ends
-
-      window.parent.postMessage({
-        type: 'stripe_success',
-        bookingId: ${JSON.stringify(bookingId)},
-        rentalPaymentIntentId: ${JSON.stringify(rentalPaymentIntentId)},
-      }, '*');
-    } catch(err) {
-      errDiv.textContent = err.message || 'Une erreur est survenue';
-      btn.disabled = false;
-      btn.classList.remove('loading');
-      window.parent.postMessage({ type: 'stripe_loading', value: false }, '*');
-    }
-  });
-})();
-</script>
-</body>
-</html>`;
-
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      // Only accept messages from our own srcdoc iframe (event.source is unforgeable)
-      if (iframeRef.current && event.source !== iframeRef.current.contentWindow) return;
-      const msg = event.data;
-      if (!msg || typeof msg !== 'object') return;
-
-      if (msg.type === 'stripe_loading') {
-        setLoading(msg.value);
-        setError(null);
-      }
-
-      if (msg.type === 'stripe_height' && typeof msg.height === 'number') {
-        // Clamp the reported height to a sane band. Stripe occasionally
-        // measures 0 during reflows; a tight floor avoids the iframe
-        // collapsing to nothing during transitions.
-        const next = Math.min(800, Math.max(360, msg.height));
-        setIframeHeight((prev) => (Math.abs(prev - next) > 1 ? next : prev));
-      }
-
-      if (msg.type === 'stripe_success') {
-        setLoading(true);
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-
-          const finalizeRes = await fetch(
-            `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/finalize-booking-payment`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-                'Authorization': `Bearer ${session?.access_token}`,
-              },
-              body: JSON.stringify({
-                booking_id: msg.bookingId,
-                rental_payment_intent_id: msg.rentalPaymentIntentId ?? null,
-              }),
-            }
-          );
-          const finalizeJson = await finalizeRes.json();
-          if (!finalizeRes.ok || finalizeJson.success !== true) {
-            throw new Error(
-              finalizeJson.error ??
-              "Le paiement a été traité mais la réservation n'a pas pu être finalisée. Contacte le support."
-            );
-          }
-
-          // Deposit is NOT charged at payment time. Hold-deposit cron handles it
-
-          router.replace(`/payment-success?booking_id=${msg.bookingId}` as any);
-        } catch (err) {
-          setError(translatePaymentError(err));
-          setLoading(false);
-        }
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  };
 
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>Carte bancaire</Text>
       <View style={styles.card}>
-        {loading && (
-          <View style={styles.iframeOverlay}>
-            <ActivityIndicator size="small" color={Colors.primaryDark} />
-            <Text style={styles.intentLoadingText}>Traitement du paiement...</Text>
-          </View>
-        )}
-        <iframe
-          ref={iframeRef}
-          srcDoc={html}
-          style={{
-            width: '100%',
-            height: iframeHeight,
-            border: 'none',
-            borderRadius: 12,
-            background: 'transparent',
-          } as any}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-        />
-        {error && (
-          <View style={styles.intentErrorWrapper}>
-            <Text style={styles.intentErrorText}>{error}</Text>
-          </View>
-        )}
+        <Elements stripe={stripePromise} options={options}>
+          <CheckoutForm
+            bookingId={bookingId}
+            rentalPaymentIntentId={rentalPaymentIntentId}
+            totalNow={totalNow}
+          />
+        </Elements>
       </View>
     </View>
   );
@@ -722,13 +638,6 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
     }),
-  },
-  iframeOverlay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 12,
   },
   listingRow: {
     flexDirection: 'row',
