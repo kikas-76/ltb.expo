@@ -415,7 +415,18 @@ export default function ListingDetailScreen() {
 
     setRequesting(true);
 
-    const toISO = (d: Date) => d.toISOString().split('T')[0];
+    // Format the picked date as the *local* YYYY-MM-DD. The calendar
+    // creates Date objects at midnight local time, so a "1 mai" pick
+    // in Europe/Paris is 2026-05-01T00:00+02:00 — `.toISOString()`
+    // would project that back to 2026-04-30T22:00Z and `.split('T')[0]`
+    // would yield "2026-04-30", off by one day. Building the string
+    // from getFullYear/getMonth/getDate keeps the user's intended day.
+    const toISO = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
 
     const { data: conv, error: convErr } = await supabase
       .from('conversations')
