@@ -74,7 +74,11 @@ export default function AdminDashboard() {
       { count: flagged },
     ] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      supabase.from('listings').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      // SELECT * trips the column-level grant on listings (latitude /
+      // longitude / location_data are revoked from authenticated, so
+      // expanding * 403s the entire query). Restrict to a single
+      // always-granted column; head:true keeps it count-only.
+      supabase.from('listings').select('id', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('bookings').select('*', { count: 'exact', head: true }).in('status', ['pending_payment', 'active', 'in_progress']),
       supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'open'),
       supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
