@@ -84,8 +84,12 @@ export default function AdminDashboard() {
       supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.rpc('admin_count_restricted_accounts'),
       supabase.from('bookings').select('total_price, status').gte('created_at', monthStart).lte('created_at', monthEnd),
+      // disputes_reporter_id_fkey targets auth.users, not public.profiles,
+      // so PostgREST can't resolve `profiles!disputes_reporter_id_fkey`.
+      // Drop the embed; the dashboard card doesn't actually display the
+      // reporter username, so dropping it is loss-less.
       supabase.from('disputes')
-        .select('id, status, created_at, description, reporter:profiles!disputes_reporter_id_fkey(username), booking:bookings(listing:listings(name))')
+        .select('id, status, created_at, description, booking:bookings(listing:listings(name))')
         .order('created_at', { ascending: false })
         .limit(5),
       supabase.from('bookings')

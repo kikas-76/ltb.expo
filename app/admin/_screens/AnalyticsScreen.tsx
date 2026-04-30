@@ -234,19 +234,39 @@ export default function AdminAnalytics() {
         .gte('created_at', monthStart)
         .lte('created_at', monthEnd)
         .order('created_at', { ascending: false }),
+      // disputes_reporter_id_fkey / reports_reporter_id_fkey both target
+      // auth.users — `profiles!fkey(...)` doesn't resolve. Pull bare
+      // rows with reporter_id, hydrate usernames in one batch SELECT
+      // below.
       supabase
         .from('disputes')
-        .select('id, status, description, created_at, reporter:profiles!disputes_reporter_id_fkey(username)')
+        .select('id, status, description, created_at, reporter_id')
         .gte('created_at', monthStart)
         .lte('created_at', monthEnd)
         .order('created_at', { ascending: false }),
       supabase
         .from('reports')
-        .select('id, status, category, description, target_type, created_at, reporter:profiles!reports_reporter_id_fkey(username)')
+        .select('id, status, category, description, target_type, created_at, reporter_id')
         .gte('created_at', monthStart)
         .lte('created_at', monthEnd)
         .order('created_at', { ascending: false }),
     ]);
+
+    const reporterIds = Array.from(new Set([
+      ...((disputesExport ?? []) as Array<{ reporter_id: string | null }>).map((r) => r.reporter_id),
+      ...((reportsExport ?? []) as Array<{ reporter_id: string | null }>).map((r) => r.reporter_id),
+    ].filter((x): x is string => !!x)));
+
+    const usernameByReporter = new Map<string, string | null>();
+    if (reporterIds.length > 0) {
+      const { data: reporterProfiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', reporterIds);
+      for (const p of (reporterProfiles ?? []) as Array<{ id: string; username: string | null }>) {
+        usernameByReporter.set(p.id, p.username ?? null);
+      }
+    }
 
     const monthLabel = now.toLocaleDateString('fr-FR', { month: '2-digit', year: 'numeric' }).replace('/', '-');
 
@@ -274,7 +294,7 @@ export default function AdminAnalytics() {
         [
           d.id,
           d.status,
-          d.reporter?.username ?? '',
+          usernameByReporter.get(d.reporter_id) ?? '',
           `"${(d.description ?? '').replace(/"/g, '""')}"`,
           new Date(d.created_at).toLocaleDateString('fr-FR'),
         ].join(',')
@@ -289,7 +309,7 @@ export default function AdminAnalytics() {
           r.status,
           r.category ?? '',
           r.target_type,
-          r.reporter?.username ?? '',
+          usernameByReporter.get(r.reporter_id) ?? '',
           `"${(r.description ?? '').replace(/"/g, '""')}"`,
           new Date(r.created_at).toLocaleDateString('fr-FR'),
         ].join(',')

@@ -59,11 +59,15 @@ export default function AdminDisputes() {
 
   const loadDisputes = async () => {
     setLoading(true);
+    // The reporter join used to embed via disputes_reporter_id_fkey, but
+    // that FK targets auth.users, not public.profiles, so PostgREST
+    // can't resolve `profiles!disputes_reporter_id_fkey` and the
+    // reporter object came back null. Fetch the row bare and hydrate
+    // username + email by id (mirrors the reports admin pattern).
     const { data } = await supabase
       .from('disputes')
       .select(`
         id, status, description, created_at, photo_urls, reporter_id,
-        reporter:profiles!disputes_reporter_id_fkey(username),
         booking:bookings(
           id, stripe_payment_intent_id, deposit_amount, total_price,
           listing:listings(name),
@@ -74,11 +78,29 @@ export default function AdminDisputes() {
       .order('created_at', { ascending: false });
 
     const rows = (data as any[]) ?? [];
-    const emails = await fetchAdminProfileEmails(rows.map((d) => d.reporter_id));
+    const reporterIds = rows
+      .map((r) => r.reporter_id)
+      .filter((x): x is string => !!x);
+
+    const [{ data: profiles }, emails] = await Promise.all([
+      reporterIds.length > 0
+        ? supabase.from('profiles').select('id, username').in('id', reporterIds)
+        : Promise.resolve({ data: [] as { id: string; username: string | null }[] }),
+      fetchAdminProfileEmails(reporterIds),
+    ]);
+
+    const usernameMap = new Map<string, string | null>();
+    for (const p of (profiles ?? []) as Array<{ id: string; username: string | null }>) {
+      usernameMap.set(p.id, p.username ?? null);
+    }
+
     const hydrated: Dispute[] = rows.map((d) => ({
       ...d,
-      reporter: d.reporter
-        ? { ...d.reporter, email: d.reporter_id ? emails[d.reporter_id] ?? null : null }
+      reporter: d.reporter_id
+        ? {
+            username: usernameMap.get(d.reporter_id) ?? null,
+            email: emails[d.reporter_id] ?? null,
+          }
         : null,
     }));
     setDisputes(hydrated);
