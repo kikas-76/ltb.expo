@@ -446,6 +446,31 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
     `, "Ton compte est prêt, les virements peuvent démarrer !")
   }),
 
+  // Stripe re-disabled the account (KYC threshold, missing docs, deadline
+  // approaching). The wallet UI shows a banner; this email pushes a
+  // notification so the owner doesn't discover the issue when a renter
+  // tries to pay.
+  stripe_account_action_required: (d) => {
+    const deadlineRaw = typeof d.deadline === "string" ? d.deadline : null;
+    const deadlineLabel = deadlineRaw
+      ? new Date(deadlineRaw).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+      : null;
+    return {
+      subject: `Action requise · Ton compte paiement Stripe`,
+      html: baseLayout(`
+        ${heading("Action requise sur ton compte paiement")}
+        ${paragraph(`Stripe demande des informations supplémentaires pour continuer à traiter tes paiements.`)}
+        ${alertBox(
+          `<strong>Sans action de ta part${deadlineLabel ? ` avant le ${deadlineLabel}` : ""}, ton compte sera désactivé</strong> et les locataires ne pourront plus te payer.`,
+          "#F59E0B",
+          "#FEF3C7",
+        )}
+        ${paragraph("Connecte-toi à ton portefeuille pour fournir les justificatifs demandés.")}
+        ${ctaButton("Régler maintenant →", `${APP_URL}/wallet`)}
+      `, `Stripe a besoin d'informations complémentaires${deadlineLabel ? ` avant le ${deadlineLabel}` : ""}.`),
+    };
+  },
+
   deposit_hold_created: (d) => ({
     subject: `Caution de ${asNumber(d.deposit)} € bloquée · retour de "${asText(d.listing_name, "ta location")}" bientôt`,
     html: baseLayout(`

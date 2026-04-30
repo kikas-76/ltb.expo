@@ -401,10 +401,24 @@ Deno.serve(async (req: Request) => {
         const accountId = data.id;
         const chargesEnabled = data.charges_enabled ?? false;
         const payoutsEnabled = data.payouts_enabled ?? false;
+        const detailsSubmitted = data.details_submitted ?? false;
+
+        // Compact subset of Stripe's full requirements payload — we keep
+        // what the wallet UI surfaces to the user and what we use to
+        // decide whether to send the "action required" alert.
+        const rawReq = data.requirements ?? {};
+        const requirements = {
+          currently_due: Array.isArray(rawReq.currently_due) ? rawReq.currently_due : [],
+          past_due: Array.isArray(rawReq.past_due) ? rawReq.past_due : [],
+          disabled_reason: rawReq.disabled_reason ?? null,
+          current_deadline: rawReq.current_deadline ?? null,
+        };
 
         const { data: existingProfile } = await supabase
           .from("profiles")
-          .select("email, username, stripe_charges_enabled, stripe_onboarding_notified")
+          .select(
+            "email, username, stripe_charges_enabled, stripe_onboarding_notified, stripe_requirements",
+          )
           .eq("stripe_account_id", accountId)
           .maybeSingle();
 
@@ -413,6 +427,8 @@ Deno.serve(async (req: Request) => {
           .update({
             stripe_charges_enabled: chargesEnabled,
             stripe_payouts_enabled: payoutsEnabled,
+            stripe_details_submitted: detailsSubmitted,
+            stripe_requirements: requirements,
           })
           .eq("stripe_account_id", accountId);
 
@@ -421,7 +437,9 @@ Deno.serve(async (req: Request) => {
           throw error;
         }
 
-        console.log(`Connect ${accountId} · charges: ${chargesEnabled}, payouts: ${payoutsEnabled}`);
+        console.log(
+          `Connect ${accountId} · charges: ${chargesEnabled}, payouts: ${payoutsEnabled}, due: ${requirements.past_due.length}/${requirements.currently_due.length}`,
+        );
 
         const justActivated =
           chargesEnabled &&
@@ -448,6 +466,40 @@ Deno.serve(async (req: Request) => {
             "$1***$2",
           );
           console.log(`Email activation Stripe envoyé à ${maskedEmail || "<unknown>"}`);
+        }
+
+        // Detect transition into "action required". Stripe re-disables a
+        // previously-active account when KYC thresholds bite, payout
+        // limits trigger ID verification, etc. We mail the owner once per
+        // transition (idempotent across webhook retries because we look
+        // at the *previous* requirements column to gate it).
+        const previousReq = (existingProfile?.stripe_requirements ?? {}) as {
+          past_due?: string[];
+          disabled_reason?: string | null;
+        };
+        const wasClean =
+          (previousReq.past_due?.length ?? 0) === 0 &&
+          !previousReq.disabled_reason;
+        const isNowBlocking =
+          requirements.past_due.length > 0 ||
+          !!requirements.disabled_reason;
+
+        if (wasClean && isNowBlocking && existingProfile?.email) {
+          const deadlineIso = requirements.current_deadline
+            ? new Date(requirements.current_deadline * 1000).toISOString()
+            : null;
+          await sendEmail(
+            supabase,
+            existingProfile.email,
+            "stripe_account_action_required",
+            {
+              first_name: existingProfile.username ?? "",
+              disabled_reason: requirements.disabled_reason ?? "",
+              past_due_count: requirements.past_due.length,
+              deadline: deadlineIso,
+            },
+          );
+          console.log(`Email "action requise Stripe" envoyé · ${accountId}`);
         }
 
         break;

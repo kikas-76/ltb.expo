@@ -50,32 +50,47 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (profile.stripe_onboarding_complete === true) {
-      return new Response(JSON.stringify({ complete: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    // Always go to Stripe — the early-return on the local boolean used
+    // to skip the API call, which made the app blind to a *re-disabled*
+    // account (KYC re-verification, missing docs). The webhook handles
+    // most updates live, but a manual sync from the wallet should
+    // never trust a possibly-stale local flag.
     const account = await stripe.accounts.retrieve(profile.stripe_account_id);
-    const complete =
-      account.charges_enabled === true &&
-      account.payouts_enabled === true &&
-      account.details_submitted === true;
 
-    if (complete) {
-      await supabase
-        .from("profiles")
-        .update({
-          stripe_onboarding_complete: true,
-          stripe_charges_enabled: true,
-          stripe_payouts_enabled: true,
-        })
-        .eq("id", user.id);
-    }
+    const chargesEnabled = account.charges_enabled === true;
+    const payoutsEnabled = account.payouts_enabled === true;
+    const detailsSubmitted = account.details_submitted === true;
+    const complete = chargesEnabled && payoutsEnabled && detailsSubmitted;
 
-    return new Response(JSON.stringify({ complete }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const rawReq: any = account.requirements ?? {};
+    const requirements = {
+      currently_due: Array.isArray(rawReq.currently_due) ? rawReq.currently_due : [],
+      past_due: Array.isArray(rawReq.past_due) ? rawReq.past_due : [],
+      disabled_reason: rawReq.disabled_reason ?? null,
+      current_deadline: rawReq.current_deadline ?? null,
+    };
+
+    await supabase
+      .from("profiles")
+      .update({
+        stripe_onboarding_complete: complete,
+        stripe_charges_enabled: chargesEnabled,
+        stripe_payouts_enabled: payoutsEnabled,
+        stripe_details_submitted: detailsSubmitted,
+        stripe_requirements: requirements,
+      })
+      .eq("id", user.id);
+
+    return new Response(
+      JSON.stringify({
+        complete,
+        charges_enabled: chargesEnabled,
+        payouts_enabled: payoutsEnabled,
+        details_submitted: detailsSubmitted,
+        requirements,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     return new Response(JSON.stringify({ error: message, complete: false }), {

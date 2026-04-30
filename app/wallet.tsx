@@ -85,20 +85,56 @@ function BalanceCard({ earnings, loading }: { earnings: Earnings; loading: boole
   );
 }
 
+// Derived status from the four Stripe Connect signals we now track.
+// not_started     — no Stripe account yet
+// onboarding      — account exists but onboarding form not submitted
+// pending_review  — submitted, Stripe still validating (charges/payouts off)
+// active          — charges + payouts enabled, no requirements due
+// action_required — Stripe needs more info (KYC threshold / past_due / disabled)
+type ConnectStatus =
+  | 'not_started'
+  | 'onboarding'
+  | 'pending_review'
+  | 'active'
+  | 'action_required';
+
+interface ConnectStateInput {
+  account_id?: string | null;
+  details_submitted: boolean;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  requirements: {
+    past_due?: string[];
+    currently_due?: string[];
+    disabled_reason?: string | null;
+  } | null;
+}
+
+function deriveConnectStatus(s: ConnectStateInput): ConnectStatus {
+  if (!s.account_id) return 'not_started';
+  if (!s.details_submitted) return 'onboarding';
+  const reqs = s.requirements ?? {};
+  if (reqs.disabled_reason || (reqs.past_due?.length ?? 0) > 0) {
+    return 'action_required';
+  }
+  if (!s.charges_enabled || !s.payouts_enabled) return 'pending_review';
+  return 'active';
+}
+
 interface PaymentStatusCardProps {
-  accountComplete: boolean | null;
+  status: ConnectStatus;
   loading: boolean;
   onActivate: () => void;
   onManage: () => void;
 }
 
 function PaymentStatusCard({
-  accountComplete,
+  status,
   loading,
   onActivate,
   onManage,
 }: PaymentStatusCardProps) {
-  if (accountComplete) {
+  if (status === 'active') {
     return (
       <View style={styles.card}>
         <View style={styles.statusRow}>
@@ -129,6 +165,97 @@ function PaymentStatusCard({
     );
   }
 
+  if (status === 'pending_review') {
+    return (
+      <View style={styles.card}>
+        <View style={styles.statusRow}>
+          <View style={styles.infoIconWrap}>
+            <Ionicons name="hourglass-outline" size={20} color="#3A6BBF" />
+          </View>
+          <View style={styles.statusTextWrap}>
+            <Text style={styles.statusTitle}>Vérification Stripe en cours</Text>
+            <Text style={styles.statusSubtitle}>
+              Tes informations sont en cours de validation. Ça prend généralement quelques minutes, parfois jusqu'à 48h. Tu seras notifié dès l'activation.
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.outlineBtn}
+          activeOpacity={0.82}
+          onPress={onManage}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={Colors.primaryDark} size="small" />
+          ) : (
+            <Text style={styles.outlineBtnText}>Voir le détail →</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (status === 'action_required') {
+    return (
+      <View style={styles.card}>
+        <View style={styles.statusRow}>
+          <View style={styles.dangerIconWrap}>
+            <Ionicons name="alert-circle-outline" size={20} color="#C0392B" />
+          </View>
+          <View style={styles.statusTextWrap}>
+            <Text style={styles.statusTitle}>Action requise sur ton compte</Text>
+            <Text style={styles.statusSubtitle}>
+              Stripe demande des informations supplémentaires. Sans action de ta part, les paiements peuvent être suspendus. Mets à jour tes informations dès que possible.
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.dangerBtn}
+          activeOpacity={0.82}
+          onPress={onManage}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.dangerBtnText}>Régulariser mon compte →</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (status === 'onboarding') {
+    return (
+      <View style={styles.card}>
+        <View style={styles.statusRow}>
+          <View style={styles.warningIconWrap}>
+            <Ionicons name="time-outline" size={20} color="#D97706" />
+          </View>
+          <View style={styles.statusTextWrap}>
+            <Text style={styles.statusTitle}>Onboarding incomplet</Text>
+            <Text style={styles.statusSubtitle}>
+              Tu as commencé l'inscription Stripe mais le formulaire n'est pas encore soumis. Reprends là où tu t'es arrêté.
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          activeOpacity={0.82}
+          onPress={onActivate}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.primaryBtnText}>Reprendre l'inscription →</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // not_started
   return (
     <View style={styles.card}>
       <View style={styles.statusRow}>
@@ -323,7 +450,10 @@ function WalletScreenContent() {
   const insets = useSafeAreaInsets();
   const { isDesktop } = useResponsive();
 
-  const [accountComplete, setAccountComplete] = useState<boolean | null>(null);
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus>('not_started');
+  // Back-compat alias used by NextTransferCard / right-column gates that
+  // only need a binary "can the user receive payouts right now".
+  const accountComplete = connectStatus === 'active';
   const [activateLoading, setActivateLoading] = useState(false);
   const [manageLoading, setManageLoading] = useState(false);
   const [earnings, setEarnings] = useState<Earnings>({ monthly: 0, total: 0, pending: 0 });
@@ -366,9 +496,22 @@ function WalletScreenContent() {
         body: JSON.stringify({}),
       });
       const data = await response.json();
-      setAccountComplete(data.complete === true);
+      // The edge fn returns the rich state since the intermediate-state
+      // refactor; keep the legacy `complete` boolean as a fallback for
+      // older deploys where only `complete` was sent.
+      const status = deriveConnectStatus({
+        // No account_id field returned — infer "started" from any signal.
+        account_id: data.details_submitted || data.charges_enabled || data.complete
+          ? 'present'
+          : null,
+        details_submitted: data.details_submitted ?? data.complete === true,
+        charges_enabled: data.charges_enabled ?? data.complete === true,
+        payouts_enabled: data.payouts_enabled ?? data.complete === true,
+        requirements: data.requirements ?? null,
+      });
+      setConnectStatus(status);
     } catch {
-      setAccountComplete(false);
+      setConnectStatus('not_started');
     }
   };
 
@@ -602,8 +745,12 @@ function WalletScreenContent() {
     <>
       <BalanceCard earnings={earnings} loading={earningsLoading} />
       <PaymentStatusCard
-        accountComplete={accountComplete}
-        loading={accountComplete ? manageLoading : activateLoading}
+        status={connectStatus}
+        loading={
+          connectStatus === 'active' || connectStatus === 'pending_review' || connectStatus === 'action_required'
+            ? manageLoading
+            : activateLoading
+        }
         onActivate={activateStripeAccount}
         onManage={openAccountManagement}
       />
@@ -787,6 +934,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+  infoIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#DBEAFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  dangerIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  dangerBtn: {
+    backgroundColor: '#C0392B',
+    borderRadius: 999,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dangerBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   statusTextWrap: {
     flex: 1,
