@@ -69,6 +69,30 @@ const pendingMarkReadIds = new Set<string>();
 
 type ConvDisplayStatus = 'pending' | 'accepted' | 'refused' | 'pending_payment' | 'in_progress' | 'completed' | 'active' | 'pending_return' | 'pending_owner_validation' | 'disputed' | 'cancelled';
 
+// Terminal states only — anything in flight (pending response, paid,
+// rental in progress, awaiting return, awaiting owner validation,
+// disputed) MUST stay in the user's list. The DB trigger
+// `guard_conversation_delete` mirrors this exact rule server-side, so a
+// curl bypass of the UI gets a 42501 with a readable message.
+const TERMINAL_DISPLAY_STATUSES: ConvDisplayStatus[] = ['completed', 'cancelled', 'refused'];
+const TERMINAL_CONV_STATUSES = ['refused', 'cancelled', 'expired'] as const;
+
+// Single source of truth for "can this row be wiped from my list?"
+// Used by both the mobile ConversationRow and the desktop-web inline
+// layout below. Don't open this up to in-flight states (pending_payment,
+// active, in_progress, pending_return, pending_owner_validation,
+// disputed) — those still need user attention or are tied to live money.
+function canDeleteConversation(item: {
+  status: string;
+  displayStatus: ConvDisplayStatus;
+  listingUnavailable: boolean;
+}): boolean {
+  if (item.listingUnavailable) return true;
+  if ((TERMINAL_CONV_STATUSES as readonly string[]).includes(item.status)) return true;
+  if (TERMINAL_DISPLAY_STATUSES.includes(item.displayStatus)) return true;
+  return false;
+}
+
 interface ConversationItem {
   id: string;
   listingId: string | null;
@@ -236,16 +260,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
   }, []);
 
   const isUnread = item.unreadCount > 0 || item.hasUnreadDot;
-  // Anything that's reached a terminal state can be wiped from the
-  // user's list. Without 'cancelled' here, an auto-expired
-  // pending_payment booking lingered forever because the trash icon
-  // never showed up.
-  const isDeletable =
-    item.displayStatus === 'completed' ||
-    item.displayStatus === 'cancelled' ||
-    item.status === 'refused' ||
-    item.status === 'cancelled' ||
-    item.listingUnavailable;
+  const isDeletable = canDeleteConversation(item);
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
@@ -408,11 +423,17 @@ export default function MessagesScreen() {
       // Don't optimistically wipe the row — that hid silent failures
       // (the row reappeared on the next refresh and made it look like
       // the delete didn't take). Keep it on screen, surface the error.
-      setDeleteError(
-        error.message?.includes('permission')
+      // The guard_conversation_delete trigger already returns a French
+      // message describing the active state ("Cette conversation est
+      // encore active (statut <X>), …"); pass it through verbatim
+      // when it's there.
+      const raw = error.message ?? '';
+      const friendly = raw.includes('encore active') || raw.includes('Réservation associée')
+        ? raw
+        : raw.toLowerCase().includes('permission')
           ? "Tu n'as pas le droit de supprimer cette conversation."
-          : 'Suppression impossible. Réessaie dans un instant.',
-      );
+          : 'Suppression impossible. Réessaie dans un instant.';
+      setDeleteError(friendly);
       setDeleteLoading(false);
       return;
     }
@@ -827,17 +848,7 @@ export default function MessagesScreen() {
               </View>
             ) : (
               conversations.map((item, index) => {
-                // Same rule as the mobile ConversationRow: any terminal
-                // state can be wiped from the user's list. Without
-                // 'cancelled' here, an auto-expired booking lingered
-                // on the desktop web view forever — no trash icon was
-                // rendered AND the long-press shortcut excluded it.
-                const desktopDeletable =
-                  item.displayStatus === 'completed' ||
-                  item.displayStatus === 'cancelled' ||
-                  item.status === 'refused' ||
-                  item.status === 'cancelled' ||
-                  item.listingUnavailable;
+                const desktopDeletable = canDeleteConversation(item);
                 return (
                 <TouchableOpacity
                   key={item.id}
