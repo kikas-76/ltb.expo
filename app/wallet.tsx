@@ -20,6 +20,7 @@ import { computeOwnerEarnings } from '@/lib/pricing';
 import { PAYOUT_INTERVAL_DAYS, PAYOUT_INTERVAL_LABEL } from '@/lib/payoutSchedule';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 import PreviewUnavailable from '@/components/PreviewUnavailable';
+import { type ConnectStatus, deriveConnectStatus } from '@/lib/stripeConnectStatus';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 
@@ -83,42 +84,6 @@ function BalanceCard({ earnings, loading }: { earnings: Earnings; loading: boole
       </View>
     </View>
   );
-}
-
-// Derived status from the four Stripe Connect signals we now track.
-// not_started     — no Stripe account yet
-// onboarding      — account exists but onboarding form not submitted
-// pending_review  — submitted, Stripe still validating (charges/payouts off)
-// active          — charges + payouts enabled, no requirements due
-// action_required — Stripe needs more info (KYC threshold / past_due / disabled)
-type ConnectStatus =
-  | 'not_started'
-  | 'onboarding'
-  | 'pending_review'
-  | 'active'
-  | 'action_required';
-
-interface ConnectStateInput {
-  account_id?: string | null;
-  details_submitted: boolean;
-  charges_enabled: boolean;
-  payouts_enabled: boolean;
-  requirements: {
-    past_due?: string[];
-    currently_due?: string[];
-    disabled_reason?: string | null;
-  } | null;
-}
-
-function deriveConnectStatus(s: ConnectStateInput): ConnectStatus {
-  if (!s.account_id) return 'not_started';
-  if (!s.details_submitted) return 'onboarding';
-  const reqs = s.requirements ?? {};
-  if (reqs.disabled_reason || (reqs.past_due?.length ?? 0) > 0) {
-    return 'action_required';
-  }
-  if (!s.charges_enabled || !s.payouts_enabled) return 'pending_review';
-  return 'active';
 }
 
 interface PaymentStatusCardProps {

@@ -16,6 +16,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import StatusBadge from '@/components/admin/StatusBadge';
+import {
+  deriveConnectStatus,
+  connectStatusLabel,
+  connectStatusColors,
+} from '@/lib/stripeConnectStatus';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
@@ -36,6 +41,13 @@ interface UserProfile {
   stripe_account_id: string | null;
   stripe_charges_enabled: boolean | null;
   stripe_payouts_enabled: boolean | null;
+  stripe_details_submitted: boolean | null;
+  stripe_requirements: {
+    past_due?: string[] | null;
+    currently_due?: string[] | null;
+    disabled_reason?: string | null;
+    current_deadline?: number | null;
+  } | null;
   location_data: any;
   business_name: string | null;
   siren_number: string | null;
@@ -331,14 +343,64 @@ export default function AdminUserDetail() {
             </View>
           ) : null}
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Stripe</Text>
-            <Text style={styles.infoValue}>
-              {profile.stripe_account_id
-                ? `Connecté${profile.stripe_charges_enabled ? ' · Paiements actifs' : ''}`
-                : 'Non connecté'}
-            </Text>
-          </View>
+          {(() => {
+            const cs = deriveConnectStatus({
+              account_id: profile.stripe_account_id,
+              details_submitted: !!profile.stripe_details_submitted,
+              charges_enabled: !!profile.stripe_charges_enabled,
+              payouts_enabled: !!profile.stripe_payouts_enabled,
+              requirements: profile.stripe_requirements ?? null,
+            });
+            const colors = connectStatusColors(cs);
+            const reqs = profile.stripe_requirements ?? {};
+            const pastDue = reqs.past_due ?? [];
+            const currentlyDue = reqs.currently_due ?? [];
+            const deadline = reqs.current_deadline
+              ? new Date(reqs.current_deadline * 1000).toLocaleDateString('fr-FR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })
+              : null;
+            return (
+              <View style={styles.stripeBlock}>
+                <View style={styles.stripeHeader}>
+                  <Text style={styles.infoLabel}>Stripe</Text>
+                  <View style={[styles.stripeBadge, { backgroundColor: colors.bg }]}>
+                    <Text style={[styles.stripeBadgeText, { color: colors.fg }]}>
+                      {connectStatusLabel(cs)}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.stripeDetailLine}>
+                  {profile.stripe_account_id ? `ID : ${profile.stripe_account_id}` : 'Non connecté'}
+                </Text>
+                <Text style={styles.stripeDetailLine}>
+                  Charges : {profile.stripe_charges_enabled ? '✓' : '✗'}
+                  {'   '}
+                  Payouts : {profile.stripe_payouts_enabled ? '✓' : '✗'}
+                  {'   '}
+                  Soumis : {profile.stripe_details_submitted ? '✓' : '✗'}
+                </Text>
+                {reqs.disabled_reason ? (
+                  <Text style={styles.stripeWarn}>Raison désactivation : {reqs.disabled_reason}</Text>
+                ) : null}
+                {pastDue.length > 0 ? (
+                  <Text style={styles.stripeWarn}>
+                    En retard : {pastDue.join(', ')}
+                  </Text>
+                ) : null}
+                {currentlyDue.length > 0 && pastDue.length === 0 ? (
+                  <Text style={styles.stripeDetailLine}>
+                    À fournir : {currentlyDue.join(', ')}
+                  </Text>
+                ) : null}
+                {deadline ? (
+                  <Text style={styles.stripeDetailLine}>Échéance : {deadline}</Text>
+                ) : null}
+              </View>
+            );
+          })()}
         </View>
 
         {/* Account status */}
@@ -786,6 +848,38 @@ const styles = StyleSheet.create({
     color: Colors.text,
     flex: 1,
     textAlign: 'right',
+  },
+  stripeBlock: {
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    gap: 4,
+  },
+  stripeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  stripeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  stripeBadgeText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.2,
+  },
+  stripeDetailLine: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  stripeWarn: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: '#991B1B',
   },
   statusRow: {
     flexDirection: 'row',

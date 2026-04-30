@@ -14,6 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import StatusBadge from '@/components/admin/StatusBadge';
+import {
+  deriveConnectStatus,
+  connectStatusLabel,
+  connectStatusColors,
+  type ConnectStatus,
+} from '@/lib/stripeConnectStatus';
 
 interface AdminUser {
   id: string;
@@ -22,12 +28,24 @@ interface AdminUser {
   is_pro: boolean;
   role: string | null;
   account_status: string;
+  stripe_account_id: string | null;
   stripe_charges_enabled: boolean | null;
+  stripe_payouts_enabled: boolean | null;
+  stripe_details_submitted: boolean | null;
+  stripe_requirements: {
+    past_due?: string[] | null;
+    currently_due?: string[] | null;
+    disabled_reason?: string | null;
+    current_deadline?: number | null;
+  } | null;
   created_at: string;
 }
 
 type StatusFilter = 'all' | 'active' | 'suspended' | 'banned';
-type StripeFilter = 'all' | 'validated' | 'unvalidated';
+// Filter values match the granular set the RPC now accepts post
+// 20260430020000. Labels mirror the wallet wording so admin and user
+// share the same vocabulary.
+type StripeFilter = 'all' | 'active' | 'pending_review' | 'action_required' | 'onboarding' | 'not_started';
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Tous' },
@@ -38,9 +56,22 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 
 const STRIPE_FILTERS: { key: StripeFilter; label: string }[] = [
   { key: 'all', label: 'Stripe : tous' },
-  { key: 'validated', label: 'Stripe validé' },
-  { key: 'unvalidated', label: 'Stripe non validé' },
+  { key: 'active', label: 'Actif' },
+  { key: 'pending_review', label: 'En vérification' },
+  { key: 'action_required', label: 'Action requise' },
+  { key: 'onboarding', label: 'Onboarding' },
+  { key: 'not_started', label: 'Pas démarré' },
 ];
+
+function userToConnectStatus(u: AdminUser): ConnectStatus {
+  return deriveConnectStatus({
+    account_id: u.stripe_account_id,
+    details_submitted: !!u.stripe_details_submitted,
+    charges_enabled: !!u.stripe_charges_enabled,
+    payouts_enabled: !!u.stripe_payouts_enabled,
+    requirements: u.stripe_requirements ?? null,
+  });
+}
 
 const PAGE_SIZE = 20;
 
@@ -197,25 +228,17 @@ export default function AdminUsers() {
                     <Text style={[styles.badgeText, { color: Colors.warningDark }]}>Pro</Text>
                   </View>
                 )}
-                <View
-                  style={[
-                    styles.badge,
-                    {
-                      backgroundColor: u.stripe_charges_enabled
-                        ? Colors.successGreenLight
-                        : Colors.borderLight,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.badgeText,
-                      { color: u.stripe_charges_enabled ? Colors.successGreen : Colors.textMuted },
-                    ]}
-                  >
-                    {u.stripe_charges_enabled ? 'Stripe ✓' : 'Stripe ✗'}
-                  </Text>
-                </View>
+                {(() => {
+                  const cs = userToConnectStatus(u);
+                  const colors = connectStatusColors(cs);
+                  return (
+                    <View style={[styles.badge, { backgroundColor: colors.bg }]}>
+                      <Text style={[styles.badgeText, { color: colors.fg }]}>
+                        {connectStatusLabel(cs)}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </View>
             </TouchableOpacity>
           ))}
