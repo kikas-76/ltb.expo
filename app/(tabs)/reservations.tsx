@@ -365,7 +365,8 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="trash-outline" size={14} color="#C0392B" />
+                  <Ionicons name="trash-outline" size={13} color="#C0392B" />
+                  <Text style={styles.deleteBtnLabel}>Supprimer</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1321,14 +1322,21 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   deleteBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FECACA',
+  },
+  deleteBtnLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    color: '#C0392B',
+    letterSpacing: 0.1,
   },
   modalOverlay: {
     flex: 1,
