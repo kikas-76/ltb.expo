@@ -24,7 +24,7 @@
         },
         {
           "key": "Permissions-Policy",
-          "value": "geolocation=(self), camera=(self), microphone=(), payment=(self), interest-cohort=()"
+          "value": "geolocation=(self), camera=(self), microphone=(), payment=(self \"https://js.stripe.com\" \"https://pay.google.com\" \"https://hooks.stripe.com\"), interest-cohort=()"
         },
         {
           "key": "Cross-Origin-Opener-Policy",

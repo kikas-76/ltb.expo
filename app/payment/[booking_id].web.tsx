@@ -54,6 +54,7 @@ interface StripeEmbedProps {
   bookingId: string;
   rentalPaymentIntentId: string | null;
   totalNow: number;
+  userEmail: string | null;
 }
 
 // Inner form rendered inside <Elements>. Splits cleanly so we can use
@@ -67,10 +68,12 @@ function CheckoutForm({
   bookingId,
   rentalPaymentIntentId,
   totalNow,
+  userEmail,
 }: {
   bookingId: string;
   rentalPaymentIntentId: string | null;
   totalNow: number;
+  userEmail: string | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -88,7 +91,19 @@ function CheckoutForm({
       const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          payment_method_data: { billing_details: { name: name.trim() || '' } },
+          // Stripe requires every billing-details field we set to
+          // `never` on the PaymentElement to be passed back at confirm
+          // time — otherwise it raises IntegrationError. The email
+          // comes from the renter's auth session (we have it: they
+          // had to sign in to reach this screen). Falling back to a
+          // technically-valid placeholder if the session lookup
+          // failed avoids blocking the payment on a missing email.
+          payment_method_data: {
+            billing_details: {
+              name: name.trim() || 'Locataire',
+              email: userEmail || 'noreply@louetonbien.fr',
+            },
+          },
         },
         redirect: 'if_required',
       });
@@ -239,6 +254,7 @@ function StripeEmbedForm({
   bookingId,
   rentalPaymentIntentId,
   totalNow,
+  userEmail,
 }: StripeEmbedProps) {
   // Memoised options; passing the same shape on every render avoids
   // remounting the underlying Stripe elements on parent re-renders.
@@ -268,6 +284,7 @@ function StripeEmbedForm({
             bookingId={bookingId}
             rentalPaymentIntentId={rentalPaymentIntentId}
             totalNow={totalNow}
+            userEmail={userEmail}
           />
         </Elements>
       </View>
@@ -288,6 +305,13 @@ export default function PaymentScreen() {
   const [rentalPaymentIntentId, setRentalPaymentIntentId] = useState<string | null>(null);
   const [intentError, setIntentError] = useState<string | null>(null);
   const [stripeAccountError, setStripeAccountError] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Read once at mount; the user can't reach this page without a
+    // session, so this almost always returns synchronously.
+    supabase.auth.getUser().then(({ data }) => setUserEmail(data?.user?.email ?? null));
+  }, []);
 
   useEffect(() => {
     if (!booking_id) return;
@@ -511,6 +535,7 @@ export default function PaymentScreen() {
                 bookingId={booking_id!}
                 rentalPaymentIntentId={rentalPaymentIntentId}
                 totalNow={totalNow}
+                userEmail={userEmail}
               />
             )}
           </View>
