@@ -826,7 +826,19 @@ export default function MessagesScreen() {
                 </Text>
               </View>
             ) : (
-              conversations.map((item, index) => (
+              conversations.map((item, index) => {
+                // Same rule as the mobile ConversationRow: any terminal
+                // state can be wiped from the user's list. Without
+                // 'cancelled' here, an auto-expired booking lingered
+                // on the desktop web view forever — no trash icon was
+                // rendered AND the long-press shortcut excluded it.
+                const desktopDeletable =
+                  item.displayStatus === 'completed' ||
+                  item.displayStatus === 'cancelled' ||
+                  item.status === 'refused' ||
+                  item.status === 'cancelled' ||
+                  item.listingUnavailable;
+                return (
                 <TouchableOpacity
                   key={item.id}
                   style={[
@@ -836,11 +848,7 @@ export default function MessagesScreen() {
                   ]}
                   activeOpacity={0.78}
                   onPress={() => !item.listingUnavailable && handleConvPress(item.id)}
-                  onLongPress={
-                    (item.displayStatus === 'completed' || item.status === 'refused' || item.listingUnavailable)
-                      ? () => setDeleteModalId(item.id)
-                      : undefined
-                  }
+                  onLongPress={desktopDeletable ? () => setDeleteModalId(item.id) : undefined}
                   delayLongPress={500}
                 >
                   <View style={desktopStyles.convRowImg}>
@@ -873,10 +881,25 @@ export default function MessagesScreen() {
                           <Text style={desktopStyles.unreadBadgeText}>{item.unreadCount}</Text>
                         </View>
                       )}
+                      {desktopDeletable && (
+                        <TouchableOpacity
+                          style={styles.deleteBtn}
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            setDeleteModalId(item.id);
+                          }}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="trash-outline" size={13} color="#C0392B" />
+                          <Text style={styles.deleteBtnLabel}>Supprimer</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 </TouchableOpacity>
-              ))
+                );
+              })
             )}
           </ScrollView>
         </View>
