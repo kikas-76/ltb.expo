@@ -386,14 +386,37 @@ export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const { isDesktop } = useResponsive();
 
   const handleDeleteConversation = async () => {
     if (!deleteModalId) return;
     setDeleteLoading(true);
-    await supabase.from('chat_messages').delete().eq('conversation_id', deleteModalId);
-    await supabase.from('conversations').delete().eq('id', deleteModalId);
+    setDeleteError(null);
+
+    // Drop the explicit chat_messages DELETE: chat_messages.conversation_id
+    // is FK ON DELETE CASCADE, so deleting the conversation auto-cleans the
+    // messages. The previous two-step pattern could also race with an
+    // incoming message, leaving a child row that broke the cascade.
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', deleteModalId);
+
+    if (error) {
+      // Don't optimistically wipe the row — that hid silent failures
+      // (the row reappeared on the next refresh and made it look like
+      // the delete didn't take). Keep it on screen, surface the error.
+      setDeleteError(
+        error.message?.includes('permission')
+          ? "Tu n'as pas le droit de supprimer cette conversation."
+          : 'Suppression impossible. Réessaie dans un instant.',
+      );
+      setDeleteLoading(false);
+      return;
+    }
+
     setConversations((prev) => prev.filter((c) => c.id !== deleteModalId));
     refreshUnread();
     setDeleteLoading(false);
@@ -696,12 +719,22 @@ export default function MessagesScreen() {
       visible={deleteModalId !== null}
       transparent
       animationType="fade"
-      onRequestClose={() => !deleteLoading && setDeleteModalId(null)}
+      onRequestClose={() => {
+        if (!deleteLoading) {
+          setDeleteError(null);
+          setDeleteModalId(null);
+        }
+      }}
     >
       <TouchableOpacity
         style={styles.modalOverlay}
         activeOpacity={1}
-        onPress={() => !deleteLoading && setDeleteModalId(null)}
+        onPress={() => {
+          if (!deleteLoading) {
+            setDeleteError(null);
+            setDeleteModalId(null);
+          }
+        }}
       >
         <View style={styles.modalSheet}>
           <View style={styles.modalIconWrap}>
@@ -711,6 +744,9 @@ export default function MessagesScreen() {
           <Text style={styles.modalDesc}>
             Cette action supprimera définitivement la conversation et tous ses messages. Cette action est irréversible.
           </Text>
+          {deleteError && (
+            <Text style={styles.modalErrorText}>{deleteError}</Text>
+          )}
           <TouchableOpacity
             style={[styles.modalBtnDelete, deleteLoading && { opacity: 0.65 }]}
             onPress={handleDeleteConversation}
@@ -728,7 +764,10 @@ export default function MessagesScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.modalBtnCancel}
-            onPress={() => setDeleteModalId(null)}
+            onPress={() => {
+              setDeleteError(null);
+              setDeleteModalId(null);
+            }}
             disabled={deleteLoading}
             activeOpacity={0.75}
           >
@@ -1413,6 +1452,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
     color: Colors.textSecondary,
+  },
+  modalErrorText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: '#C0392B',
+    textAlign: 'center',
+    marginTop: -4,
+    marginBottom: 8,
   },
   payBannerOrange: {
     flexDirection: 'row',
