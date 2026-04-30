@@ -1372,6 +1372,9 @@ export default function ChatScreen() {
               <Text style={styles.payBannerGreenTitle}>
                 Demande acceptée · Finalise ta réservation
               </Text>
+              <Text style={styles.payBannerGreenSub}>
+                Paiement requis sous 2h, sinon la réservation est annulée
+              </Text>
             </View>
             <TouchableOpacity
               style={[styles.payBannerGreenBtn, payLoading && { opacity: 0.7 }]}
@@ -2456,6 +2459,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#FFFFFF',
     lineHeight: 18,
+  },
+  payBannerGreenSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 14,
+    marginTop: 2,
   },
   payBannerGreenBtn: {
     backgroundColor: '#FFFFFF',

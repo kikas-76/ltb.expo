@@ -30,7 +30,10 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    // 2 hours — matches the deadline shown in the booking_accepted_renter
+    // email template ("Paiement requis sous 2h"). Keep them in sync if you
+    // change either side.
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
     const { data: staleBookings, error: fetchError } = await supabase
       .from("bookings")
