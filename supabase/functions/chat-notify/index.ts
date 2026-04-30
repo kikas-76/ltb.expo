@@ -50,15 +50,33 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const internalSecret = Deno.env.get("INTERNAL_EDGE_SECRET");
-    const invokeHeaders = internalSecret ? { "x-internal-secret": internalSecret } : {};
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const INTERNAL_EDGE_SECRET = Deno.env.get("INTERNAL_EDGE_SECRET") ?? "";
 
     async function dispatchEmail(to: string, template: string, data: Record<string, any>) {
+      // Direct fetch with explicit headers. supabase-js's
+      // `.functions.invoke()` in the Deno runtime doesn't reliably
+      // attach `Authorization: Bearer <service_role_key>`, which sends
+      // verify_jwt-protected functions like send-email back a 401 before
+      // they ever reach our `getAuthorized()` gate. send-email accepts
+      // either the service-role key OR INTERNAL_EDGE_SECRET — we send
+      // both so the call works regardless of the runtime config.
       try {
-        await supabaseAdmin.functions.invoke("send-email", {
-          headers: invokeHeaders,
-          body: { to, template, data },
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+            "apikey": SERVICE_ROLE_KEY,
+            "x-internal-secret": INTERNAL_EDGE_SECRET,
+          },
+          body: JSON.stringify({ to, template, data }),
         });
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          console.error(`send-email ${template} → ${res.status}: ${body.slice(0, 200)}`);
+        }
       } catch (err) {
         console.error(`Email dispatch failed (${template}):`, err);
       }

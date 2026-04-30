@@ -27,7 +27,6 @@ Supabase admin clients even spin up.
 - `chat-notify` — booking accepted / refused / dispute_opened email triggers
 - `post-system-message` — server-authored chat messages
 - `send-admin-email` — admin-action wrapper around `send-email`
-- `send-email` — generic email dispatch (callers send service_role / `INTERNAL_EDGE_SECRET`)
 - `admin-action` — admin moderation (suspend / ban / unban / flag)
 - `admin-manage-deposit` — admin capture / release tool
 - `get-dashboard-link` — Stripe Connect login link
@@ -44,3 +43,11 @@ via a different signal (HMAC signature, internal secret, cron header).
 - `hold-deposit` — cron, gated by `INTERNAL_EDGE_SECRET`
 - `admin-sync-stripe-accounts` — one-shot, gated by `INTERNAL_EDGE_SECRET`
   (safe to delete from the dashboard once confirmed unused)
+- `send-email` — generic email dispatch. Has its own auth (`getAuthorized()`
+  requires the service-role key in `Authorization: Bearer …` OR an
+  `x-internal-secret` header matching `INTERNAL_EDGE_SECRET`). Kept off
+  `verify_jwt` because the supabase-js Deno SDK's `.functions.invoke()`
+  doesn't reliably attach `Authorization: Bearer <service_role_key>`,
+  which made every internal email dispatch (chat-notify, stripe-webhook,
+  manage-deposit, hold-deposit, send-admin-email, finalize-booking-
+  payment …) 401 at the runtime layer before the function code ran.
