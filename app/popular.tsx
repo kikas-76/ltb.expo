@@ -82,7 +82,7 @@ export default function PopularPage() {
       let query = supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner_type, views_count, saves_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)'
+          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner_type, views_count, saves_count, rating_avg, rating_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)'
         )
         .eq('is_active', true)
         .order(orderCol, { ascending: false });

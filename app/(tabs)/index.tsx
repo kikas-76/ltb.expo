@@ -81,7 +81,7 @@ export default function ExploreScreen() {
       const hasLocation = lat !== null && lng !== null;
 
       const baseSelect =
-        'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)';
+        'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, rating_avg, rating_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)';
 
       const [catRes, listingsRes, nearbyRes] = await Promise.all([
         supabase.from('categories').select('id, name, value, icon_path').order('order'),

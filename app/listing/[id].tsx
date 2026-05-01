@@ -74,6 +74,8 @@ interface Listing {
   category_id: string | null;
   approx_latitude: number | null;
   approx_longitude: number | null;
+  rating_avg: number | null;
+  rating_count: number | null;
   // Only populated for the owner / admin / a renter with an active
   // booking on this listing — fetched separately via the
   // get_listing_exact_location RPC. Never selected directly.
@@ -94,6 +96,8 @@ interface Listing {
     business_type: string | null;
     business_hours: Record<string, { open: string; close: string; closed: boolean }> | null;
     siren_number: string | null;
+    rating_avg: number | null;
+    rating_count: number | null;
   } | null;
   category: {
     value: string | null;
@@ -234,7 +238,8 @@ export default function ListingDetailScreen() {
         .select(
           `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
            approx_latitude, approx_longitude, created_at, owner_id, views_count, saves_count,
-           owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number),
+           rating_avg, rating_count,
+           owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number, rating_avg, rating_count),
            category:categories!listings_category_id_fkey(value)`
         )
         .eq('id', id)
@@ -644,6 +649,18 @@ export default function ListingDetailScreen() {
               </View>
               <Text style={[styles.listingTitle, { fontSize: 30 }]}>{listing.name}</Text>
 
+              {(listing.rating_count ?? 0) > 0 && (
+                <View style={styles.ratingPill}>
+                  <Ionicons name="star" size={13} color="#F59E0B" />
+                  <Text style={styles.ratingPillText}>
+                    {Number(listing.rating_avg ?? 0).toFixed(1)}
+                  </Text>
+                  <Text style={styles.ratingPillCount}>
+                    · {listing.rating_count} avis
+                  </Text>
+                </View>
+              )}
+
               {listing.description && (
                 <>
                   <View style={styles.descriptionBlock}>
@@ -1048,6 +1065,18 @@ export default function ListingDetailScreen() {
 
           {/* Title */}
           <Text style={styles.listingTitle}>{listing.name}</Text>
+
+          {(listing.rating_count ?? 0) > 0 && (
+            <View style={styles.ratingPill}>
+              <Ionicons name="star" size={13} color="#F59E0B" />
+              <Text style={styles.ratingPillText}>
+                {Number(listing.rating_avg ?? 0).toFixed(1)}
+              </Text>
+              <Text style={styles.ratingPillCount}>
+                · {listing.rating_count} avis
+              </Text>
+            </View>
+          )}
 
           {/* Description */}
           {listing.description && (
@@ -1772,6 +1801,31 @@ const styles = StyleSheet.create({
     letterSpacing: -0.6,
     marginBottom: 16,
     lineHeight: 32,
+  },
+  ratingPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF7E6',
+    borderColor: '#F0D898',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    marginTop: -8,
+    marginBottom: 16,
+  },
+  ratingPillText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 13,
+    color: '#92400E',
+  },
+  ratingPillCount: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#92400E',
+    opacity: 0.85,
   },
 
   /* Pricing unified card */

@@ -26,6 +26,8 @@ import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBoo
 import { getRentalDays } from '@/lib/pricing';
 import { privateUriFor, resolveAttachmentUrl } from '@/lib/signedUrl';
 import { Skeleton } from '@/components/Skeleton';
+import ReviewModal from '@/components/reviews/ReviewModal';
+import RatingStars from '@/components/reviews/RatingStars';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
@@ -121,6 +123,11 @@ export default function ChatScreen() {
   const [returnConfirmedAt, setReturnConfirmedAt] = useState<string | null>(null);
   const [validationDeadlineMs, setValidationDeadlineMs] = useState<number | null>(null);
   const [validationCountdown, setValidationCountdown] = useState<string>('');
+  // Review state — populated when the booking is `completed`. The
+  // caller may or may not have already submitted; if they have, we
+  // pre-fill the modal for inline editing during the 7-day window.
+  const [myReview, setMyReview] = useState<{ rating: number; comment: string | null; created_at: string } | null>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!id || !user) return;
@@ -208,6 +215,21 @@ export default function ChatScreen() {
           if (booking.return_confirmed_at) {
             setReturnConfirmedAt(booking.return_confirmed_at);
             setValidationDeadlineMs(new Date(booking.return_confirmed_at).getTime() + 24 * 3600 * 1000);
+          }
+
+          // Reviews are only relevant once the booking lands on
+          // `completed`. Pull the caller's own review (if any) so the
+          // banner can pre-fill in edit mode during the 7-day window.
+          if (booking.status === 'completed') {
+            const { data: existingReview } = await supabase
+              .from('reviews')
+              .select('rating, comment, created_at')
+              .eq('booking_id', booking.id)
+              .eq('reviewer_id', user.id)
+              .maybeSingle();
+            setMyReview(existingReview ?? null);
+          } else {
+            setMyReview(null);
           }
         }
         if (isRequester) {
@@ -1159,6 +1181,69 @@ export default function ChatScreen() {
         </View>
       )}
 
+      {/* Review prompt: shown once the booking is completed. Edit
+          window is 7 days from the review's creation. */}
+      {bookingStatus === 'completed' && bookingId && meta && (() => {
+        const isLocked = !!myReview && (Date.now() - new Date(myReview.created_at).getTime() > 7 * 24 * 60 * 60 * 1000);
+        const daysLeft = myReview
+          ? Math.max(0, Math.ceil(7 - (Date.now() - new Date(myReview.created_at).getTime()) / (1000 * 60 * 60 * 24)))
+          : 0;
+        return (
+          <View style={styles.reviewBanner}>
+            <View style={styles.reviewBannerLeft}>
+              {myReview ? (
+                <>
+                  <Text style={styles.reviewBannerTitle}>Ta note</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <RatingStars value={myReview.rating} readonly size={16} />
+                    <Text style={styles.reviewBannerSub}>
+                      {isLocked ? 'verrouillée' : `modifiable encore ${daysLeft}j`}
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.reviewBannerTitle}>Note ta location</Text>
+                  <Text style={styles.reviewBannerSub}>
+                    Aide la communauté en partageant ton expérience.
+                  </Text>
+                </>
+              )}
+            </View>
+            {!isLocked && (
+              <TouchableOpacity
+                style={styles.reviewBannerBtn}
+                activeOpacity={0.85}
+                onPress={() => setReviewModalOpen(true)}
+              >
+                <Ionicons name="star-outline" size={14} color="#fff" />
+                <Text style={styles.reviewBannerBtnText}>
+                  {myReview ? 'Modifier' : 'Noter'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })()}
+
+      {bookingStatus === 'completed' && bookingId && meta && (
+        <ReviewModal
+          visible={reviewModalOpen}
+          onClose={() => setReviewModalOpen(false)}
+          bookingId={bookingId}
+          reviewedSide={meta.isOwner ? 'renter' : 'owner'}
+          reviewedUsername={meta.otherUsername}
+          existing={myReview}
+          onSubmitted={(r) => {
+            setMyReview({
+              rating: r.rating,
+              comment: r.comment,
+              created_at: myReview?.created_at ?? new Date().toISOString(),
+            });
+          }}
+        />
+      )}
+
       {/* Handover confirmation card: collapsible, shown when bookingStatus === 'active' */}
       {bookingStatus === 'active' && bookingId && meta && (() => {
         const myConfirmed = meta.isOwner ? handoverConfirmedOwner : handoverConfirmedRenter;
@@ -2085,6 +2170,43 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'flex-start',
     gap: 8,
+  },
+  reviewBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FEF7E6',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0D898',
+    gap: 12,
+  },
+  reviewBannerLeft: { flex: 1, gap: 4 },
+  reviewBannerTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: '#92400E',
+  },
+  reviewBannerSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#92400E',
+    opacity: 0.85,
+  },
+  reviewBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  reviewBannerBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: '#fff',
   },
   confirmCard: {
     backgroundColor: '#ECFDF5',

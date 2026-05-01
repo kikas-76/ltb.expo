@@ -372,6 +372,19 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
     `, `Ton virement de ${asNumber(d.amount)} € a été initié.`)
   }),
 
+  // Sent J+1 by the review-reminder cron when a participant of a
+  // completed booking hasn't left a review yet. Targets both the
+  // renter (rates the owner+listing) and the owner (rates the renter).
+  review_reminder: (d) => ({
+    subject: `Comment s'est passée ta location de "${asText(d.listing_name, "cet objet")}" ?`,
+    html: baseLayout(`
+      ${heading("Donne ton avis")}
+      ${paragraph(`Ta location de <strong>"${asText(d.listing_name, "cet objet")}"</strong> est terminée. Ton avis aide la communauté à louer en confiance.`)}
+      ${alertBox(`<strong>2 minutes</strong> suffisent : 1 à 5 étoiles + un commentaire optionnel. Tu peux modifier ta note pendant 7 jours après publication.`)}
+      ${ctaButton("Donner mon avis →", `${APP_URL}/review/${asText(d.booking_id)}`)}
+    `, "Ta note aide la communauté LoueTonBien.")
+  }),
+
   dispute_opened: (d) => ({
     subject: `Litige ouvert · "${asText(d.listing_name, "ta location")}"`,
     html: baseLayout(`

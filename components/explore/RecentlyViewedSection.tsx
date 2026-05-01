@@ -62,7 +62,7 @@ function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
       const { data } = await supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)'
+          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, rating_avg, rating_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)'
         )
         .in('id', ids)
         .eq('is_active', true);

@@ -18,6 +18,8 @@ interface Listing {
   category_id: string | null;
   approx_latitude: number | null;
   approx_longitude: number | null;
+  rating_avg?: number | null;
+  rating_count?: number | null;
   owner: {
     id?: string;
     username: string | null;
@@ -112,6 +114,14 @@ function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: Li
             <Text style={styles.distanceText}>{distanceText}</Text>
           </View>
         )}
+        {(listing.rating_count ?? 0) > 0 && (
+          <View style={styles.ratingBadge}>
+            <Ionicons name="star" size={9} color="#F59E0B" />
+            <Text style={styles.ratingBadgeText}>
+              {Number(listing.rating_avg ?? 0).toFixed(1)}
+            </Text>
+          </View>
+        )}
         {canFavorite && (
           <FavoriteButton listingId={listing.id} userId={userId!} listingName={listing.name} />
         )}
@@ -190,6 +200,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 10,
     color: Colors.primaryDark,
+  },
+  ratingBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    transform: [{ translateY: 26 }],
+  },
+  ratingBadgeText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 10,
+    color: '#92400E',
   },
   heartBtn: {
     position: 'absolute',

@@ -373,6 +373,20 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
                   <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
                 </View>
               )}
+              {item.displayStatus === 'completed' && item.bookingId && (
+                <TouchableOpacity
+                  style={styles.reviewBtn}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    router.push(`/review/${item.bookingId}` as any);
+                  }}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="star-outline" size={13} color="#92400E" />
+                  <Text style={styles.reviewBtnLabel}>Noter</Text>
+                </TouchableOpacity>
+              )}
               {isDeletable && (
                 <TouchableOpacity
                   style={styles.deleteBtn}
@@ -892,6 +906,20 @@ export default function MessagesScreen() {
                           <Text style={desktopStyles.unreadBadgeText}>{item.unreadCount}</Text>
                         </View>
                       )}
+                      {item.displayStatus === 'completed' && item.bookingId && (
+                        <TouchableOpacity
+                          style={styles.reviewBtn}
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            router.push(`/review/${item.bookingId}` as any);
+                          }}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="star-outline" size={13} color="#92400E" />
+                          <Text style={styles.reviewBtnLabel}>Noter</Text>
+                        </TouchableOpacity>
+                      )}
                       {desktopDeletable && (
                         <TouchableOpacity
                           style={styles.deleteBtn}
@@ -1409,6 +1437,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 11,
     color: '#C0392B',
+    letterSpacing: 0.1,
+  },
+  reviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: '#FEF7E6',
+    borderWidth: 1,
+    borderColor: '#F0D898',
+  },
+  reviewBtnLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    color: '#92400E',
     letterSpacing: 0.1,
   },
   modalOverlay: {

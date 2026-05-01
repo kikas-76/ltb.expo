@@ -71,7 +71,7 @@ export default function RecentPage() {
       let query = supabase
         .from('listings')
         .select(
-          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, created_at, owner_type, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)'
+          'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, created_at, owner_type, rating_avg, rating_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)'
         )
         .eq('is_active', true)
         .order('created_at', { ascending: false });

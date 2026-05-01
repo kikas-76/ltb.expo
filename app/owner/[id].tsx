@@ -18,6 +18,7 @@ import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import ProBadge from '@/components/ProBadge';
 import { SkeletonProfileHeader, SkeletonGrid } from '@/components/Skeleton';
+import RatingStars from '@/components/reviews/RatingStars';
 
 const DESKTOP_BREAKPOINT = 900;
 
@@ -55,6 +56,20 @@ interface Listing {
   price: number;
   photos_url: string[] | null;
   category_name: string | null;
+}
+
+interface ReviewSummary {
+  average: number;
+  count: number;
+  recent: Array<{
+    id: string;
+    rating: number;
+    comment: string | null;
+    created_at: string;
+    reviewer_username: string | null;
+    reviewer_photo_url: string | null;
+    listing_name: string | null;
+  }>;
 }
 
 function formatMemberSince(dateStr: string): string {
@@ -103,6 +118,7 @@ export default function OwnerProfilePage() {
   const insets = useSafeAreaInsets();
   const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [reviews, setReviews] = useState<ReviewSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [windowWidth, setWindowWidth] = useState(Dimensions.get('window').width);
 
@@ -118,7 +134,7 @@ export default function OwnerProfilePage() {
   useEffect(() => {
     if (!id) return;
     (async () => {
-      const [profileRes, listingsRes] = await Promise.all([
+      const [profileRes, listingsRes, reviewsRes] = await Promise.all([
         supabase
           .from('public_profiles')
           .select('id, username, bio, avatar_url, photo_url, created_at, is_pro, business_hours, business_type, business_name')
@@ -129,9 +145,11 @@ export default function OwnerProfilePage() {
           .select('id, name, price, photos_url, category_name')
           .eq('owner_id', id)
           .order('created_at', { ascending: false }),
+        supabase.rpc('get_user_review_summary', { p_user_id: id }),
       ]);
       if (profileRes.data) setOwner(profileRes.data);
       if (listingsRes.data) setListings(listingsRes.data);
+      if (reviewsRes.data) setReviews(reviewsRes.data as unknown as ReviewSummary);
       setLoading(false);
     })();
   }, [id]);
@@ -245,6 +263,60 @@ export default function OwnerProfilePage() {
 
   const cardWidth = computeCardWidth();
 
+  const reviewsPanel = (reviews?.count ?? 0) > 0 ? (
+    <View style={[styles.listingsSection, isDesktop && styles.listingsSectionDesktop]}>
+      <View style={styles.listingsHeader}>
+        <Ionicons name="star" size={18} color="#F59E0B" />
+        <Text style={styles.listingsSectionTitle}>Avis reçus</Text>
+      </View>
+      <View style={styles.reviewsSummaryRow}>
+        <RatingStars value={reviews!.average} readonly size={20} />
+        <Text style={styles.reviewsSummaryAvg}>
+          {Number(reviews!.average).toFixed(1)}
+        </Text>
+        <Text style={styles.reviewsSummaryCount}>
+          · {reviews!.count} avis
+        </Text>
+      </View>
+      <View style={styles.reviewsList}>
+        {reviews!.recent.map((r) => (
+          <View key={r.id} style={styles.reviewCard}>
+            <View style={styles.reviewCardHeader}>
+              <View style={styles.reviewerAvatarWrap}>
+                {r.reviewer_photo_url ? (
+                  <Image source={{ uri: r.reviewer_photo_url }} style={styles.reviewerAvatar} />
+                ) : (
+                  <View style={[styles.reviewerAvatar, styles.reviewerAvatarFallback]}>
+                    <Text style={styles.reviewerInitials}>
+                      {(r.reviewer_username ?? '?').slice(0, 1).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.reviewerName}>
+                  @{r.reviewer_username ?? 'utilisateur'}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <RatingStars value={r.rating} readonly size={12} />
+                  <Text style={styles.reviewDate}>
+                    {new Date(r.created_at).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            {r.comment ? (
+              <Text style={styles.reviewComment}>{r.comment}</Text>
+            ) : null}
+            {r.listing_name ? (
+              <Text style={styles.reviewListingTag}>Sur "{r.listing_name}"</Text>
+            ) : null}
+          </View>
+        ))}
+      </View>
+    </View>
+  ) : null;
+
   const listingsPanel = (
     <View style={[styles.listingsSection, isDesktop && styles.listingsSectionDesktop]}>
       <View style={styles.listingsHeader}>
@@ -311,6 +383,7 @@ export default function OwnerProfilePage() {
                 {profilePanel}
               </View>
               <View style={styles.desktopRight}>
+                {reviewsPanel}
                 {listingsPanel}
               </View>
             </View>
@@ -339,6 +412,7 @@ export default function OwnerProfilePage() {
           {profilePanel}
         </View>
 
+        {reviewsPanel}
         {listingsPanel}
       </ScrollView>
     </View>
@@ -766,5 +840,75 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     maxWidth: 220,
+  },
+  reviewsSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+    paddingHorizontal: 4,
+  },
+  reviewsSummaryAvg: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: Colors.text,
+    letterSpacing: -0.3,
+  },
+  reviewsSummaryCount: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  reviewsList: { gap: 12 },
+  reviewCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    gap: 8,
+  },
+  reviewCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  reviewerAvatarWrap: {
+    width: 40, height: 40,
+  },
+  reviewerAvatar: {
+    width: 40, height: 40, borderRadius: 20,
+  },
+  reviewerAvatarFallback: {
+    backgroundColor: Colors.primarySurface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  reviewerInitials: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: Colors.primaryDark,
+  },
+  reviewerName: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  reviewDate: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
+  reviewComment: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 19,
+  },
+  reviewListingTag: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
   },
 });
