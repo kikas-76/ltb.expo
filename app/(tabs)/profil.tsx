@@ -273,6 +273,18 @@ export default function ProfilScreen() {
                 <ProBadge />
               </View>
             )}
+
+            {user?.id && (
+              <TouchableOpacity
+                style={desktopStyles.previewLink}
+                onPress={() => router.push(`/owner/${user.id}` as any)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="eye-outline" size={14} color={Colors.primaryDark} />
+                <Text style={desktopStyles.previewLinkText}>Voir mon profil public</Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.primaryDark} />
+              </TouchableOpacity>
+            )}
           </View>
 
           <TouchableOpacity
@@ -382,6 +394,18 @@ export default function ProfilScreen() {
                 <Ionicons name="location-outline" size={12} color={Colors.primaryDark} />
                 <Text style={styles.cityText}>{profileCity}</Text>
               </View>
+            )}
+
+            {user?.id && (
+              <TouchableOpacity
+                style={styles.previewLink}
+                onPress={() => router.push(`/owner/${user.id}` as any)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="eye-outline" size={14} color={Colors.primaryDark} />
+                <Text style={styles.previewLinkText}>Voir mon profil public</Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.primaryDark} />
+              </TouchableOpacity>
             )}
           </View>
 
@@ -519,6 +543,21 @@ const styles = StyleSheet.create({
   },
   cityText: {
     fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: Colors.primaryDark,
+  },
+  previewLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryLight + '40',
+  },
+  previewLinkText: {
+    fontFamily: 'Inter-SemiBold',
     fontSize: 13,
     color: Colors.primaryDark,
   },
@@ -686,6 +725,21 @@ const desktopStyles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 13,
     color: Colors.textMuted,
+  },
+  previewLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryLight + '40',
+  },
+  previewLinkText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: Colors.primaryDark,
   },
   signOutBtn: {
     borderWidth: 1.5,
