@@ -9,6 +9,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -50,6 +51,8 @@ export default function ReviewModal({
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
 
   useEffect(() => {
     if (visible) {
@@ -116,11 +119,11 @@ export default function ReviewModal({
       onRequestClose={close}
     >
       <KeyboardAvoidingView
-        style={styles.overlay}
+        style={[styles.overlay, isDesktop && styles.overlayDesktop]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <TouchableOpacity style={styles.overlayBg} activeOpacity={1} onPress={close} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, isDesktop && styles.sheetDesktop]}>
           <View style={styles.header}>
             <Text style={styles.title}>
               {existing ? 'Modifier ma note' : 'Note ta location'}
@@ -198,6 +201,11 @@ export default function ReviewModal({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
+  overlayDesktop: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   overlayBg: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15,23,42,0.55)',
@@ -209,6 +217,17 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
     gap: 16,
+  },
+  sheetDesktop: {
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: 22,
+    paddingBottom: 24,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
   },
   header: {
     flexDirection: 'row',
