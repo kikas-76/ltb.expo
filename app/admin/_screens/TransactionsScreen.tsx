@@ -28,13 +28,63 @@ interface Booking {
   start_date: string;
   end_date: string;
   created_at: string;
+  // Two distinct PIs: rental is captured at payment time; deposit is
+  // pre-authorized later (manual capture) and lives on the same column
+  // historically named stripe_payment_intent_id.
+  stripe_rental_payment_intent_id: string | null;
   stripe_payment_intent_id: string | null;
+  // Deposit lifecycle audit columns
+  deposit_authorized_at: string | null;
+  deposit_captured_at: string | null;
+  deposit_released_at: string | null;
+  deposit_hold_failed: boolean | null;
+  deposit_action: string | null;
+  // Booking flow audit columns
+  handover_at: string | null;
+  return_confirmed_at: string | null;
+  owner_validated: boolean | null;
   renter_id: string | null;
   owner_id: string | null;
   listing: { name: string } | null;
   renter: { username: string | null; email: string | null } | null;
   owner: { username: string | null; email: string | null } | null;
   flagged?: boolean;
+}
+
+type DepositState =
+  | 'none'        // pas de caution sur le booking
+  | 'pending'     // booking active mais hold pas encore tiré (cron J-2 / short rental)
+  | 'authorized' // pré-autorisée sur la carte du locataire, en attente
+  | 'captured'   // capturée par le loueur (renter doit payer)
+  | 'released'   // libérée (cancel du PI), retour à la carte du locataire
+  | 'failed';    // échec du hold automatique
+
+function computeDepositState(b: Booking): DepositState {
+  if (!b.deposit_amount) return 'none';
+  if (b.deposit_action === 'release' || b.deposit_released_at) return 'released';
+  if (b.deposit_action === 'capture' || b.deposit_captured_at) return 'captured';
+  if (b.deposit_authorized_at) return 'authorized';
+  if (b.deposit_hold_failed) return 'failed';
+  return 'pending';
+}
+
+const DEPOSIT_STATE_META: Record<DepositState, { label: string; bg: string; fg: string }> = {
+  none:       { label: 'Pas de caution', bg: '#E5E7EB', fg: '#374151' },
+  pending:    { label: 'À tirer (cron J-2)', bg: '#E5E7EB', fg: '#374151' },
+  authorized: { label: 'Pré-autorisée', bg: '#FEF3C7', fg: '#92400E' },
+  captured:   { label: 'Capturée', bg: '#DBEAFE', fg: '#1E40AF' },
+  released:   { label: 'Libérée', bg: '#D1FAE5', fg: '#065F46' },
+  failed:     { label: 'Échec du hold', bg: '#FEE2E2', fg: '#991B1B' },
+};
+
+function stripePaymentUrl(pi: string): string {
+  return `https://dashboard.stripe.com/payments/${pi}`;
+}
+
+function formatTs(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${d.toLocaleDateString('fr-FR')} ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 type StatusFilter = 'all' | 'pending' | 'accepted' | 'pending_payment' | 'active' | 'completed' | 'cancelled';
@@ -65,6 +115,15 @@ export default function AdminTransactions() {
   const [flagLoading, setFlagLoading] = useState(false);
   const [flagError, setFlagError] = useState<string | null>(null);
 
+  // Expanded payment-detail panel (one card open at a time)
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Deposit action confirmation
+  const [depositActionModal, setDepositActionModal] =
+    useState<{ bookingId: string; action: 'capture' | 'release'; title: string } | null>(null);
+  const [depositActionLoading, setDepositActionLoading] = useState(false);
+  const [depositActionError, setDepositActionError] = useState<string | null>(null);
+
   useEffect(() => {
     setPage(0);
   }, [search, statusFilter]);
@@ -83,7 +142,15 @@ export default function AdminTransactions() {
     let query = supabase
       .from('bookings')
       .select(
-        'id, status, total_price, deposit_amount, start_date, end_date, created_at, stripe_payment_intent_id, renter_id, owner_id, listing:listings(name), renter:profiles!bookings_renter_id_fkey(username), owner:profiles!bookings_owner_id_fkey(username)',
+        `id, status, total_price, deposit_amount, start_date, end_date, created_at,
+         stripe_rental_payment_intent_id, stripe_payment_intent_id,
+         deposit_authorized_at, deposit_captured_at, deposit_released_at,
+         deposit_hold_failed, deposit_action,
+         handover_at, return_confirmed_at, owner_validated,
+         renter_id, owner_id,
+         listing:listings(name),
+         renter:profiles!bookings_renter_id_fkey(username),
+         owner:profiles!bookings_owner_id_fkey(username)`,
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
@@ -128,6 +195,40 @@ export default function AdminTransactions() {
     loadFlaggedIds();
     loadBookings();
   }, [loadFlaggedIds, loadBookings]);
+
+  const submitDepositAction = async () => {
+    if (!depositActionModal) return;
+    setDepositActionLoading(true);
+    setDepositActionError(null);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-manage-deposit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          apikey: ANON_KEY,
+        },
+        body: JSON.stringify({
+          booking_id: depositActionModal.bookingId,
+          action: depositActionModal.action,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setDepositActionError(result.error ?? 'Erreur.');
+        setDepositActionLoading(false);
+        return;
+      }
+      setDepositActionModal(null);
+      await loadBookings();
+    } catch {
+      setDepositActionError('Erreur réseau.');
+    }
+    setDepositActionLoading(false);
+  };
 
   const submitFlag = async () => {
     if (!flagModal) return;
@@ -242,6 +343,11 @@ export default function AdminTransactions() {
             </View>
           ) : bookings.map((b) => {
             const isFlagged = flaggedIds.has(b.id);
+            const isExpanded = expandedId === b.id;
+            const depositState = computeDepositState(b);
+            const depositMeta = DEPOSIT_STATE_META[depositState];
+            const canCapture = depositState === 'authorized';
+            const canRelease = depositState === 'authorized';
             return (
               <View key={b.id} style={[styles.card, isFlagged && styles.cardFlagged]}>
                 {isFlagged && (
@@ -269,7 +375,14 @@ export default function AdminTransactions() {
                 <View style={styles.cardBottomRow}>
                   <View style={styles.amountGroup}>
                     <Text style={styles.amount}>{b.total_price}€</Text>
-                    {b.deposit_amount ? <Text style={styles.deposit}>Dépôt : {b.deposit_amount}€</Text> : null}
+                    {b.deposit_amount ? (
+                      <View style={[styles.depositPill, { backgroundColor: depositMeta.bg }]}>
+                        <Ionicons name="lock-closed-outline" size={11} color={depositMeta.fg} />
+                        <Text style={[styles.depositPillText, { color: depositMeta.fg }]}>
+                          Caution {b.deposit_amount}€ · {depositMeta.label}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                   {!isFlagged && (
                     <TouchableOpacity
@@ -286,8 +399,127 @@ export default function AdminTransactions() {
                     </TouchableOpacity>
                   )}
                 </View>
-                {b.stripe_payment_intent_id && (
-                  <Text style={styles.stripeId} numberOfLines={1}>Stripe: {b.stripe_payment_intent_id}</Text>
+
+                {/* Expand toggle */}
+                <TouchableOpacity
+                  onPress={() => setExpandedId(isExpanded ? null : b.id)}
+                  style={styles.detailToggle}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="card-outline" size={14} color={Colors.primaryDark} />
+                  <Text style={styles.detailToggleText}>Détails paiement & caution</Text>
+                  <Ionicons
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color={Colors.primaryDark}
+                  />
+                </TouchableOpacity>
+
+                {isExpanded && (
+                  <View style={styles.detailPanel}>
+                    {/* Two PIs separated */}
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>PI loyer</Text>
+                      {b.stripe_rental_payment_intent_id ? (
+                        <TouchableOpacity
+                          onPress={() => {
+                            const url = stripePaymentUrl(b.stripe_rental_payment_intent_id!);
+                            if (Platform.OS === 'web') window.open(url, '_blank');
+                          }}
+                          activeOpacity={0.7}
+                          style={styles.detailLinkBtn}
+                        >
+                          <Text style={styles.detailLinkText} numberOfLines={1}>
+                            {b.stripe_rental_payment_intent_id}
+                          </Text>
+                          <Ionicons name="open-outline" size={12} color={Colors.primaryDark} />
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.detailValueMuted}>—</Text>
+                      )}
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>PI caution</Text>
+                      {b.stripe_payment_intent_id ? (
+                        <TouchableOpacity
+                          onPress={() => {
+                            const url = stripePaymentUrl(b.stripe_payment_intent_id!);
+                            if (Platform.OS === 'web') window.open(url, '_blank');
+                          }}
+                          activeOpacity={0.7}
+                          style={styles.detailLinkBtn}
+                        >
+                          <Text style={styles.detailLinkText} numberOfLines={1}>
+                            {b.stripe_payment_intent_id}
+                          </Text>
+                          <Ionicons name="open-outline" size={12} color={Colors.primaryDark} />
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.detailValueMuted}>—</Text>
+                      )}
+                    </View>
+
+                    {/* Audit timeline */}
+                    <View style={styles.detailDivider} />
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Caution pré-autorisée</Text>
+                      <Text style={styles.detailValue}>{formatTs(b.deposit_authorized_at)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Caution capturée</Text>
+                      <Text style={styles.detailValue}>{formatTs(b.deposit_captured_at)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Caution libérée</Text>
+                      <Text style={styles.detailValue}>{formatTs(b.deposit_released_at)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Remise (handover)</Text>
+                      <Text style={styles.detailValue}>{formatTs(b.handover_at)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Retour confirmé</Text>
+                      <Text style={styles.detailValue}>{formatTs(b.return_confirmed_at)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Validation owner</Text>
+                      <Text style={styles.detailValue}>{b.owner_validated ? 'Oui' : '—'}</Text>
+                    </View>
+
+                    {/* Admin actions */}
+                    {(canCapture || canRelease) && (
+                      <View style={styles.depositActionsRow}>
+                        <TouchableOpacity
+                          style={[styles.depositBtn, styles.depositBtnRelease]}
+                          onPress={() =>
+                            setDepositActionModal({
+                              bookingId: b.id,
+                              action: 'release',
+                              title: b.listing?.name ?? '-',
+                            })
+                          }
+                          activeOpacity={0.85}
+                        >
+                          <Ionicons name="lock-open-outline" size={14} color="#065F46" />
+                          <Text style={styles.depositBtnReleaseText}>Libérer la caution</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.depositBtn, styles.depositBtnCapture]}
+                          onPress={() =>
+                            setDepositActionModal({
+                              bookingId: b.id,
+                              action: 'capture',
+                              title: b.listing?.name ?? '-',
+                            })
+                          }
+                          activeOpacity={0.85}
+                        >
+                          <Ionicons name="cash-outline" size={14} color="#FFFFFF" />
+                          <Text style={styles.depositBtnCaptureText}>Capturer la caution</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
                 )}
               </View>
             );
@@ -318,6 +550,54 @@ export default function AdminTransactions() {
           )}
         </ScrollView>
       )}
+
+      <Modal
+        visible={depositActionModal !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDepositActionModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {depositActionModal?.action === 'capture' ? 'Capturer la caution' : 'Libérer la caution'}
+            </Text>
+            <Text style={styles.modalDesc}>
+              {depositActionModal?.action === 'capture'
+                ? `La carte du locataire sera débitée du montant de la caution. Action irréversible. Réservation : ${depositActionModal?.title ?? '-'}`
+                : `La pré-autorisation est annulée et le booking passe à completed. Réservation : ${depositActionModal?.title ?? '-'}`}
+            </Text>
+            {depositActionError ? <Text style={styles.modalError}>{depositActionError}</Text> : null}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setDepositActionModal(null)}
+                activeOpacity={0.7}
+                disabled={depositActionLoading}
+              >
+                <Text style={styles.modalCancelText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalConfirmBtn,
+                  depositActionModal?.action === 'release' && { backgroundColor: '#065F46' },
+                ]}
+                onPress={submitDepositAction}
+                activeOpacity={0.85}
+                disabled={depositActionLoading}
+              >
+                {depositActionLoading ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.modalConfirmText}>
+                    {depositActionModal?.action === 'capture' ? 'Capturer' : 'Libérer'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={flagModal !== null} transparent animationType="fade" onRequestClose={() => setFlagModal(null)}>
         <View style={styles.modalOverlay}>
@@ -562,6 +842,118 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  depositPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  depositPillText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+  },
+  detailToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#F5F2E3',
+    marginTop: 8,
+  },
+  detailToggleText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: Colors.primaryDark,
+    flex: 1,
+  },
+  detailPanel: {
+    marginTop: 8,
+    paddingTop: 10,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 11,
+    color: Colors.textMuted,
+    flexShrink: 0,
+  },
+  detailValue: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: Colors.text,
+    textAlign: 'right',
+    flex: 1,
+  },
+  detailValueMuted: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: Colors.textMuted,
+    textAlign: 'right',
+    flex: 1,
+  },
+  detailLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    justifyContent: 'flex-end',
+    minWidth: 0,
+  },
+  detailLinkText: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontSize: 10,
+    color: Colors.primaryDark,
+    flexShrink: 1,
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginVertical: 4,
+  },
+  depositActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  depositBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    flex: 1,
+  },
+  depositBtnRelease: {
+    backgroundColor: '#D1FAE5',
+  },
+  depositBtnReleaseText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: '#065F46',
+  },
+  depositBtnCapture: {
+    backgroundColor: '#1E40AF',
+  },
+  depositBtnCaptureText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: '#FFFFFF',
   },
   empty: {
     alignItems: 'center',
