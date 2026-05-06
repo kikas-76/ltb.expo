@@ -43,10 +43,39 @@ Deno.serve(async (req: Request) => {
 
     const { data: bookings, error } = await supabase
       .from("bookings")
-      .select("id, conversation_id, stripe_payment_intent_id")
+      .select(`
+        id, conversation_id, stripe_payment_intent_id,
+        listing:listings(name),
+        renter:profiles!bookings_renter_id_fkey(email),
+        owner:profiles!bookings_owner_id_fkey(email)
+      `)
       .eq("status", "pending_owner_validation")
       .not("return_confirmed_at", "is", null)
       .lt("return_confirmed_at", deadline);
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    async function dispatchEmail(to: string, template: string, data: Record<string, unknown>) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+            "apikey": SERVICE_ROLE_KEY,
+            "x-internal-secret": INTERNAL_SECRET,
+          },
+          body: JSON.stringify({ to, template, data }),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          console.error(`auto-validate send-email ${template} → ${res.status}: ${body.slice(0, 200)}`);
+        }
+      } catch (err) {
+        console.error(`auto-validate email dispatch failed (${template}):`, err);
+      }
+    }
 
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
@@ -108,6 +137,17 @@ Deno.serve(async (req: Request) => {
           is_system: true,
           is_read: false,
         });
+
+        const data = {
+          listing_name: (booking as any).listing?.name ?? "ta location",
+          booking_id: booking.id,
+          deposit_released: !!updateData.deposit_released_at,
+        };
+        const renterEmail = (booking as any).renter?.email;
+        const ownerEmail = (booking as any).owner?.email;
+        if (renterEmail) await dispatchEmail(renterEmail, "booking_completed", data);
+        if (ownerEmail) await dispatchEmail(ownerEmail, "booking_completed", data);
+
         results.push({ id: booking.id, status: "auto_completed" });
       }
     }

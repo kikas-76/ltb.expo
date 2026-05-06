@@ -385,6 +385,32 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
     `, "Ta note aide la communauté LoueTonBien.")
   }),
 
+  // Sent immediately when the booking transitions to `completed`
+  // (owner validation OR auto-validation cron). Targets both the
+  // renter and the owner with a short confirmation + soft CTA to rate.
+  booking_completed: (d) => ({
+    subject: `Location finalisée · "${asText(d.listing_name, "ta location")}"`,
+    html: baseLayout(`
+      ${heading("Location finalisée")}
+      ${paragraph(`Ta location de <strong>"${asText(d.listing_name, "cet objet")}"</strong> est terminée et validée. ${d.deposit_released ? "La caution a été libérée." : ""}`)}
+      ${paragraph("Si tu as 2 minutes, partage ton expérience à l'autre partie — ça aide toute la communauté.")}
+      ${ctaButton("Donner mon avis →", `${APP_URL}/review/${asText(d.booking_id)}`)}
+    `, "Merci de faire vivre LoueTonBien.")
+  }),
+
+  // Fired right after a participant submits a review. Targets the
+  // person being reviewed (reviewed_id), not the reviewer.
+  review_received: (d) => ({
+    subject: `Tu as reçu une note ${"⭐".repeat(Math.max(1, Math.min(5, Number(d.rating) || 1)))}`,
+    html: baseLayout(`
+      ${heading(`${asText(d.reviewer_name, "Quelqu'un")} t'a noté ${"⭐".repeat(Math.max(1, Math.min(5, Number(d.rating) || 1)))}`)}
+      ${paragraph(`Sur la location de <strong>"${asText(d.listing_name, "ton objet")}"</strong>.`)}
+      ${d.comment ? alertBox(`«&nbsp;${asText(d.comment)}&nbsp;»`) : ""}
+      ${paragraph("Cette note s'ajoute à ta moyenne publique. Tu peux la consulter sur ton profil.")}
+      ${ctaButton("Voir mon profil →", `${APP_URL}/owner/${asText(d.reviewed_id)}`)}
+    `, "Ta réputation grandit avec chaque location.")
+  }),
+
   dispute_opened: (d) => ({
     subject: `Litige ouvert · "${asText(d.listing_name, "ta location")}"`,
     html: baseLayout(`

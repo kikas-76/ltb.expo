@@ -99,6 +99,28 @@ export default function ReviewModal({
       return;
     }
 
+    // Notify the reviewed user. Fire-and-forget — review is already
+    // saved, the email is best-effort.
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        fetch(
+          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat-notify`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ event: 'review_received', booking_id: bookingId }),
+          }
+        ).catch((e) => console.error('chat-notify review_received failed:', e));
+      }
+    } catch {
+      // ignore — notification failure shouldn't block the UI
+    }
+
     onSubmitted?.({
       rating: data?.rating ?? rating,
       comment: data?.comment ?? null,

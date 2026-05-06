@@ -923,6 +923,22 @@ export default function ChatScreen() {
 
       await postSystemMessage(id as string, { event: 'owner_validated_ok' });
 
+      const { data: { session: notifySession } } = await supabase.auth.getSession();
+      if (notifySession?.access_token) {
+        fetch(
+          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat-notify`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${notifySession.access_token}`,
+            },
+            body: JSON.stringify({ event: 'booking_completed', booking_id: bookingId }),
+          }
+        ).catch((e) => console.error('chat-notify booking_completed failed:', e));
+      }
+
       setShowValidationModal(false);
       setOwnerValidated(true);
       setBookingStatus('completed');

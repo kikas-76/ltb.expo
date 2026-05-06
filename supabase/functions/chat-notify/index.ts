@@ -363,6 +363,105 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (event === "booking_completed") {
+      // Sent when a booking transitions to `completed`. Caller must be
+      // a participant. Targets BOTH renter and owner with a short
+      // "location finalisée" + soft CTA to rate.
+      if (!booking_id) {
+        return new Response(
+          JSON.stringify({ error: "booking_id requis" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: bookingRow } = await supabaseAdmin
+        .from("bookings")
+        .select(`
+          id, owner_id, renter_id, deposit_released_at,
+          listing:listings(name),
+          renter:profiles!bookings_renter_id_fkey(email),
+          owner:profiles!bookings_owner_id_fkey(email)
+        `)
+        .eq("id", booking_id)
+        .maybeSingle();
+
+      if (!bookingRow) {
+        return new Response(
+          JSON.stringify({ error: "Réservation introuvable" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if ((bookingRow as any).owner_id !== user.id && (bookingRow as any).renter_id !== user.id) {
+        return new Response(
+          JSON.stringify({ error: "Accès refusé : vous n'êtes pas impliqué dans cette réservation" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const data = {
+        listing_name: (bookingRow.listing as any)?.name ?? "ta location",
+        booking_id,
+        deposit_released: !!(bookingRow as any).deposit_released_at,
+      };
+
+      const renterEmail = (bookingRow.renter as any)?.email;
+      const ownerEmail = (bookingRow.owner as any)?.email;
+      if (renterEmail) await dispatchEmail(renterEmail, "booking_completed", data);
+      if (ownerEmail) await dispatchEmail(ownerEmail, "booking_completed", data);
+
+      return new Response(
+        JSON.stringify({ success: true, event }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (event === "review_received") {
+      // Fired right after a reviewer submits a review. Caller must
+      // be the reviewer. Targets the reviewed user.
+      if (!booking_id) {
+        return new Response(
+          JSON.stringify({ error: "booking_id requis" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: reviewRow } = await supabaseAdmin
+        .from("reviews")
+        .select(`
+          rating, comment, reviewer_id, reviewed_id,
+          listing:listings(name),
+          reviewer:profiles!reviews_reviewer_id_fkey(username),
+          reviewed:profiles!reviews_reviewed_id_fkey(email)
+        `)
+        .eq("booking_id", booking_id)
+        .eq("reviewer_id", user.id)
+        .maybeSingle();
+
+      if (!reviewRow) {
+        return new Response(
+          JSON.stringify({ error: "Avis introuvable ou tu n'es pas son auteur" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const reviewedEmail = (reviewRow.reviewed as any)?.email;
+      if (reviewedEmail) {
+        await dispatchEmail(reviewedEmail, "review_received", {
+          rating: (reviewRow as any).rating,
+          comment: (reviewRow as any).comment,
+          reviewer_name: (reviewRow.reviewer as any)?.username ?? "Un utilisateur",
+          listing_name: (reviewRow.listing as any)?.name ?? "ton objet",
+          reviewed_id: (reviewRow as any).reviewed_id,
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, event }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: `Événement inconnu: ${event}` }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
