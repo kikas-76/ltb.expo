@@ -844,6 +844,10 @@ export default function ChatScreen() {
         await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'accepted', confirmField);
         await postSystemMessage(id as string, { event: 'handover_confirmed_one' });
       }
+
+      if (isOwner) setHandoverConfirmedOwner(true);
+      else setHandoverConfirmedRenter(true);
+      if (newOwnerVal && newRenterVal) setBookingStatus('in_progress');
     } finally {
       setConfirmLoading(false);
     }
@@ -867,12 +871,16 @@ export default function ChatScreen() {
         const confirmedAt = new Date().toISOString();
         setReturnConfirmedAt(confirmedAt);
         setValidationDeadlineMs(new Date(confirmedAt).getTime() + 24 * 3600 * 1000);
+        setBookingStatus('pending_owner_validation');
         await postSystemMessage(id as string, { event: 'return_confirmed_both' });
         if (isOwner) setShowValidationModal(true);
       } else {
         await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'in_progress', returnField);
         await postSystemMessage(id as string, { event: 'return_confirmed_one' });
       }
+
+      if (isOwner) setReturnConfirmedOwner(true);
+      else setReturnConfirmedRenter(true);
     } finally {
       setConfirmLoading(false);
     }
