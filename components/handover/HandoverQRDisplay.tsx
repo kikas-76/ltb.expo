@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import QRCode from 'react-native-qrcode-svg';
+import QRImage from './QRImage';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import {
@@ -125,6 +125,10 @@ export default function HandoverQRDisplay({
                 {eventType === 'handover' ? 'Remise validée' : 'Retour validé'}
               </Text>
             </View>
+          ) : error && !token ? (
+            // Server rejected the issue (wrong status, wrong role, etc).
+            // Surface the message; the spinner would otherwise spin forever.
+            <View style={styles.qrBlock} />
           ) : loading || !token ? (
             <View style={styles.qrBlock}>
               <ActivityIndicator size="large" color={Colors.primaryDark} />
@@ -133,11 +137,9 @@ export default function HandoverQRDisplay({
             <>
               <View style={styles.qrBlock}>
                 <View style={styles.qrFrame}>
-                  <QRCode
+                  <QRImage
                     value={buildHandoverUrl(bookingId, token)}
                     size={isDesktop ? 240 : 220}
-                    backgroundColor="#FFFFFF"
-                    color="#0F172A"
                   />
                 </View>
               </View>
