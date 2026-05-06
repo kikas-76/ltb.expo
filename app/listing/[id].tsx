@@ -233,17 +233,22 @@ export default function ListingDetailScreen() {
 
   const fetchListing = async () => {
     try {
-      const { data, error } = await supabase
-        .from('listings')
-        .select(
-          `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
-           approx_latitude, approx_longitude, created_at, owner_id, views_count, saves_count,
-           rating_avg, rating_count,
-           owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number, rating_avg, rating_count),
-           category:categories!listings_category_id_fkey(value)`
-        )
-        .eq('id', id)
-        .maybeSingle();
+      // Both calls are keyed by id and independent — fire in parallel
+      // to halve the initial wait on detail page load.
+      const [{ data, error }, exactRes] = await Promise.all([
+        supabase
+          .from('listings')
+          .select(
+            `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
+             approx_latitude, approx_longitude, created_at, owner_id, views_count, saves_count,
+             rating_avg, rating_count,
+             owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number, rating_avg, rating_count),
+             category:categories!listings_category_id_fkey(value)`
+          )
+          .eq('id', id)
+          .maybeSingle(),
+        supabase.rpc('get_listing_exact_location', { p_listing_id: id! }),
+      ]);
 
       if (!error && data) {
         const mapped: Listing = {
@@ -252,13 +257,9 @@ export default function ListingDetailScreen() {
           category: Array.isArray(data.category) ? (data.category[0] ?? null) : data.category,
         } as any;
 
-        // Owner / admin / renter with an active booking can fetch the
-        // exact GPS + address through the SECURITY DEFINER RPC. The
-        // RPC returns 0 rows for everyone else (defense in depth).
-        const { data: exact } = await supabase.rpc('get_listing_exact_location', {
-          p_listing_id: id!,
-        });
-        const exactRow = Array.isArray(exact) ? exact[0] : exact;
+        // get_listing_exact_location returns 0 rows for everyone except
+        // owner/admin/renter-with-active-booking (defense in depth).
+        const exactRow = Array.isArray(exactRes.data) ? exactRes.data[0] : exactRes.data;
         if (exactRow) {
           mapped.exact_latitude = exactRow.latitude ?? null;
           mapped.exact_longitude = exactRow.longitude ?? null;
@@ -266,6 +267,7 @@ export default function ListingDetailScreen() {
         }
 
         setListing(mapped);
+
         setLikeCount((data as any).saves_count ?? 0);
         setViewCount((data as any).views_count ?? 0);
         trackRecentlyViewed(id!);

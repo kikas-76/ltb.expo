@@ -118,33 +118,50 @@ export default function ExploreScreen() {
         : [];
       setListings(recentMapped);
 
-      // Nearby: RPC returns listings already sorted by distance ASC but
-      // without owner. Hydrate owners via a follow-up SELECT keyed on the
-      // returned ids, then re-order to preserve the distance ordering.
-      const nearbyData = nearbyRes?.data as RawListing[] | null | undefined;
+      // Nearby: the RPC now returns owner info + rating in one shot
+      // (extended in 20260506_extend_get_nearby_listings_*). No
+      // follow-up SELECT needed — saves one round-trip per home load.
+      type NearbyRow = {
+        id: string;
+        name: string;
+        price: number;
+        photos_url: string[] | null;
+        category_name: string | null;
+        category_id: string | null;
+        approx_latitude: number | null;
+        approx_longitude: number | null;
+        owner_type: string | null;
+        rating_avg: number | null;
+        rating_count: number | null;
+        owner_id: string | null;
+        owner_username: string | null;
+        owner_photo_url: string | null;
+        owner_is_pro: boolean | null;
+        distance_km: number | null;
+      };
+      const nearbyData = nearbyRes?.data as NearbyRow[] | null | undefined;
       if (nearbyData) {
-        const rows = nearbyData;
-        if (rows.length === 0) {
-          setNearbyData([]);
-        } else {
-          const ids = rows.map((r) => r.id);
-          const { data: ownerRows } = await supabase
-            .from('listings')
-            .select(
-              'id, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)',
-            )
-            .in('id', ids);
-          const ownerMap = new Map<string, Owner | null>();
-          ((ownerRows ?? []) as { id: string; owner: Owner | Owner[] | null }[]).forEach((o) => {
-            const owner = Array.isArray(o.owner) ? o.owner[0] : o.owner;
-            ownerMap.set(o.id, owner ?? null);
-          });
-          const ordered: Listing[] = rows.map((r) => ({
-            ...r,
-            owner: ownerMap.get(r.id) ?? null,
-          }));
-          setNearbyData(ordered);
-        }
+        const ordered: Listing[] = nearbyData.map((r) => ({
+          id: r.id,
+          name: r.name,
+          price: r.price,
+          photos_url: r.photos_url,
+          category_name: r.category_name,
+          category_id: r.category_id,
+          approx_latitude: r.approx_latitude,
+          approx_longitude: r.approx_longitude,
+          rating_avg: r.rating_avg,
+          rating_count: r.rating_count,
+          owner: r.owner_id
+            ? {
+                id: r.owner_id,
+                username: r.owner_username,
+                photo_url: r.owner_photo_url,
+                is_pro: r.owner_is_pro ?? false,
+              }
+            : null,
+        }));
+        setNearbyData(ordered);
       } else {
         // No location → reuse the recent feed so the section is not empty
         setNearbyData(recentMapped);
