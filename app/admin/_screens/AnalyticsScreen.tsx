@@ -34,6 +34,14 @@ interface TopUser {
   totalAmount: number;
 }
 
+interface PlatformRevenueBucket {
+  renter_fee: number;
+  owner_commission: number;
+  total: number;
+  bookings_count: number;
+  gross_rental: number;
+}
+
 interface AnalyticsData {
   monthlyRevenue: number;
   monthlyNewUsers: number;
@@ -46,6 +54,8 @@ interface AnalyticsData {
   openReports: number;
   openDisputes: number;
   resolvedDisputes: number;
+  platformRevenueAllTime: PlatformRevenueBucket;
+  platformRevenueThisMonth: PlatformRevenueBucket;
 }
 
 function formatMonth(date: Date): string {
@@ -91,6 +101,7 @@ export default function AdminAnalytics() {
       { count: openReports },
       { count: openDisputes },
       { count: resolvedDisputes },
+      { data: platformRevenue },
     ] = await Promise.all([
       supabase
         .from('bookings')
@@ -128,6 +139,10 @@ export default function AdminAnalytics() {
       supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'open'),
       supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'resolved'),
+      // Notre cut = sum(rental × (renter_fee_percent + owner_commission_percent) / 100)
+      // calculé serveur via RPC admin-only sur les bookings dont le PI loyer
+      // a été capturé (status >= active).
+      supabase.rpc('admin_platform_revenue_summary'),
     ]);
 
     const completedMonthBookings = (monthBookings ?? []).filter((b: any) => b.status === 'completed');
@@ -195,6 +210,14 @@ export default function AdminAnalytics() {
       .sort((a, b) => b.bookingCount - a.bookingCount)
       .slice(0, 5);
 
+    const emptyBucket: PlatformRevenueBucket = {
+      renter_fee: 0, owner_commission: 0, total: 0, bookings_count: 0, gross_rental: 0,
+    };
+    const platformRevenueAllTime: PlatformRevenueBucket =
+      (platformRevenue as any)?.all_time ?? emptyBucket;
+    const platformRevenueThisMonth: PlatformRevenueBucket =
+      (platformRevenue as any)?.this_month ?? emptyBucket;
+
     setData({
       monthlyRevenue,
       monthlyNewUsers: newUsers ?? 0,
@@ -207,6 +230,8 @@ export default function AdminAnalytics() {
       openReports: openReports ?? 0,
       openDisputes: openDisputes ?? 0,
       resolvedDisputes: resolvedDisputes ?? 0,
+      platformRevenueAllTime,
+      platformRevenueThisMonth,
     });
     setLoading(false);
   }, []);
@@ -331,8 +356,17 @@ export default function AdminAnalytics() {
     );
   }
 
+  const platformMonth = data?.platformRevenueThisMonth;
+  const platformAllTime = data?.platformRevenueAllTime;
+
   const kpis = [
-    { label: 'Revenus ce mois', value: `${data?.monthlyRevenue.toFixed(0) ?? 0}€`, icon: 'cash-outline', color: Colors.successGreen },
+    {
+      label: 'Notre commission ce mois',
+      value: `${(platformMonth?.total ?? 0).toFixed(2)}€`,
+      icon: 'wallet-outline',
+      color: Colors.primaryDark,
+    },
+    { label: 'Volume loyers ce mois', value: `${data?.monthlyRevenue.toFixed(0) ?? 0}€`, icon: 'cash-outline', color: Colors.successGreen },
     { label: 'Nouvelles inscriptions', value: String(data?.monthlyNewUsers ?? 0), icon: 'person-add-outline', color: Colors.info },
     { label: 'Taux de litiges', value: `${data?.disputeRate ?? 0}%`, icon: 'warning-outline', color: Colors.error },
     { label: 'Comptes restreints', value: String(data?.restrictedAccounts ?? 0), icon: 'ban-outline', color: Colors.banned },
@@ -363,6 +397,53 @@ export default function AdminAnalytics() {
               <Text style={styles.kpiLabel}>{k.label}</Text>
             </View>
           ))}
+        </View>
+
+        {/* Revenus plateforme : ce qui finit dans notre poche, connecté
+            via le application_fee posé sur les PaymentIntents Stripe. */}
+        <Text style={styles.sectionTitle}>Revenus plateforme</Text>
+        <View style={styles.card}>
+          <View style={styles.revenueHeaderRow}>
+            <View style={styles.revenueHeaderLeft}>
+              <View style={[styles.kpiIcon, { backgroundColor: Colors.primaryDark + '18' }]}>
+                <Ionicons name="wallet-outline" size={22} color={Colors.primaryDark} />
+              </View>
+              <View>
+                <Text style={styles.revenueLabel}>Total all-time</Text>
+                <Text style={styles.revenueValue}>{(platformAllTime?.total ?? 0).toFixed(2)}€</Text>
+                <Text style={styles.revenueSub}>
+                  {platformAllTime?.bookings_count ?? 0} location{(platformAllTime?.bookings_count ?? 0) > 1 ? 's' : ''} · volume {Number(platformAllTime?.gross_rental ?? 0).toFixed(2)}€
+                </Text>
+              </View>
+            </View>
+            <View style={styles.revenueHeaderRight}>
+              <Text style={styles.revenueLabel}>Ce mois</Text>
+              <Text style={styles.revenueValueSmall}>{(platformMonth?.total ?? 0).toFixed(2)}€</Text>
+              <Text style={styles.revenueSub}>{platformMonth?.bookings_count ?? 0} loc.</Text>
+            </View>
+          </View>
+
+          <View style={styles.revenueDivider} />
+
+          <Text style={styles.revenueBreakdownTitle}>Détail (all-time)</Text>
+          <View style={styles.revenueBreakdownRow}>
+            <View style={styles.revenueBreakdownLeft}>
+              <Ionicons name="person-outline" size={13} color={Colors.textMuted} />
+              <Text style={styles.revenueBreakdownLabel}>Frais locataires</Text>
+            </View>
+            <Text style={styles.revenueBreakdownValue}>{Number(platformAllTime?.renter_fee ?? 0).toFixed(2)}€</Text>
+          </View>
+          <View style={styles.revenueBreakdownRow}>
+            <View style={styles.revenueBreakdownLeft}>
+              <Ionicons name="storefront-outline" size={13} color={Colors.textMuted} />
+              <Text style={styles.revenueBreakdownLabel}>Commission propriétaires</Text>
+            </View>
+            <Text style={styles.revenueBreakdownValue}>{Number(platformAllTime?.owner_commission ?? 0).toFixed(2)}€</Text>
+          </View>
+
+          <Text style={styles.revenueFooterNote}>
+            Calculé sur les locations payées (PI capturé). Reflète le application_fee posé sur Stripe — la somme arrive directement sur le compte plateforme.
+          </Text>
         </View>
 
         {/* Monthly stats table */}
@@ -712,5 +793,87 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
     color: Colors.white,
+  },
+  revenueHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  revenueHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  revenueHeaderRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  revenueLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 11,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  revenueValue: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 26,
+    color: Colors.text,
+    letterSpacing: -0.5,
+    marginTop: 2,
+  },
+  revenueValueSmall: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: Colors.text,
+    letterSpacing: -0.3,
+  },
+  revenueSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  revenueDivider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginVertical: 14,
+  },
+  revenueBreakdownTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 8,
+  },
+  revenueBreakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  revenueBreakdownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  revenueBreakdownLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: Colors.text,
+  },
+  revenueBreakdownValue: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: Colors.text,
+  },
+  revenueFooterNote: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 12,
+    lineHeight: 16,
   },
 });
