@@ -21,7 +21,10 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
-import { updateBookingStatus, updateBookingConfirmationFields } from '@/lib/updateBookingStatus';
+import { updateBookingStatus } from '@/lib/updateBookingStatus';
+import HandoverQRDisplay from '@/components/handover/HandoverQRDisplay';
+import HandoverQRScanner from '@/components/handover/HandoverQRScanner';
+import type { HandoverEventType } from '@/components/handover/types';
 import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
 import { getRentalDays } from '@/lib/pricing';
 import { privateUriFor, resolveAttachmentUrl } from '@/lib/signedUrl';
@@ -117,7 +120,8 @@ export default function ChatScreen() {
   const [returnConfirmedOwner, setReturnConfirmedOwner] = useState(false);
   const [returnConfirmedRenter, setReturnConfirmedRenter] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [confirmCardExpanded, setConfirmCardExpanded] = useState(false);
+  const [qrDisplayOpen, setQrDisplayOpen] = useState<HandoverEventType | null>(null);
+  const [qrScannerOpen, setQrScannerOpen] = useState<HandoverEventType | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [ownerValidated, setOwnerValidated] = useState(false);
   const [returnConfirmedAt, setReturnConfirmedAt] = useState<string | null>(null);
@@ -828,62 +832,15 @@ export default function ChatScreen() {
     }
   };
 
-  const handleConfirmHandover = async () => {
-    if (!bookingId || !meta || !user || confirmLoading) return;
-    setConfirmLoading(true);
-    try {
-      const isOwner = meta.isOwner;
-      const confirmField: Record<string, boolean> = isOwner ? { handover_confirmed_owner: true } : { handover_confirmed_renter: true };
-      const newOwnerVal = isOwner ? true : handoverConfirmedOwner;
-      const newRenterVal = !isOwner ? true : handoverConfirmedRenter;
-
-      if (newOwnerVal && newRenterVal) {
-        await updateBookingStatus(bookingId, 'in_progress', confirmField);
-        await postSystemMessage(id as string, { event: 'handover_confirmed_both' });
-      } else {
-        await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'accepted', confirmField);
-        await postSystemMessage(id as string, { event: 'handover_confirmed_one' });
-      }
-
-      if (isOwner) setHandoverConfirmedOwner(true);
-      else setHandoverConfirmedRenter(true);
-      if (newOwnerVal && newRenterVal) setBookingStatus('in_progress');
-    } finally {
-      setConfirmLoading(false);
-    }
-  };
-
-  const handleConfirmReturn = async () => {
-    if (!bookingId || !meta || !user || confirmLoading) return;
-    setConfirmLoading(true);
-    try {
-      const isOwner = meta.isOwner;
-      const returnField: Record<string, boolean> = isOwner ? { return_confirmed_owner: true } : { return_confirmed_renter: true };
-      const newOwnerVal = isOwner ? true : returnConfirmedOwner;
-      const newRenterVal = !isOwner ? true : returnConfirmedRenter;
-
-      if (newOwnerVal && newRenterVal) {
-        // return_confirmed_at is stamped server-side in the RPC (now()) to
-        // prevent client-supplied dates from triggering early auto-validation.
-        // The local clock is used here only for the UI countdown — close
-        // enough; the cron uses the authoritative server timestamp.
-        await updateBookingStatus(bookingId, 'pending_owner_validation', returnField);
-        const confirmedAt = new Date().toISOString();
-        setReturnConfirmedAt(confirmedAt);
-        setValidationDeadlineMs(new Date(confirmedAt).getTime() + 24 * 3600 * 1000);
-        setBookingStatus('pending_owner_validation');
-        await postSystemMessage(id as string, { event: 'return_confirmed_both' });
-        if (isOwner) setShowValidationModal(true);
-      } else {
-        await updateBookingConfirmationFields(bookingId, bookingStatus ?? 'in_progress', returnField);
-        await postSystemMessage(id as string, { event: 'return_confirmed_one' });
-      }
-
-      if (isOwner) setReturnConfirmedOwner(true);
-      else setReturnConfirmedRenter(true);
-    } finally {
-      setConfirmLoading(false);
-    }
+  // Called by HandoverQRScanner after a successful redeem. The realtime
+  // subscription on bookings updates flags + status automatically; we
+  // just post the system message in the chat for context. Display side
+  // (the issuer) only closes its modal — no double-post.
+  const handleQRRedeemed = async (eventType: HandoverEventType) => {
+    if (!id) return;
+    await postSystemMessage(id as string, {
+      event: eventType === 'handover' ? 'handover_confirmed_both' : 'return_confirmed_both',
+    });
   };
 
   const handleOwnerValidateOk = async () => {
@@ -1268,171 +1225,80 @@ export default function ChatScreen() {
         />
       )}
 
-      {/* Handover confirmation card: collapsible, shown when bookingStatus === 'active' */}
-      {bookingStatus === 'active' && bookingId && meta && (() => {
-        const myConfirmed = meta.isOwner ? handoverConfirmedOwner : handoverConfirmedRenter;
-        const otherConfirmed = meta.isOwner ? handoverConfirmedRenter : handoverConfirmedOwner;
-        return (
-          <View style={styles.confirmCard}>
-            <TouchableOpacity
-              style={styles.confirmCardPill}
-              activeOpacity={0.75}
-              onPress={() => setConfirmCardExpanded(v => !v)}
-            >
-              <View style={styles.confirmCardPillLeft}>
-                <Ionicons name="hand-left-outline" size={14} color="#1B4332" />
-                <Text style={styles.confirmCardPillTitle}>Confirmer la remise</Text>
-                {myConfirmed && (
-                  <View style={styles.confirmCardPillBadge}>
-                    <Ionicons name="checkmark" size={10} color="#1B4332" />
-                    <Text style={styles.confirmCardPillBadgeText}>Confirmé</Text>
-                  </View>
-                )}
-              </View>
-              <Ionicons
-                name={confirmCardExpanded ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color="#1B4332"
-              />
-            </TouchableOpacity>
-            {confirmCardExpanded && (
-              <View style={styles.confirmCardBody}>
-                <Text style={styles.confirmCardSub}>
-                  Les deux parties doivent confirmer sur place pour démarrer la location.
-                </Text>
-                <View style={styles.confirmPeers}>
-                  <View style={styles.confirmPeerItem}>
-                    <Ionicons
-                      name={handoverConfirmedOwner ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={16}
-                      color={handoverConfirmedOwner ? Colors.primaryDark : '#A0A0A0'}
-                    />
-                    <Text style={[styles.confirmPeerName, handoverConfirmedOwner && styles.confirmPeerDone]}>
-                      {meta.ownerUsername} (loueur)
-                    </Text>
-                  </View>
-                  <View style={styles.confirmPeerItem}>
-                    <Ionicons
-                      name={handoverConfirmedRenter ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={16}
-                      color={handoverConfirmedRenter ? Colors.primaryDark : '#A0A0A0'}
-                    />
-                    <Text style={[styles.confirmPeerName, handoverConfirmedRenter && styles.confirmPeerDone]}>
-                      {meta.requesterUsername} (locataire)
-                    </Text>
-                  </View>
-                </View>
-                {!myConfirmed && (
-                  <TouchableOpacity
-                    style={[styles.confirmBtn, confirmLoading && { opacity: 0.6 }]}
-                    activeOpacity={0.85}
-                    onPress={handleConfirmHandover}
-                    disabled={confirmLoading}
-                  >
-                    {confirmLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="checkmark-outline" size={16} color="#fff" />
-                        <Text style={styles.confirmBtnText}>Je confirme la remise</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
-                {myConfirmed && !otherConfirmed && (
-                  <View style={styles.confirmWaitingRow}>
-                    <ActivityIndicator size="small" color="#8E9878" />
-                    <Text style={styles.confirmWaitingText}>En attente de l'autre partie...</Text>
-                  </View>
-                )}
-              </View>
-            )}
+      {/* Handover QR card: shown when bookingStatus === 'active'. Owner shows the QR,
+          renter scans it. Single atomic redeem flips both flags + transitions status. */}
+      {bookingStatus === 'active' && bookingId && meta && (
+        <View style={styles.confirmCard}>
+          <View style={styles.handoverHeaderRow}>
+            <Ionicons name="hand-left-outline" size={16} color="#1B4332" />
+            <Text style={styles.handoverHeaderTitle}>Remise de l'objet</Text>
           </View>
-        );
-      })()}
+          <Text style={styles.handoverSub}>
+            {meta.isOwner
+              ? 'Affiche le QR à scanner par le locataire pour démarrer la location.'
+              : 'Scanne le QR affiché par le loueur pour récupérer l\'objet.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.confirmBtn}
+            activeOpacity={0.85}
+            onPress={() =>
+              meta.isOwner ? setQrDisplayOpen('handover') : setQrScannerOpen('handover')
+            }
+          >
+            <Ionicons name={meta.isOwner ? 'qr-code-outline' : 'scan-outline'} size={16} color="#fff" />
+            <Text style={styles.confirmBtnText}>
+              {meta.isOwner ? 'Afficher le QR de remise' : 'Scanner le QR de remise'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-      {/* Return confirmation card: collapsible, shown when bookingStatus === 'in_progress' */}
-      {bookingStatus === 'in_progress' && bookingId && meta && (() => {
-        const myConfirmed = meta.isOwner ? returnConfirmedOwner : returnConfirmedRenter;
-        const otherConfirmed = meta.isOwner ? returnConfirmedRenter : returnConfirmedOwner;
-        return (
-          <View style={[styles.confirmCard, styles.confirmCardReturn]}>
-            <TouchableOpacity
-              style={[styles.confirmCardPill, styles.confirmCardPillReturn]}
-              activeOpacity={0.75}
-              onPress={() => setConfirmCardExpanded(v => !v)}
-            >
-              <View style={styles.confirmCardPillLeft}>
-                <Ionicons name="return-down-back-outline" size={14} color="#004085" />
-                <Text style={[styles.confirmCardPillTitle, { color: '#004085' }]}>Confirmer le retour</Text>
-                {myConfirmed && (
-                  <View style={[styles.confirmCardPillBadge, styles.confirmCardPillBadgeReturn]}>
-                    <Ionicons name="checkmark" size={10} color="#004085" />
-                    <Text style={[styles.confirmCardPillBadgeText, { color: '#004085' }]}>Confirmé</Text>
-                  </View>
-                )}
-              </View>
-              <Ionicons
-                name={confirmCardExpanded ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color="#004085"
-              />
-            </TouchableOpacity>
-            {confirmCardExpanded && (
-              <View style={styles.confirmCardBody}>
-                <Text style={styles.confirmCardSub}>
-                  Confirmez ensemble quand l'objet a été restitué pour clôturer la location.
-                </Text>
-                <View style={styles.confirmPeers}>
-                  <View style={styles.confirmPeerItem}>
-                    <Ionicons
-                      name={returnConfirmedOwner ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={16}
-                      color={returnConfirmedOwner ? '#004085' : '#A0A0A0'}
-                    />
-                    <Text style={[styles.confirmPeerName, returnConfirmedOwner && { color: '#004085', fontFamily: 'Inter-SemiBold' }]}>
-                      {meta.ownerUsername} (loueur)
-                    </Text>
-                  </View>
-                  <View style={styles.confirmPeerItem}>
-                    <Ionicons
-                      name={returnConfirmedRenter ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={16}
-                      color={returnConfirmedRenter ? '#004085' : '#A0A0A0'}
-                    />
-                    <Text style={[styles.confirmPeerName, returnConfirmedRenter && { color: '#004085', fontFamily: 'Inter-SemiBold' }]}>
-                      {meta.requesterUsername} (locataire)
-                    </Text>
-                  </View>
-                </View>
-                {!myConfirmed && (
-                  <TouchableOpacity
-                    style={[styles.confirmBtn, styles.confirmBtnReturn, confirmLoading && { opacity: 0.6 }]}
-                    activeOpacity={0.85}
-                    onPress={handleConfirmReturn}
-                    disabled={confirmLoading}
-                  >
-                    {confirmLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="checkmark-outline" size={16} color="#fff" />
-                        <Text style={styles.confirmBtnText}>Je confirme le retour</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
-                {myConfirmed && !otherConfirmed && (
-                  <View style={styles.confirmWaitingRow}>
-                    <ActivityIndicator size="small" color="#8E9878" />
-                    <Text style={styles.confirmWaitingText}>En attente de l'autre partie...</Text>
-                  </View>
-                )}
-              </View>
-            )}
+      {/* Return QR card: shown when bookingStatus === 'in_progress'. Renter shows the QR,
+          owner scans it. Single atomic redeem flips both flags + transitions status. */}
+      {bookingStatus === 'in_progress' && bookingId && meta && (
+        <View style={[styles.confirmCard, styles.confirmCardReturn]}>
+          <View style={styles.handoverHeaderRow}>
+            <Ionicons name="return-down-back-outline" size={16} color="#004085" />
+            <Text style={[styles.handoverHeaderTitle, { color: '#004085' }]}>Retour de l'objet</Text>
           </View>
-        );
-      })()}
+          <Text style={styles.handoverSub}>
+            {meta.isOwner
+              ? 'Scanne le QR affiché par le locataire pour confirmer la restitution.'
+              : 'Affiche le QR à scanner par le loueur pour confirmer la restitution.'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.confirmBtn, styles.confirmBtnReturn]}
+            activeOpacity={0.85}
+            onPress={() =>
+              meta.isOwner ? setQrScannerOpen('return') : setQrDisplayOpen('return')
+            }
+          >
+            <Ionicons name={meta.isOwner ? 'scan-outline' : 'qr-code-outline'} size={16} color="#fff" />
+            <Text style={styles.confirmBtnText}>
+              {meta.isOwner ? 'Scanner le QR de retour' : 'Afficher le QR de retour'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* QR Modals — mounted only while open so the camera/realtime channels are released on close. */}
+      {qrDisplayOpen && bookingId && (
+        <HandoverQRDisplay
+          visible
+          bookingId={bookingId}
+          eventType={qrDisplayOpen}
+          onClose={() => setQrDisplayOpen(null)}
+        />
+      )}
+      {qrScannerOpen && bookingId && (
+        <HandoverQRScanner
+          visible
+          bookingId={bookingId}
+          eventType={qrScannerOpen}
+          onSuccess={() => handleQRRedeemed(qrScannerOpen)}
+          onClose={() => setQrScannerOpen(null)}
+        />
+      )}
 
       {/* Validation banner: shown for both parties during pending_owner_validation */}
       {bookingStatus === 'pending_owner_validation' && !ownerValidated && meta && (
@@ -2237,11 +2103,29 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#A7F3D0',
     paddingHorizontal: 16,
-    paddingVertical: 0,
+    paddingVertical: 14,
+    gap: 10,
   },
   confirmCardReturn: {
     backgroundColor: '#EFF6FF',
     borderBottomColor: '#BFDBFE',
+  },
+  handoverHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  handoverHeaderTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: '#1B4332',
+    letterSpacing: -0.1,
+  },
+  handoverSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#555',
+    lineHeight: 17,
   },
   confirmCardPill: {
     flexDirection: 'row',
