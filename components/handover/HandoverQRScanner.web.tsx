@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Scanner } from '@yudiel/react-qr-scanner';
+import HandoverSuccessAnimation from './HandoverSuccessAnimation';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import {
@@ -69,7 +70,7 @@ export default function HandoverQRScanner({
     setSuccess(true);
     setSubmitting(false);
     onSuccess?.();
-    setTimeout(() => onClose(), 1200);
+    setTimeout(() => onClose(), 2400);
   };
 
   const handleScan = (codes: { rawValue?: string }[] | undefined) => {
@@ -101,13 +102,19 @@ export default function HandoverQRScanner({
             </TouchableOpacity>
           </View>
 
-          {success ? (
-            <View style={styles.successBlock}>
-              <Ionicons name="checkmark-circle" size={64} color={Colors.primaryDark} />
-              <Text style={styles.successText}>
-                {eventType === 'handover' ? 'Remise validée' : 'Retour validé'}
+          {!success && (
+            <View style={styles.disclaimer}>
+              <Ionicons name="alert-circle-outline" size={16} color="#92400E" />
+              <Text style={styles.disclaimerText}>
+                {eventType === 'handover'
+                  ? 'Vérifiez l\'état de l\'objet ensemble avant de scanner. Une fois validé, la location démarre.'
+                  : 'Vérifiez l\'état de l\'objet ensemble avant de scanner. Une fois validé, le retour est entériné.'}
               </Text>
             </View>
+          )}
+
+          {success ? (
+            <HandoverSuccessAnimation eventType={eventType} />
           ) : manualMode || cameraError ? (
             <View style={styles.manualBlock}>
               <Ionicons name="keypad-outline" size={36} color={Colors.primaryDark} />
@@ -284,15 +291,20 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
   },
-  successBlock: {
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 32,
+  disclaimer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10,
+    padding: 10,
   },
-  successText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: Colors.primaryDark,
+  disclaimerText: {
+    flex: 1,
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: '#92400E',
+    lineHeight: 16,
   },
   errorText: {
     fontFamily: 'Inter-Medium',

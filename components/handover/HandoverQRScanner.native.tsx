@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import HandoverSuccessAnimation from './HandoverSuccessAnimation';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import {
@@ -69,7 +70,7 @@ export default function HandoverQRScanner({
     setSuccess(true);
     setSubmitting(false);
     onSuccess?.();
-    setTimeout(() => onClose(), 1200);
+    setTimeout(() => onClose(), 2400);
   };
 
   const onBarcodeScanned = ({ data }: { data: string }) => {
@@ -98,12 +99,20 @@ export default function HandoverQRScanner({
           </TouchableOpacity>
         </View>
 
-        {success ? (
-          <View style={styles.successBlock}>
-            <Ionicons name="checkmark-circle" size={84} color={Colors.primary} />
-            <Text style={styles.successText}>
-              {eventType === 'handover' ? 'Remise validée' : 'Retour validé'}
+        {!success && permission?.granted && !manualMode && (
+          <View style={styles.disclaimer}>
+            <Ionicons name="alert-circle-outline" size={16} color="#FFB454" />
+            <Text style={styles.disclaimerText}>
+              {eventType === 'handover'
+                ? 'Vérifiez l\'état de l\'objet ensemble avant de scanner. Une fois validé, la location démarre.'
+                : 'Vérifiez l\'état de l\'objet ensemble avant de scanner. Une fois validé, le retour est entériné.'}
             </Text>
+          </View>
+        )}
+
+        {success ? (
+          <View style={styles.successWrap}>
+            <HandoverSuccessAnimation eventType={eventType} />
           </View>
         ) : !permission ? (
           <View style={styles.centerBlock}>
@@ -295,16 +304,31 @@ const styles = StyleSheet.create({
   btnDisabled: {
     opacity: 0.5,
   },
-  successBlock: {
+  successWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    borderRadius: 22,
   },
-  successText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+  disclaimer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: 'rgba(254,243,199,0.95)',
+    borderRadius: 10,
+    padding: 10,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    zIndex: 5,
+  },
+  disclaimerText: {
+    flex: 1,
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: '#92400E',
+    lineHeight: 16,
   },
   errorText: {
     fontFamily: 'Inter-Medium',

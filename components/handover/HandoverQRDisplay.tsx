@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QRImage from './QRImage';
+import HandoverSuccessAnimation from './HandoverSuccessAnimation';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import {
@@ -83,8 +84,8 @@ export default function HandoverQRDisplay({
           if (newStatus === expectedAfter) {
             setDone(true);
             onSuccess?.();
-            // Auto-close after a brief success state
-            setTimeout(() => onClose(), 1200);
+            // Auto-close after the success animation has played out.
+            setTimeout(() => onClose(), 2400);
           }
         },
       )
@@ -118,13 +119,19 @@ export default function HandoverQRDisplay({
 
           <Text style={styles.subtitle}>{instruction}</Text>
 
-          {done ? (
-            <View style={styles.doneBlock}>
-              <Ionicons name="checkmark-circle" size={64} color={Colors.primaryDark} />
-              <Text style={styles.doneText}>
-                {eventType === 'handover' ? 'Remise validée' : 'Retour validé'}
+          {!done && (
+            <View style={styles.disclaimer}>
+              <Ionicons name="alert-circle-outline" size={16} color="#92400E" />
+              <Text style={styles.disclaimerText}>
+                {eventType === 'handover'
+                  ? 'Vérifiez l\'état de l\'objet ensemble avant de valider. Une fois scanné, la location démarre.'
+                  : 'Vérifiez l\'état de l\'objet ensemble avant de valider. Une fois scanné, le retour est entériné.'}
               </Text>
             </View>
+          )}
+
+          {done ? (
+            <HandoverSuccessAnimation eventType={eventType} />
           ) : error && !token ? (
             // Server rejected the issue (wrong status, wrong role, etc).
             // Surface the message; the spinner would otherwise spin forever.
@@ -261,15 +268,20 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
   },
-  doneBlock: {
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 32,
+  disclaimer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10,
+    padding: 10,
   },
-  doneText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: Colors.primaryDark,
+  disclaimerText: {
+    flex: 1,
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: '#92400E',
+    lineHeight: 16,
   },
   errorText: {
     fontFamily: 'Inter-Medium',
