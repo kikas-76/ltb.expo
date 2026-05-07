@@ -133,8 +133,10 @@ BEGIN
     AND redeemed_at IS NULL
     AND expires_at > now();
 
+  -- gen_random_bytes lives in the extensions schema; the RPC's search_path
+  -- is locked to 'public, pg_temp' for safety, so qualify the call.
   v_token := translate(
-    encode(gen_random_bytes(32), 'base64'),
+    encode(extensions.gen_random_bytes(32), 'base64'),
     '+/=', '-_'
   );
   v_numeric_code := lpad((floor(random() * 1000000))::text, 6, '0');
