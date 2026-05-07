@@ -82,15 +82,31 @@ const TERMINAL_CONV_STATUSES = ['refused', 'cancelled', 'expired'] as const;
 // layout below. Don't open this up to in-flight states (pending_payment,
 // active, in_progress, pending_return, pending_owner_validation,
 // disputed) — those still need user attention or are tied to live money.
+//
+// The requester can also withdraw their own `pending` request (no booking
+// row exists yet, so nothing financial is at stake). The handler does an
+// atomic UPDATE→cancelled then DELETE; the owner's row vanishes via
+// realtime DELETE.
 function canDeleteConversation(item: {
   status: string;
   displayStatus: ConvDisplayStatus;
   listingUnavailable: boolean;
+  isRequester?: boolean;
 }): boolean {
   if (item.listingUnavailable) return true;
   if ((TERMINAL_CONV_STATUSES as readonly string[]).includes(item.status)) return true;
   if (TERMINAL_DISPLAY_STATUSES.includes(item.displayStatus)) return true;
+  if (item.status === 'pending' && item.isRequester) return true;
   return false;
+}
+
+// Distinguishes the requester-cancel case from a plain terminal-delete.
+// Drives the modal copy + button label.
+function isPendingCancelByRequester(item: {
+  status: string;
+  isRequester?: boolean;
+}): boolean {
+  return item.status === 'pending' && !!item.isRequester;
 }
 
 interface ConversationItem {
@@ -387,17 +403,26 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
                   <Text style={styles.reviewBtnLabel}>Noter</Text>
                 </TouchableOpacity>
               )}
-              {isDeletable && (
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={(e) => { e.stopPropagation?.(); onDeleteRequest(item.id); }}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="trash-outline" size={13} color="#C0392B" />
-                  <Text style={styles.deleteBtnLabel}>Supprimer</Text>
-                </TouchableOpacity>
-              )}
+              {isDeletable && (() => {
+                const inCancelMode = isPendingCancelByRequester(item);
+                return (
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={(e) => { e.stopPropagation?.(); onDeleteRequest(item.id); }}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name={inCancelMode ? 'close-circle-outline' : 'trash-outline'}
+                      size={13}
+                      color="#C0392B"
+                    />
+                    <Text style={styles.deleteBtnLabel}>
+                      {inCancelMode ? 'Annuler' : 'Supprimer'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
           </View>
         </View>
@@ -423,6 +448,28 @@ export default function MessagesScreen() {
     if (!deleteModalId) return;
     setDeleteLoading(true);
     setDeleteError(null);
+
+    // Pending-cancel by requester: bump status to 'cancelled' first so the
+    // guard_conversation_delete trigger lets us through. No booking row
+    // exists yet (it's only created on owner accept), so we don't need to
+    // touch bookings.
+    const target = conversations.find((c) => c.id === deleteModalId);
+    if (target && isPendingCancelByRequester(target)) {
+      const { error: cancelError } = await supabase
+        .from('conversations')
+        .update({ status: 'cancelled' })
+        .eq('id', deleteModalId);
+      if (cancelError) {
+        const raw = cancelError.message ?? '';
+        setDeleteError(
+          raw.toLowerCase().includes('permission')
+            ? "Tu n'as pas le droit d'annuler cette demande."
+            : 'Annulation impossible. Réessaie dans un instant.',
+        );
+        setDeleteLoading(false);
+        return;
+      }
+    }
 
     // Drop the explicit chat_messages DELETE: chat_messages.conversation_id
     // is FK ON DELETE CASCADE, so deleting the conversation auto-cleans the
@@ -749,6 +796,9 @@ export default function MessagesScreen() {
     </>
   );
 
+  const deleteTarget = conversations.find((c) => c.id === deleteModalId) ?? null;
+  const isCancelMode = deleteTarget ? isPendingCancelByRequester(deleteTarget) : false;
+
   const deleteModal = (
     <Modal
       visible={deleteModalId !== null}
@@ -773,11 +823,19 @@ export default function MessagesScreen() {
       >
         <View style={styles.modalSheet}>
           <View style={styles.modalIconWrap}>
-            <Ionicons name="trash-outline" size={24} color="#C0392B" />
+            <Ionicons
+              name={isCancelMode ? 'close-circle-outline' : 'trash-outline'}
+              size={24}
+              color="#C0392B"
+            />
           </View>
-          <Text style={styles.modalTitle}>Supprimer la conversation</Text>
+          <Text style={styles.modalTitle}>
+            {isCancelMode ? 'Annuler ma demande' : 'Supprimer la conversation'}
+          </Text>
           <Text style={styles.modalDesc}>
-            Cette action supprimera définitivement la conversation et tous ses messages. Cette action est irréversible.
+            {isCancelMode
+              ? 'Le loueur ne verra plus ta demande. Tu pourras refaire une demande plus tard si besoin.'
+              : 'Cette action supprimera définitivement la conversation et tous ses messages. Cette action est irréversible.'}
           </Text>
           {deleteError && (
             <Text style={styles.modalErrorText}>{deleteError}</Text>
@@ -792,8 +850,10 @@ export default function MessagesScreen() {
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
-                <Ionicons name="trash-outline" size={15} color="#fff" />
-                <Text style={styles.modalBtnDeleteText}>Supprimer</Text>
+                <Ionicons name={isCancelMode ? 'close-circle-outline' : 'trash-outline'} size={15} color="#fff" />
+                <Text style={styles.modalBtnDeleteText}>
+                  {isCancelMode ? 'Annuler ma demande' : 'Supprimer'}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -920,20 +980,29 @@ export default function MessagesScreen() {
                           <Text style={styles.reviewBtnLabel}>Noter</Text>
                         </TouchableOpacity>
                       )}
-                      {desktopDeletable && (
-                        <TouchableOpacity
-                          style={styles.deleteBtn}
-                          onPress={(e) => {
-                            e.stopPropagation?.();
-                            setDeleteModalId(item.id);
-                          }}
-                          activeOpacity={0.7}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="trash-outline" size={13} color="#C0392B" />
-                          <Text style={styles.deleteBtnLabel}>Supprimer</Text>
-                        </TouchableOpacity>
-                      )}
+                      {desktopDeletable && (() => {
+                        const inCancelMode = isPendingCancelByRequester(item);
+                        return (
+                          <TouchableOpacity
+                            style={styles.deleteBtn}
+                            onPress={(e) => {
+                              e.stopPropagation?.();
+                              setDeleteModalId(item.id);
+                            }}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons
+                              name={inCancelMode ? 'close-circle-outline' : 'trash-outline'}
+                              size={13}
+                              color="#C0392B"
+                            />
+                            <Text style={styles.deleteBtnLabel}>
+                              {inCancelMode ? 'Annuler' : 'Supprimer'}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })()}
                     </View>
                   </View>
                 </TouchableOpacity>

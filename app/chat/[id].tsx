@@ -684,6 +684,44 @@ export default function ChatScreen() {
     await uploadAndSendFile(file.uri, file.name, mime);
   };
 
+  // Requester withdraws their own pending request. Single click :
+  // UPDATE status → 'cancelled' (allowed by the dedicated RLS policy
+  // with WITH CHECK clause), then DELETE the conversation. The owner's
+  // row vanishes via realtime DELETE.
+  const handleCancelMyRequest = async () => {
+    if (!id || !meta || meta.isOwner || meta.status !== 'pending' || statusUpdating) return;
+    setStatusUpdating(true);
+    setStatusError(null);
+
+    const { error: updateError } = await supabase
+      .from('conversations')
+      .update({ status: 'cancelled' })
+      .eq('id', id);
+
+    if (updateError) {
+      setStatusError("Impossible d'annuler ta demande. Réessaie.");
+      setStatusUpdating(false);
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      // Status was successfully bumped to 'cancelled'; user can still
+      // delete via the trash button on /reservations later.
+      setStatusError('Demande annulée. La suppression complète a échoué.');
+      setStatusUpdating(false);
+      router.replace('/(tabs)/reservations');
+      return;
+    }
+
+    setStatusUpdating(false);
+    router.replace('/(tabs)/reservations');
+  };
+
   const handleStatusUpdate = async (newStatus: 'accepted' | 'refused') => {
     if (!id || !meta) return;
     setStatusUpdating(true);
@@ -1107,6 +1145,35 @@ export default function ChatScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Requester action bar: withdraw the pending request before the
+          owner has acted. Updates status → cancelled then deletes the
+          conversation. */}
+      {meta && !meta.isOwner && meta.status === 'pending' && (
+        <View style={styles.actionBar}>
+          <Text style={styles.actionBarLabel}>Cette demande n'a pas encore été acceptée</Text>
+          <View style={styles.actionBarButtons}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnRefuse]}
+              activeOpacity={0.8}
+              disabled={statusUpdating}
+              onPress={handleCancelMyRequest}
+            >
+              {statusUpdating ? (
+                <ActivityIndicator size="small" color="#C0392B" />
+              ) : (
+                <>
+                  <Ionicons name="close-circle-outline" size={16} color="#C0392B" />
+                  <Text style={styles.actionBtnRefuseText}>Annuler ma demande</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+          {statusError && (
+            <Text style={styles.actionBarError}>{statusError}</Text>
+          )}
+        </View>
+      )}
 
       {/* Owner action bar: accept / refuse when status is pending */}
       {meta?.isOwner && meta.status === 'pending' && (
