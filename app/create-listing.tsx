@@ -135,6 +135,16 @@ export default function CreateListingScreen() {
   const [price, setPrice] = useState('');
   const [deposit, setDeposit] = useState('');
 
+  // Pro-only multi-unit state. The pro tells us they have N identical
+  // units; renters can later book any subset (free stepper) or one of
+  // the discrete packs (5, 10, 25, …). Non-pros stay on stock=1, no
+  // packs — UI gating below hides the whole block.
+  const [isPro, setIsPro] = useState(false);
+  const [multiUnit, setMultiUnit] = useState(false);
+  const [stockCount, setStockCount] = useState('1');
+  const [packsList, setPacksList] = useState<number[]>([]);
+  const [packDraft, setPackDraft] = useState('');
+
   const stepIndex = STEPS.indexOf(step);
   const progress = (stepIndex + 1) / TOTAL_STEPS;
   const isPricingStep = step === 'PRICING';
@@ -147,11 +157,26 @@ export default function CreateListingScreen() {
     }
   }, [editId]);
 
+  // Resolve is_pro early so the PRICING step can conditionally render
+  // the stock+packs section. get_my_profile is the SECURITY DEFINER
+  // path because is_pro lives behind a column-level GRANT.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: rows } = await supabase.rpc('get_my_profile');
+      if (cancelled) return;
+      const p = Array.isArray(rows) ? rows[0] : rows;
+      setIsPro(!!p?.is_pro);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const loadExistingListing = async () => {
     setLoadingEdit(true);
     const { data } = await supabase
       .from('listings')
       .select(`id, name, description, price, deposit_amount, photos_url,
+        stock_count, packs,
         category:categories!listings_category_id_fkey(id, name, value),
         subcategory:subcategories!listings_subcategory_id_fkey(id, name, value, category_id)`)
       .eq('id', editId)
@@ -162,6 +187,16 @@ export default function CreateListingScreen() {
       setDescription(data.description ?? '');
       setPrice(data.price != null ? String(data.price) : '');
       setDeposit(data.deposit_amount ? String(data.deposit_amount) : '');
+
+      const existingStock = Number((data as any).stock_count ?? 1);
+      const existingPacks = Array.isArray((data as any).packs)
+        ? ((data as any).packs as number[]).filter((n) => Number.isFinite(n) && n > 0)
+        : [];
+      if (existingStock > 1 || existingPacks.length > 0) {
+        setMultiUnit(true);
+        setStockCount(String(existingStock));
+        setPacksList(existingPacks);
+      }
 
       const cat = Array.isArray(data.category) ? data.category[0] : data.category;
       if (cat) {
@@ -438,6 +473,15 @@ export default function CreateListingScreen() {
     const priceNum = parseFloat(price);
     const depositNum = parseFloat(deposit) || 0;
 
+    // Pro-only stock + pack list. Non-pros are forced to stock=1 +
+    // packs=null; the form never even shows them the toggle.
+    const finalStockCount = isPro && multiUnit
+      ? Math.max(1, Math.floor(parseInt(stockCount, 10) || 1))
+      : 1;
+    const finalPacks = isPro && multiUnit && packsList.length > 0
+      ? packsList.filter((n) => n >= 1 && n <= finalStockCount).sort((a, b) => a - b)
+      : null;
+
     if (isEditMode) {
       const { error: updateError } = await supabase.from('listings').update({
         name: name.trim(),
@@ -449,6 +493,8 @@ export default function CreateListingScreen() {
         price: priceNum,
         deposit_amount: depositNum,
         photos_url: photoUrls,
+        stock_count: finalStockCount,
+        packs: finalPacks,
       }).eq('id', editId);
       setSubmitting(false);
       if (updateError) { setError(updateError.message); return; }
@@ -481,6 +527,8 @@ export default function CreateListingScreen() {
       latitude: lat,
       longitude: lng,
       owner_type: ownerType,
+      stock_count: finalStockCount,
+      packs: finalPacks,
     }).select('id').maybeSingle();
     setSubmitting(false);
     if (insertError) { setError(insertError.message); return; }
@@ -825,6 +873,114 @@ export default function CreateListingScreen() {
                   </View>
                 )}
               </View>
+
+              {/* Pro-only: stock + optional pack list. Non-pros never see this. */}
+              {isPro && (
+                <View style={styles.pricingCard}>
+                  <View style={styles.stockHeader}>
+                    <View style={styles.stockHeaderLeft}>
+                      <Ionicons name="layers-outline" size={16} color={Colors.primaryDark} />
+                      <Text style={styles.stockHeaderTitle}>Plusieurs unités</Text>
+                      <View style={styles.proPill}>
+                        <Text style={styles.proPillText}>PRO</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.stockToggle, multiUnit && styles.stockToggleOn]}
+                      onPress={() => setMultiUnit((v) => !v)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.stockToggleKnob, multiUnit && styles.stockToggleKnobOn]} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {multiUnit ? (
+                    <>
+                      <Text style={styles.stockHint}>
+                        Indiquez combien d'unités identiques vous possédez. Le prix sera multiplié automatiquement par la quantité choisie par le locataire.
+                      </Text>
+
+                      <View style={isDesktop ? styles.pricingTwoColRow : undefined}>
+                        <View style={isDesktop ? styles.pricingTwoColField : undefined}>
+                          <Text style={styles.pricingFieldLabel}>Stock total</Text>
+                          <View style={styles.pricingInputRow}>
+                            <TextInput
+                              style={styles.pricingInput}
+                              placeholder="25"
+                              placeholderTextColor={Colors.textMuted}
+                              value={stockCount}
+                              onChangeText={(v) => setStockCount(v.replace(/[^\d]/g, ''))}
+                              keyboardType="number-pad"
+                            />
+                            <View style={styles.pricingEuroWrap}>
+                              <Text style={styles.pricingEuroText}>unités</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.pricingHint}>Nombre d'objets identiques que vous proposez</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.packsBlock}>
+                        <Text style={styles.pricingFieldLabel}>Packs autorisés (optionnel)</Text>
+                        <Text style={styles.pricingHint}>
+                          Si vous voulez forcer des paliers (ex: 5, 10, 25), ajoutez-les ici. Sinon le locataire pourra choisir n'importe quelle quantité jusqu'au stock total.
+                        </Text>
+                        <View style={styles.packsRow}>
+                          {packsList.map((p) => (
+                            <TouchableOpacity
+                              key={p}
+                              style={styles.packChip}
+                              onLongPress={() => setPacksList((arr) => arr.filter((n) => n !== p))}
+                              activeOpacity={0.6}
+                              delayLongPress={400}
+                            >
+                              <Text style={styles.packChipText}>{p}</Text>
+                              <Ionicons
+                                name="close-outline"
+                                size={12}
+                                color={Colors.primaryDark}
+                                onPress={() => setPacksList((arr) => arr.filter((n) => n !== p))}
+                              />
+                            </TouchableOpacity>
+                          ))}
+                          <View style={styles.packAddRow}>
+                            <TextInput
+                              style={styles.packAddInput}
+                              placeholder="ex: 5"
+                              placeholderTextColor={Colors.textMuted}
+                              value={packDraft}
+                              onChangeText={(v) => setPackDraft(v.replace(/[^\d]/g, ''))}
+                              keyboardType="number-pad"
+                            />
+                            <TouchableOpacity
+                              style={styles.packAddBtn}
+                              onPress={() => {
+                                const n = parseInt(packDraft, 10);
+                                const max = Math.max(1, parseInt(stockCount, 10) || 1);
+                                if (n >= 1 && n <= max && !packsList.includes(n)) {
+                                  setPacksList((arr) => [...arr, n].sort((a, b) => a - b));
+                                }
+                                setPackDraft('');
+                              }}
+                              disabled={!packDraft || parseInt(packDraft, 10) < 1}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="add" size={16} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                        {packsList.length > 0 && (
+                          <Text style={styles.pricingHint}>Tap long sur un pack pour le retirer.</Text>
+                        )}
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.stockHint}>
+                      Activez si vous proposez plusieurs unités identiques (ex: 25 chaises). Sinon laissez désactivé : votre annonce reste mono-unité.
+                    </Text>
+                  )}
+                </View>
+              )}
 
               {/* Revenue projection */}
               {priceNum > 0 && (
@@ -1908,5 +2064,114 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
     height: undefined,
     width: '100%',
+  },
+
+  /* Pro stock + packs section */
+  stockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  stockHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stockHeaderTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: Colors.text,
+  },
+  proPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryDark,
+  },
+  proPillText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 9,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  stockToggle: {
+    width: 42,
+    height: 24,
+    borderRadius: 999,
+    backgroundColor: Colors.border,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  stockToggleOn: {
+    backgroundColor: Colors.primaryDark,
+  },
+  stockToggleKnob: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  stockToggleKnobOn: {
+    transform: [{ translateX: 18 }],
+  },
+  stockHint: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 17,
+    marginBottom: 12,
+  },
+  packsBlock: {
+    gap: 6,
+    marginTop: 6,
+  },
+  packsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  packChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Colors.primarySurface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  packChipText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.primaryDark,
+  },
+  packAddRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  packAddInput: {
+    width: 70,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: Colors.text,
+  },
+  packAddBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

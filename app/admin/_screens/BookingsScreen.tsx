@@ -23,6 +23,7 @@ interface AdminBooking {
   end_date: string;
   created_at: string;
   stripe_payment_intent_id: string | null;
+  quantity: number | null;
   listing: { name: string } | null;
   renter: { username: string | null } | null;
   owner: { username: string | null } | null;
@@ -54,7 +55,7 @@ export default function AdminBookings() {
     const { data } = await supabase
       .from('bookings')
       .select(`
-        id, status, total_price, deposit_amount, start_date, end_date, created_at, stripe_payment_intent_id,
+        id, status, total_price, deposit_amount, start_date, end_date, created_at, stripe_payment_intent_id, quantity,
         listing:listings(name),
         renter:profiles!bookings_renter_id_fkey(username),
         owner:profiles!bookings_owner_id_fkey(username)
@@ -142,7 +143,10 @@ export default function AdminBookings() {
               </View>
               <View style={styles.detailItem}>
                 <Ionicons name="cash-outline" size={12} color={Colors.textMuted} />
-                <Text style={styles.detailText}>{b.total_price}€{b.deposit_amount ? ` + ${b.deposit_amount}€ caution` : ''}</Text>
+                <Text style={styles.detailText}>
+                  {b.total_price}€{b.deposit_amount ? ` + ${b.deposit_amount}€ caution` : ''}
+                  {(b.quantity ?? 1) > 1 ? ` · ${b.quantity} unités` : ''}
+                </Text>
               </View>
             </View>
 

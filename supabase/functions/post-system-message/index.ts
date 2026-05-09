@@ -74,6 +74,16 @@ function formatFR(d: Date): string {
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 }
 
+// For pro multi-unit listings: append "· N unités" to the system message
+// when the request is for more than 1 unit. Hidden for the default qty=1
+// to keep mono-unit history visually identical.
+function formatQtySuffix(raw: unknown): string {
+  if (raw == null) return "";
+  const n = typeof raw === "number" ? raw : parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n <= 1) return "";
+  return ` · ${n} unités`;
+}
+
 function renderEvent(
   eventId: EventId,
   actorUsername: string,
@@ -102,13 +112,15 @@ function renderEvent(
       const start = parseISODate(params.start_date);
       const end = parseISODate(params.end_date);
       if (!start || !end) return null;
-      return `Réservation directe via lien · Du ${formatFR(start)} au ${formatFR(end)}`;
+      const qtySuffix = formatQtySuffix(params.quantity);
+      return `Réservation directe via lien · Du ${formatFR(start)} au ${formatFR(end)}${qtySuffix}`;
     }
     case "new_request": {
       const start = parseISODate(params.start_date);
       const end = parseISODate(params.end_date);
       if (!start || !end) return null;
-      return `Nouvelle demande du ${formatFR(start)} au ${formatFR(end)}`;
+      const qtySuffix = formatQtySuffix(params.quantity);
+      return `Nouvelle demande du ${formatFR(start)} au ${formatFR(end)}${qtySuffix}`;
     }
   }
 }

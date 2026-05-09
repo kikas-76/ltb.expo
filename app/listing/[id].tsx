@@ -28,6 +28,7 @@ import ImageGallery from '@/components/listing/ImageGallery';
 import DateRangeCalendar from '@/components/listing/DateRangeCalendar';
 import RequestSentOverlay from '@/components/listing/RequestSentOverlay';
 import RequestMessageModal from '@/components/listing/RequestMessageModal';
+import QuantitySelector from '@/components/listing/QuantitySelector';
 import ProBadge from '@/components/ProBadge';
 import ApproximateLocationMap from '@/components/listing/ApproximateLocationMap';
 import ShareLinkModal from '@/components/listing/ShareLinkModal';
@@ -76,6 +77,10 @@ interface Listing {
   approx_longitude: number | null;
   rating_avg: number | null;
   rating_count: number | null;
+  // Pro multi-unit support. stock_count >= 1 always. packs is null
+  // (free 1..stock_count) or a sorted array of allowed quantities.
+  stock_count: number;
+  packs: number[] | null;
   // Only populated for the owner / admin / a renter with an active
   // booking on this listing — fetched separately via the
   // get_listing_exact_location RPC. Never selected directly.
@@ -156,6 +161,31 @@ export default function ListingDetailScreen() {
   const [messageModalVisible, setMessageModalVisible] = useState(false);
   const [existingConvId, setExistingConvId] = useState<string | null>(null);
   const [bookedRanges, setBookedRanges] = useState<{ start: Date; end: Date }[]>([]);
+  // For multi-unit listings: per-day already-committed quantity. Used
+  // to compute how many units the renter can still pick for [start,end].
+  const [dailyBookedQty, setDailyBookedQty] = useState<Map<string, number>>(new Map());
+  const [quantity, setQuantity] = useState<number>(1);
+
+  const hasMultiUnit = !!listing && (listing.stock_count ?? 1) > 1;
+
+  // For the chosen [selectedStart, selectedEnd] window, how many units
+  // are still bookable across the worst day of that window.
+  const maxAvailableForWindow = (() => {
+    if (!listing || !hasMultiUnit || !selectedStart || !selectedEnd) {
+      return listing?.stock_count ?? 1;
+    }
+    const stock = listing.stock_count;
+    let worstUsed = 0;
+    for (let d = new Date(selectedStart); d <= selectedEnd; d.setDate(d.getDate() + 1)) {
+      const k = d.toISOString().split('T')[0];
+      const used = dailyBookedQty.get(k) ?? 0;
+      if (used > worstUsed) worstUsed = used;
+    }
+    return Math.max(0, stock - worstUsed);
+  })();
+
+  const quantityExceedsAvailability =
+    hasMultiUnit && selectedDays > 0 && quantity > maxAvailableForWindow;
   const [cityName, setCityName] = useState<string | null>(null);
   const [shareLinkVisible, setShareLinkVisible] = useState(false);
   const [firstPhotoAspect, setFirstPhotoAspect] = useState<number>(4 / 3);
@@ -241,7 +271,7 @@ export default function ListingDetailScreen() {
           .select(
             `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
              approx_latitude, approx_longitude, created_at, owner_id, views_count, saves_count,
-             rating_avg, rating_count,
+             rating_avg, rating_count, stock_count, packs,
              owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number, rating_avg, rating_count),
              category:categories!listings_category_id_fkey(value)`
           )
@@ -267,6 +297,12 @@ export default function ListingDetailScreen() {
         }
 
         setListing(mapped);
+
+        // Initial qty: smallest allowed pack (if packs defined), else 1.
+        const initialQty = Array.isArray(mapped.packs) && mapped.packs.length > 0
+          ? Math.min(...mapped.packs)
+          : 1;
+        setQuantity(initialQty);
 
         setLikeCount((data as any).saves_count ?? 0);
         setViewCount((data as any).views_count ?? 0);
@@ -310,29 +346,72 @@ export default function ListingDetailScreen() {
         const [bookingsRes, convsRes] = await Promise.all([
           supabase
             .from('bookings')
-            .select('start_date, end_date, status')
+            .select('start_date, end_date, status, quantity')
             .eq('listing_id', id)
             .in('status', ['pending_payment', 'accepted', 'active', 'in_progress', 'pending_return', 'pending_owner_validation']),
           supabase
             .from('conversations')
-            .select('start_date, end_date')
+            .select('start_date, end_date, quantity')
             .eq('listing_id', id)
             .eq('status', 'pending'),
         ]);
 
-        const allBookedRanges = [
+        // Mono-unit listings keep the legacy "any range = blocked" UX:
+        // we mark the dates of every active booking/conversation as
+        // unavailable. For multi-stock listings, we sum the daily
+        // committed quantities and only flag *saturated* days as
+        // unavailable — the renter still picks a quantity that fits.
+        const stockTotal = Math.max(1, mapped.stock_count ?? 1);
+        const rawBookings = [
           ...(bookingsRes.data ?? []).map((b: any) => ({
             start: new Date(b.start_date.split('T')[0] + 'T00:00:00'),
-            end: new Date(b.end_date.split('T')[0] + 'T00:00:00'),
+            end:   new Date(b.end_date.split('T')[0]   + 'T00:00:00'),
+            qty:   Number(b.quantity ?? 1),
           })),
           ...(convsRes.data ?? []).map((c: any) => ({
             start: new Date(c.start_date + 'T00:00:00'),
-            end: new Date(c.end_date + 'T00:00:00'),
+            end:   new Date(c.end_date   + 'T00:00:00'),
+            qty:   Number(c.quantity ?? 1),
           })),
         ];
 
-        if (allBookedRanges.length > 0) {
-          setBookedRanges(allBookedRanges);
+        const dailyTotals = new Map<string, number>();
+        for (const r of rawBookings) {
+          for (let d = new Date(r.start); d <= r.end; d.setDate(d.getDate() + 1)) {
+            const k = d.toISOString().split('T')[0];
+            dailyTotals.set(k, (dailyTotals.get(k) ?? 0) + r.qty);
+          }
+        }
+        setDailyBookedQty(dailyTotals);
+
+        if (stockTotal === 1) {
+          if (rawBookings.length > 0) {
+            setBookedRanges(rawBookings.map(({ start, end }) => ({ start, end })));
+          }
+        } else {
+          // Build saturated ranges by collapsing consecutive saturated days.
+          const saturated: { start: Date; end: Date }[] = [];
+          const sortedDays = [...dailyTotals.entries()]
+            .filter(([, q]) => q >= stockTotal)
+            .map(([k]) => k)
+            .sort();
+          let curStart: Date | null = null;
+          let curEnd: Date | null = null;
+          for (const k of sortedDays) {
+            const day = new Date(k + 'T00:00:00');
+            if (curStart === null) {
+              curStart = day;
+              curEnd = day;
+            } else if (curEnd && (day.getTime() - curEnd.getTime()) <= 86400000 + 1) {
+              curEnd = day;
+            } else {
+              saturated.push({ start: curStart, end: curEnd! });
+              curStart = day;
+              curEnd = day;
+            }
+          }
+          if (curStart && curEnd) saturated.push({ start: curStart, end: curEnd });
+          setBookedRanges(saturated);
         }
       }
     } catch (err) {
@@ -443,6 +522,7 @@ export default function ListingDetailScreen() {
         owner_id: listing.owner.id,
         start_date: toISO(selectedStart),
         end_date: toISO(selectedEnd),
+        quantity: Math.max(1, Math.floor(quantity || 1)),
       })
       .select('id')
       .single();
@@ -452,6 +532,7 @@ export default function ListingDetailScreen() {
         event: 'new_request',
         start_date: toISO(selectedStart),
         end_date: toISO(selectedEnd),
+        quantity: Math.max(1, Math.floor(quantity || 1)),
       });
       if (customMessage) {
         await supabase.from('chat_messages').insert({
@@ -802,7 +883,7 @@ export default function ListingDetailScreen() {
                 </View>
                 <View style={styles.pricingInnerDivider} />
                 {selectedDays > 0 ? (() => {
-                  const base = selectedDays * listing.price;
+                  const base = selectedDays * listing.price * Math.max(1, quantity);
                   const disc = selectedDays >= 7 ? 0.2 : selectedDays >= 3 ? 0.1 : 0;
                   const total = Math.round(base * (1 - disc));
                   return (
@@ -841,6 +922,24 @@ export default function ListingDetailScreen() {
                   </View>
                 )}
               </View>
+
+              {!isOwner && hasMultiUnit && (
+                <View style={[styles.section, styles.qtySection]}>
+                  <Text style={styles.qtyLabel}>Quantité</Text>
+                  <QuantitySelector
+                    value={quantity}
+                    onChange={setQuantity}
+                    stockCount={listing.stock_count}
+                    packs={listing.packs}
+                    maxAvailable={maxAvailableForWindow}
+                  />
+                  {quantityExceedsAvailability && (
+                    <Text style={styles.qtyWarning}>
+                      Il reste {maxAvailableForWindow} unité{maxAvailableForWindow > 1 ? 's' : ''} sur cette période. Réduis la quantité ou les dates.
+                    </Text>
+                  )}
+                </View>
+              )}
 
               {!isOwner && (
                 <View style={styles.section}>
@@ -889,10 +988,10 @@ export default function ListingDetailScreen() {
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
-                    style={[styles.ctaBtn, desktopStyles.ctaBtnTall, { flex: undefined, width: '100%' }, !selectedDays && styles.ctaBtnDisabled]}
+                    style={[styles.ctaBtn, desktopStyles.ctaBtnTall, { flex: undefined, width: '100%' }, (!selectedDays || quantityExceedsAvailability) && styles.ctaBtnDisabled]}
                     activeOpacity={0.85}
                     onPress={handleRequestPress}
-                    disabled={!selectedDays}
+                    disabled={!selectedDays || quantityExceedsAvailability}
                   >
                     <Text style={[styles.ctaBtnText, desktopStyles.ctaBtnTextLarge]}>{selectedDays > 0 ? 'Faire une demande' : 'Choisir des dates'}</Text>
                   </TouchableOpacity>
@@ -963,7 +1062,7 @@ export default function ListingDetailScreen() {
             days={selectedDays}
             totalPrice={(() => {
               const disc = selectedDays >= 7 ? 0.2 : selectedDays >= 3 ? 0.1 : 0;
-              return Math.round(selectedDays * listing.price * (1 - disc));
+              return Math.round(selectedDays * listing.price * Math.max(1, quantity) * (1 - disc));
             })()}
             sending={requesting}
           />
@@ -1114,7 +1213,7 @@ export default function ListingDetailScreen() {
 
             {/* Ligne total dynamique */}
             {selectedDays > 0 ? (() => {
-              const base = selectedDays * listing.price;
+              const base = selectedDays * listing.price * Math.max(1, quantity);
               const disc = selectedDays >= 7 ? 0.2 : selectedDays >= 3 ? 0.1 : 0;
               const total = Math.round(base * (1 - disc));
               return (
@@ -1227,6 +1326,23 @@ export default function ListingDetailScreen() {
           {/* Booking dates: masqué pour le propriétaire */}
           {!isOwner && (<>
             <View style={styles.divider} />
+            {hasMultiUnit && (
+              <View style={[styles.section, styles.qtySection]}>
+                <Text style={styles.sectionTitle}>Quantité</Text>
+                <QuantitySelector
+                  value={quantity}
+                  onChange={setQuantity}
+                  stockCount={listing.stock_count}
+                  packs={listing.packs}
+                  maxAvailable={maxAvailableForWindow}
+                />
+                {quantityExceedsAvailability && (
+                  <Text style={styles.qtyWarning}>
+                    Il reste {maxAvailableForWindow} unité{maxAvailableForWindow > 1 ? 's' : ''} sur cette période. Réduis la quantité ou les dates.
+                  </Text>
+                )}
+              </View>
+            )}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Réservation</Text>
               <TouchableOpacity
@@ -1543,7 +1659,7 @@ export default function ListingDetailScreen() {
                 <Text style={styles.bottomPrice}>
                   {(() => {
                     const disc = selectedDays >= 7 ? 0.2 : selectedDays >= 3 ? 0.1 : 0;
-                    return Math.round(selectedDays * listing.price * (1 - disc));
+                    return Math.round(selectedDays * listing.price * Math.max(1, quantity) * (1 - disc));
                   })()}€
                 </Text>
                 <Text style={styles.bottomPriceUnit}>/ {selectedDays}j</Text>
@@ -1565,10 +1681,10 @@ export default function ListingDetailScreen() {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.ctaBtn, !selectedDays && styles.ctaBtnDisabled]}
+              style={[styles.ctaBtn, (!selectedDays || quantityExceedsAvailability) && styles.ctaBtnDisabled]}
               activeOpacity={0.85}
               onPress={handleRequestPress}
-              disabled={!selectedDays}
+              disabled={!selectedDays || quantityExceedsAvailability}
             >
               <Text style={styles.ctaBtnText}>
                 {selectedDays > 0 ? 'Faire une demande' : 'Choisir des dates'}
@@ -1600,7 +1716,7 @@ export default function ListingDetailScreen() {
           days={selectedDays}
           totalPrice={(() => {
             const disc = selectedDays >= 7 ? 0.2 : selectedDays >= 3 ? 0.1 : 0;
-            return Math.round(selectedDays * listing.price * (1 - disc));
+            return Math.round(selectedDays * listing.price * Math.max(1, quantity) * (1 - disc));
           })()}
           sending={requesting}
         />
@@ -2255,6 +2371,25 @@ const styles = StyleSheet.create({
   },
   ctaBtnDisabled: {
     opacity: 0.5,
+  },
+
+  qtySection: {
+    gap: 10,
+  },
+  qtyLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  qtyWarning: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: '#92400E',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    padding: 8,
   },
 
   ownerBottomBar: {

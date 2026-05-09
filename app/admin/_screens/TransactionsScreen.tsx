@@ -43,6 +43,7 @@ interface Booking {
   handover_at: string | null;
   return_confirmed_at: string | null;
   owner_validated: boolean | null;
+  quantity: number | null;
   renter_id: string | null;
   owner_id: string | null;
   listing: { name: string } | null;
@@ -146,7 +147,7 @@ export default function AdminTransactions() {
          stripe_rental_payment_intent_id, stripe_payment_intent_id,
          deposit_authorized_at, deposit_captured_at, deposit_released_at,
          deposit_hold_failed, deposit_action,
-         handover_at, return_confirmed_at, owner_validated,
+         handover_at, return_confirmed_at, owner_validated, quantity,
          renter_id, owner_id,
          listing:listings(name),
          renter:profiles!bookings_renter_id_fkey(username),
@@ -374,7 +375,9 @@ export default function AdminTransactions() {
                 </View>
                 <View style={styles.cardBottomRow}>
                   <View style={styles.amountGroup}>
-                    <Text style={styles.amount}>{b.total_price}€</Text>
+                    <Text style={styles.amount}>
+                      {b.total_price}€{(b.quantity ?? 1) > 1 ? ` · ${b.quantity} unités` : ''}
+                    </Text>
                     {b.deposit_amount ? (
                       <View style={[styles.depositPill, { backgroundColor: depositMeta.bg }]}>
                         <Ionicons name="lock-closed-outline" size={11} color={depositMeta.fg} />

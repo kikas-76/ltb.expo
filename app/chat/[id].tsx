@@ -57,6 +57,7 @@ interface ConvMeta {
   listingThumb: string | null;
   listingCity: string | null;
   listingPrice: number | null;
+  quantity: number;
   otherUsername: string;
   otherUserId: string;
   otherAvatarUrl: string | null;
@@ -145,6 +146,7 @@ export default function ChatScreen() {
         requester_id,
         owner_id,
         status,
+        quantity,
         listing:listings!conversations_listing_id_fkey(name, photos_url, price),
         requester:profiles!conversations_requester_id_fkey(username, photo_url, avatar_url),
         owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url)
@@ -170,6 +172,7 @@ export default function ChatScreen() {
         listingThumb: listing?.photos_url?.[0] ?? null,
         listingCity: city,
         listingPrice: listing?.price ?? null,
+        quantity: Math.max(1, Number((conv as any).quantity ?? 1)),
         otherUsername: other?.username ?? 'Utilisateur',
         otherUserId: isRequester ? conv.owner_id : conv.requester_id,
         otherAvatarUrl: other?.avatar_url ?? other?.photo_url ?? null,
@@ -767,6 +770,7 @@ export default function ChatScreen() {
           startDate: meta.startDate,
           endDate: meta.endDate,
           conversationId: id as string,
+          quantity: meta.quantity,
         });
 
         if (bookingError) {
@@ -857,6 +861,7 @@ export default function ChatScreen() {
         startDate: meta.startDate,
         endDate: meta.endDate,
         conversationId: id as string,
+        quantity: meta.quantity,
       });
 
       if (!error && newBooking) {

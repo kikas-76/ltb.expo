@@ -7,6 +7,9 @@ export interface CreatePendingBookingInput {
   startDate: string;
   endDate: string;
   conversationId: string;
+  // Pro multi-unit listings: how many units this booking reserves.
+  // Defaults to 1 server-side; safe to omit for mono-unit listings.
+  quantity?: number;
 }
 
 export interface CreatedBooking {
@@ -27,6 +30,7 @@ export async function createPendingPaymentBooking(
     p_start_date: input.startDate,
     p_end_date: input.endDate,
     p_conversation_id: input.conversationId,
+    p_quantity: Math.max(1, Math.floor(input.quantity ?? 1)),
   });
 
   if (error) return { data: null, error };

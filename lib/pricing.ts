@@ -16,6 +16,30 @@ export function computeRentalTotal(pricePerDay: number, days: number): number {
   return Math.round(pricePerDay * days * (1 - getDiscount(days)));
 }
 
+// Pro listings can have stock > 1 and an optional pack list. The total
+// scales linearly with quantity. Stays consistent with the server-side
+// formula in the create_booking_for_payment RPC.
+export function computeRentalTotalWithQty(
+  pricePerDay: number,
+  days: number,
+  quantity: number,
+): number {
+  const qty = Math.max(1, Math.floor(quantity || 1));
+  return Math.round(pricePerDay * qty * days * (1 - getDiscount(days)));
+}
+
+// Validates that a quantity is allowed by a (stock_count, packs) pair.
+// `packs` null/undefined means "any qty between 1 and stock_count".
+export function isValidQuantity(
+  qty: number,
+  stockCount: number,
+  packs: number[] | null | undefined,
+): boolean {
+  if (!Number.isFinite(qty) || qty < 1 || qty > stockCount) return false;
+  if (Array.isArray(packs) && packs.length > 0) return packs.includes(qty);
+  return true;
+}
+
 export const DEFAULT_OWNER_COMMISSION_PERCENT = 8;
 
 // Stripe is the source of truth for actual payouts; this is an estimate for UI.

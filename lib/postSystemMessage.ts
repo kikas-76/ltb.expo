@@ -13,8 +13,8 @@ export type SystemMessageEvent =
   | { event: 'owner_validated_ok' }
   | { event: 'listing_unavailable' }
   | { event: 'dispute_opened' }
-  | { event: 'direct_booking_link'; start_date: string; end_date: string }
-  | { event: 'new_request'; start_date: string; end_date: string };
+  | { event: 'direct_booking_link'; start_date: string; end_date: string; quantity?: number }
+  | { event: 'new_request'; start_date: string; end_date: string; quantity?: number };
 
 export async function postSystemMessage(
   conversation_id: string,

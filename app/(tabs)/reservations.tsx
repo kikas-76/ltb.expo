@@ -123,6 +123,7 @@ interface ConversationItem {
   unreadCount: number;
   startDate: string;
   endDate: string;
+  quantity: number;
   isIncomingRequest: boolean;
   hasUnreadDot: boolean;
   status: 'pending' | 'accepted' | 'refused' | string;
@@ -335,7 +336,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
           <View style={styles.datesRow}>
             <Ionicons name="calendar-outline" size={10} color={Colors.primaryDark} />
             <Text style={styles.datesText}>
-              {formatDateShort(item.startDate)} → {formatDateShort(item.endDate)}
+              {formatDateShort(item.startDate)} → {formatDateShort(item.endDate)}{item.quantity > 1 ? ` · ${item.quantity} unités` : ''}
             </Text>
             {item.totalPrice != null && (
               <View style={styles.totalPriceChip}>
@@ -583,6 +584,7 @@ export default function MessagesScreen() {
       lastMessageIsOwn: lastIsOwn,
       unreadCount: hasUnread ? unreadMsgs.length : 0,
       startDate: conv.start_date,
+      quantity: Math.max(1, Number(booking?.quantity ?? conv.quantity ?? 1)),
       endDate: conv.end_date,
       isIncomingRequest: hasUnreadFromRequester,
       hasUnreadDot: hasUnread,
@@ -614,11 +616,12 @@ export default function MessagesScreen() {
         end_date,
         created_at,
         status,
+        quantity,
         listing:listings!conversations_listing_id_fkey(name, photos_url, is_active),
         requester:profiles!conversations_requester_id_fkey(username, photo_url, avatar_url),
         owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url),
         chat_messages(id, content, sender_id, is_system, is_read, created_at),
-        bookings(id, total_price, status, start_date, end_date)
+        bookings(id, total_price, status, start_date, end_date, quantity)
       `)
       .or(`requester_id.eq.${user.id},owner_id.eq.${user.id}`);
 
