@@ -37,6 +37,9 @@ interface Props {
   days: number;
   totalPrice: number;
   sending: boolean;
+  // Optional pre-fill (cross-sell : "je loue déjà votre X, ajoutez-moi
+  // aussi votre Y") — overrides the default empty placeholder when set.
+  initialMessage?: string;
 }
 
 function formatShort(d: Date): string {
@@ -60,6 +63,7 @@ export default function RequestMessageModal({
   days,
   totalPrice,
   sending,
+  initialMessage,
 }: Props) {
   const [windowWidth, setWindowWidth] = useState(Dimensions.get('window').width);
   const isDesktop = windowWidth >= DESKTOP_BREAKPOINT;
@@ -75,14 +79,16 @@ export default function RequestMessageModal({
   const bgOpacity = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.94)).current;
 
-  const defaultMessage = `Bonjour ${ownerUsername}, je souhaite louer "${listingTitle}" du ${formatFull(startDate)} au ${formatFull(endDate)}. Est-ce disponible ?`;
+  const defaultMessage = initialMessage && initialMessage.trim().length > 0
+    ? initialMessage
+    : `Bonjour ${ownerUsername}, je souhaite louer "${listingTitle}" du ${formatFull(startDate)} au ${formatFull(endDate)}. Est-ce disponible ?`;
   const [message, setMessage] = useState(defaultMessage);
   const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     setMessage(defaultMessage);
     setFocused(false);
-  }, [visible, ownerUsername, listingTitle]);
+  }, [visible, ownerUsername, listingTitle, initialMessage]);
 
   useEffect(() => {
     if (visible) {

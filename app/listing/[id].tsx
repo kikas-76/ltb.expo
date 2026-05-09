@@ -29,6 +29,7 @@ import DateRangeCalendar from '@/components/listing/DateRangeCalendar';
 import RequestSentOverlay from '@/components/listing/RequestSentOverlay';
 import RequestMessageModal from '@/components/listing/RequestMessageModal';
 import QuantitySelector from '@/components/listing/QuantitySelector';
+import OwnerCatalogCarousel from '@/components/listing/OwnerCatalogCarousel';
 import ProBadge from '@/components/ProBadge';
 import ApproximateLocationMap from '@/components/listing/ApproximateLocationMap';
 import ShareLinkModal from '@/components/listing/ShareLinkModal';
@@ -135,7 +136,7 @@ function isSameDay(a: Date, b: Date) {
 }
 
 export default function ListingDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, start: startParam, end: endParam } = useLocalSearchParams<{ id: string; start?: string; end?: string }>();
   const { profile, session } = useAuth();
   const userId = session?.user.id ?? null;
   const { showSnackbar } = useFavoritesContext();
@@ -165,6 +166,11 @@ export default function ListingDetailScreen() {
   // to compute how many units the renter can still pick for [start,end].
   const [dailyBookedQty, setDailyBookedQty] = useState<Map<string, number>>(new Map());
   const [quantity, setQuantity] = useState<number>(1);
+  // How many active/past bookings the renter has had with THIS owner.
+  // Drives the "déjà loué chez ce pro" badge + the pre-filled message
+  // on the 2nd+ request modal.
+  const [priorBookingsCount, setPriorBookingsCount] = useState<number>(0);
+  const [priorBookingsListingName, setPriorBookingsListingName] = useState<string | null>(null);
 
   const hasMultiUnit = !!listing && (listing.stock_count ?? 1) > 1;
 
@@ -197,6 +203,52 @@ export default function ListingDetailScreen() {
   useEffect(() => {
     if (id) fetchListing();
   }, [id]);
+
+  // Date pre-fill from route params (?start=YYYY-MM-DD&end=...). Used by the
+  // owner-catalog carousel: tapping a sibling listing forwards the dates so
+  // the renter doesn't have to re-pick. Run once when params arrive and we
+  // haven't already touched the selection.
+  useEffect(() => {
+    if (!startParam || !endParam) return;
+    if (selectedStart || selectedEnd) return;
+    const s = new Date(`${startParam}T00:00:00`);
+    const e = new Date(`${endParam}T00:00:00`);
+    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return;
+    setSelectedStart(s);
+    setSelectedEnd(e);
+    const days = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86400000));
+    setSelectedDays(days);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startParam, endParam]);
+
+  // Renter history with this owner. Cheap count(*) — runs once when
+  // listing + user are both known. Filters on paid statuses only.
+  useEffect(() => {
+    const ownerId = listing?.owner?.id;
+    const listingId = listing?.id;
+    if (!userId || !ownerId || !listingId || userId === ownerId) {
+      setPriorBookingsCount(0);
+      setPriorBookingsListingName(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, count } = await supabase
+        .from('bookings')
+        .select('id, listing:listings(name)', { count: 'exact' })
+        .eq('renter_id', userId)
+        .eq('owner_id', ownerId)
+        .neq('listing_id', listingId)
+        .in('status', ['active','in_progress','pending_return','pending_owner_validation','completed'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      setPriorBookingsCount(count ?? 0);
+      const lastListing = (data && data[0]?.listing as any)?.name ?? null;
+      setPriorBookingsListingName(lastListing);
+    })();
+    return () => { cancelled = true; };
+  }, [userId, listing?.owner?.id, listing?.id]);
 
   useEffect(() => {
     if (!id) return;
@@ -843,6 +895,14 @@ export default function ListingDetailScreen() {
                           <Text style={styles.ownerMember}>Membre depuis {formatMemberSince(listing.owner.created_at)}</Text>
                         </View>
                       )}
+                      {priorBookingsCount > 0 && (
+                        <View style={styles.alreadyRentedPill}>
+                          <Ionicons name="checkmark-circle" size={11} color="#065F46" />
+                          <Text style={styles.alreadyRentedText}>
+                            Tu as déjà loué ici{priorBookingsCount > 1 ? ` · ${priorBookingsCount} fois` : ''}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     <View style={styles.ownerAction}>
                       <Text style={styles.ownerActionText}>Voir profil</Text>
@@ -850,6 +910,17 @@ export default function ListingDetailScreen() {
                     </View>
                   </TouchableOpacity>
                 </View>
+              )}
+
+              {!isOwner && listing.owner?.is_pro && listing.owner.id && (
+                <OwnerCatalogCarousel
+                  ownerId={listing.owner.id}
+                  ownerUsername={listing.owner.username}
+                  excludeId={listing.id}
+                  startDate={selectedStart ? selectedStart.toISOString().split('T')[0] : null}
+                  endDate={selectedEnd ? selectedEnd.toISOString().split('T')[0] : null}
+                  userId={userId}
+                />
               )}
 
               {!isOwner && listing && (
@@ -1065,6 +1136,11 @@ export default function ListingDetailScreen() {
               return Math.round(selectedDays * listing.price * Math.max(1, quantity) * (1 - disc));
             })()}
             sending={requesting}
+            initialMessage={
+              priorBookingsCount > 0 && priorBookingsListingName
+                ? `Bonjour ${listing.owner?.username ?? 'votre'}, je loue déjà votre "${priorBookingsListingName}" et j'aimerais aussi louer "${listing.name}". Est-ce possible ?`
+                : undefined
+            }
           />
         )}
         <RequestSentOverlay visible={requestSent} />
@@ -1496,6 +1572,18 @@ export default function ListingDetailScreen() {
             );
           })()}
 
+          {/* Cross-sell : autres annonces du même pro (mobile/tablet path) */}
+          {!isOwner && listing.owner?.is_pro && listing.owner.id && (
+            <OwnerCatalogCarousel
+              ownerId={listing.owner.id}
+              ownerUsername={listing.owner.username}
+              excludeId={listing.id}
+              startDate={selectedStart ? selectedStart.toISOString().split('T')[0] : null}
+              endDate={selectedEnd ? selectedEnd.toISOString().split('T')[0] : null}
+              userId={userId}
+            />
+          )}
+
           {/* Approximate location map: masqué pour le propriétaire */}
           {!isOwner && listingLat && listingLng && (
             <>
@@ -1536,6 +1624,14 @@ export default function ListingDetailScreen() {
                       <Ionicons name="time-outline" size={10} color={Colors.textMuted} />
                       <Text style={styles.ownerMember}>
                         Membre depuis {formatMemberSince(listing.owner.created_at)}
+                      </Text>
+                    </View>
+                  )}
+                  {priorBookingsCount > 0 && (
+                    <View style={styles.alreadyRentedPill}>
+                      <Ionicons name="checkmark-circle" size={11} color="#065F46" />
+                      <Text style={styles.alreadyRentedText}>
+                        Tu as déjà loué ici{priorBookingsCount > 1 ? ` · ${priorBookingsCount} fois` : ''}
                       </Text>
                     </View>
                   )}
@@ -2375,6 +2471,22 @@ const styles = StyleSheet.create({
 
   qtySection: {
     gap: 10,
+  },
+  alreadyRentedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: '#D1FAE5',
+    marginTop: 4,
+  },
+  alreadyRentedText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    color: '#065F46',
   },
   qtyLabel: {
     fontFamily: 'Inter-SemiBold',

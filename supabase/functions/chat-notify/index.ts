@@ -380,7 +380,7 @@ Deno.serve(async (req: Request) => {
           id, owner_id, renter_id, deposit_released_at,
           listing:listings(name),
           renter:profiles!bookings_renter_id_fkey(email),
-          owner:profiles!bookings_owner_id_fkey(email)
+          owner:profiles!bookings_owner_id_fkey(email, username, is_pro)
         `)
         .eq("id", booking_id)
         .maybeSingle();
@@ -399,16 +399,25 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const data = {
+      const ownerProfile = (bookingRow as any).owner ?? {};
+      const baseData = {
         listing_name: (bookingRow.listing as any)?.name ?? "ta location",
         booking_id,
         deposit_released: !!(bookingRow as any).deposit_released_at,
       };
+      // Renter sees the cross-sell tail when the owner is a pro. Owner's
+      // own email skips it (it's their own shop).
+      const renterData = {
+        ...baseData,
+        owner_id: (bookingRow as any).owner_id,
+        owner_username: ownerProfile.username,
+        owner_is_pro: !!ownerProfile.is_pro,
+      };
 
       const renterEmail = (bookingRow.renter as any)?.email;
-      const ownerEmail = (bookingRow.owner as any)?.email;
-      if (renterEmail) await dispatchEmail(renterEmail, "booking_completed", data);
-      if (ownerEmail) await dispatchEmail(ownerEmail, "booking_completed", data);
+      const ownerEmail = ownerProfile.email;
+      if (renterEmail) await dispatchEmail(renterEmail, "booking_completed", renterData);
+      if (ownerEmail) await dispatchEmail(ownerEmail, "booking_completed", baseData);
 
       return new Response(
         JSON.stringify({ success: true, event }),

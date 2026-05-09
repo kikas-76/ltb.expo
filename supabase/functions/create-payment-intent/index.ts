@@ -26,6 +26,27 @@ async function stripePost(
   return res.json();
 }
 
+// Lists card payment methods saved on a Stripe customer. Used by the
+// 1-click flow on the client : if the renter already paid once with us,
+// they have at least one card on file (we always set
+// setup_future_usage="off_session" on the rental PI).
+async function listSavedCards(customerId: string, key: string): Promise<Array<{ id: string; brand: string; last4: string; exp_month: number; exp_year: number }>> {
+  const params = new URLSearchParams({ customer: customerId, type: "card", limit: "5" });
+  const res = await fetch(`https://api.stripe.com/v1/payment_methods?${params}`, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${key}`, "Stripe-Version": "2024-06-20" },
+  });
+  const json = await res.json().catch(() => null);
+  if (!json || json.error || !Array.isArray(json.data)) return [];
+  return json.data.map((pm: any) => ({
+    id: pm.id,
+    brand: pm.card?.brand ?? "card",
+    last4: pm.card?.last4 ?? "****",
+    exp_month: pm.card?.exp_month ?? 0,
+    exp_year: pm.card?.exp_year ?? 0,
+  }));
+}
+
 async function stripeGet(path: string, key: string) {
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
     headers: {
@@ -98,6 +119,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Pre-fetch renter profile + saved cards so the response always includes
+    // `saved_cards`. Both the cached-PI path and the create path need this
+    // for the 1-click confirmation UI on the client.
+    const { data: renterProfileEarly } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_customer_id, email")
+      .eq("id", user.id)
+      .maybeSingle();
+    const stripeKeyEarly = Deno.env.get("STRIPE_SECRET_KEY");
+    let savedCardsEarly: Awaited<ReturnType<typeof listSavedCards>> = [];
+    if (renterProfileEarly?.stripe_customer_id && stripeKeyEarly) {
+      savedCardsEarly = await listSavedCards(renterProfileEarly.stripe_customer_id, stripeKeyEarly);
+    }
+
     // Idempotency: if a rental PI already exists for this booking, return it
     // — but only if it's still card-only. Older PIs (created before the
     // card-only restriction landed) accept Link, which renders an extra email
@@ -117,6 +152,7 @@ Deno.serve(async (req: Request) => {
               rental_client_secret: existingPI.client_secret,
               rental_payment_intent_id: existingPI.id,
               deposit_amount: booking.deposit_amount ?? 0,
+              saved_cards: savedCardsEarly,
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -282,11 +318,19 @@ Deno.serve(async (req: Request) => {
     // the rental ends via the hold-deposit cron function. The renter's card is
     // saved via setup_future_usage: "off_session" on the rental intent.
 
+    // Refresh saved cards in case the customer ID changed mid-flow (the
+    // Stripe customer was recreated on this request because the original
+    // had been deleted).
+    const finalSavedCards = customerId === renterProfileEarly?.stripe_customer_id
+      ? savedCardsEarly
+      : (customerId ? await listSavedCards(customerId, stripeKey) : []);
+
     return new Response(
       JSON.stringify({
         rental_client_secret: rentalIntent.client_secret,
         rental_payment_intent_id: rentalIntent.id,
         deposit_amount: rawDeposit,
+        saved_cards: finalSavedCards,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

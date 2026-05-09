@@ -78,13 +78,29 @@ function formatMemberSince(dateStr: string): string {
 }
 
 
-function ListingMiniCard({ listing, cardWidth }: { listing: Listing; cardWidth: number }) {
+function ListingMiniCard({
+  listing,
+  cardWidth,
+  forwardStart,
+  forwardEnd,
+}: {
+  listing: Listing;
+  cardWidth: number;
+  forwardStart?: string | null;
+  forwardEnd?: string | null;
+}) {
   const photo = listing.photos_url?.[0];
   return (
     <TouchableOpacity
       style={[styles.listingCard, { width: cardWidth }]}
       activeOpacity={0.82}
-      onPress={() => router.push(`/listing/${listing.id}` as any)}
+      onPress={() => {
+        const params = new URLSearchParams();
+        if (forwardStart) params.set('start', forwardStart);
+        if (forwardEnd) params.set('end', forwardEnd);
+        const qs = params.toString();
+        router.push(`/listing/${listing.id}${qs ? `?${qs}` : ''}` as any);
+      }}
     >
       <View style={styles.listingImageWrap}>
         {photo ? (
@@ -114,7 +130,7 @@ function ListingMiniCard({ listing, cardWidth }: { listing: Listing; cardWidth: 
 }
 
 export default function OwnerProfilePage() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, start: startParam, end: endParam } = useLocalSearchParams<{ id: string; start?: string; end?: string }>();
   const insets = useSafeAreaInsets();
   const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
@@ -133,26 +149,51 @@ export default function OwnerProfilePage() {
 
   useEffect(() => {
     if (!id) return;
+    const hasDateFilter = !!startParam && !!endParam;
     (async () => {
+      // When date params are forwarded (cross-sell flow from another listing
+      // or a chat), use the SECURITY DEFINER RPC that already filters out
+      // listings saturated for the window. Otherwise fallback to the
+      // standard SELECT to keep the page snappy when there's no filter.
+      const listingsPromise = hasDateFilter
+        ? supabase.rpc('get_owner_other_active_listings', {
+            p_owner_id: id,
+            p_exclude_id: null,
+            p_start_date: startParam,
+            p_end_date: endParam,
+            p_limit: 50,
+          })
+        : supabase
+            .from('listings')
+            .select('id, name, price, photos_url, category_name')
+            .eq('owner_id', id)
+            .order('created_at', { ascending: false });
+
       const [profileRes, listingsRes, reviewsRes] = await Promise.all([
         supabase
           .from('public_profiles')
           .select('id, username, bio, avatar_url, photo_url, created_at, is_pro, business_hours, business_type, business_name')
           .eq('id', id)
           .maybeSingle(),
-        supabase
-          .from('listings')
-          .select('id, name, price, photos_url, category_name')
-          .eq('owner_id', id)
-          .order('created_at', { ascending: false }),
+        listingsPromise,
         supabase.rpc('get_user_review_summary', { p_user_id: id }),
       ]);
       if (profileRes.data) setOwner(profileRes.data);
-      if (listingsRes.data) setListings(listingsRes.data);
+      if (listingsRes.data) {
+        // RPC returns extra columns; we only consume the 5 the page needs.
+        const rows = listingsRes.data as any[];
+        setListings(rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          price: r.price,
+          photos_url: r.photos_url,
+          category_name: r.category_name ?? null,
+        })));
+      }
       if (reviewsRes.data) setReviews(reviewsRes.data as unknown as ReviewSummary);
       setLoading(false);
     })();
-  }, [id]);
+  }, [id, startParam, endParam]);
 
   const photo = owner?.avatar_url ?? owner?.photo_url;
   const name = owner?.username ? `@${owner.username}` : 'Utilisateur';
@@ -317,12 +358,30 @@ export default function OwnerProfilePage() {
     </View>
   ) : null;
 
+  const dateFilterFr = startParam && endParam
+    ? `${new Date(`${startParam}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → ${new Date(`${endParam}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+    : null;
+
   const listingsPanel = (
     <View style={[styles.listingsSection, isDesktop && styles.listingsSectionDesktop]}>
       <View style={styles.listingsHeader}>
         <Ionicons name="grid-outline" size={18} color={Colors.text} />
         <Text style={styles.listingsSectionTitle}>Ses Annonces</Text>
       </View>
+
+      {dateFilterFr && (
+        <View style={styles.dateFilterPill}>
+          <Ionicons name="calendar-outline" size={13} color={Colors.primaryDark} />
+          <Text style={styles.dateFilterText}>Disponibles pour {dateFilterFr}</Text>
+          <TouchableOpacity
+            onPress={() => router.replace(`/owner/${id}` as any)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons name="close-outline" size={14} color={Colors.primaryDark} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {listings.length === 0 ? (
         <View style={styles.noListingsWrap}>
@@ -331,13 +390,21 @@ export default function OwnerProfilePage() {
           </View>
           <Text style={styles.noListingsTitle}>Aucune annonce</Text>
           <Text style={styles.noListingsText}>
-            Ce membre n'a pas encore publié d'annonces
+            {dateFilterFr
+              ? 'Aucune annonce disponible pour ces dates'
+              : "Ce membre n'a pas encore publié d'annonces"}
           </Text>
         </View>
       ) : (
         <View style={styles.listingsGrid}>
           {listings.map((item) => (
-            <ListingMiniCard key={item.id} listing={item} cardWidth={cardWidth} />
+            <ListingMiniCard
+              key={item.id}
+              listing={item}
+              cardWidth={cardWidth}
+              forwardStart={startParam ?? null}
+              forwardEnd={endParam ?? null}
+            />
           ))}
         </View>
       )}
@@ -736,6 +803,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,
+  },
+  dateFilterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryLight + '40',
+    marginBottom: 12,
+  },
+  dateFilterText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: Colors.primaryDark,
   },
   listingsSectionTitle: {
     fontFamily: 'Inter-Bold',

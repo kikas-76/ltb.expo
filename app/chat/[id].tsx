@@ -68,6 +68,7 @@ interface ConvMeta {
   requesterUserId: string;
   ownerUsername: string;
   ownerUserId: string;
+  ownerIsPro: boolean;
   status: 'pending' | 'accepted' | 'refused';
 }
 
@@ -149,7 +150,7 @@ export default function ChatScreen() {
         quantity,
         listing:listings!conversations_listing_id_fkey(name, photos_url, price),
         requester:profiles!conversations_requester_id_fkey(username, photo_url, avatar_url),
-        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url)
+        owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url, is_pro)
       `)
       .eq('id', id)
       .maybeSingle();
@@ -183,6 +184,7 @@ export default function ChatScreen() {
         requesterUserId: conv.requester_id,
         ownerUsername: owner?.username ?? 'Propriétaire',
         ownerUserId: conv.owner_id,
+        ownerIsPro: !!(owner as any)?.is_pro,
         status: (conv.status as 'pending' | 'accepted' | 'refused') ?? 'pending',
       });
 
@@ -1234,6 +1236,26 @@ export default function ChatScreen() {
         </View>
       )}
 
+      {/* Cross-sell : voir tous les autres objets du pro avec dates pré-remplies. */}
+      {meta && !meta.isOwner && meta.ownerIsPro && meta.status !== 'pending' && (
+        <TouchableOpacity
+          style={styles.proCatalogBtn}
+          activeOpacity={0.85}
+          onPress={() => {
+            const sParam = meta.startDate ? meta.startDate.split('T')[0] : '';
+            const eParam = meta.endDate   ? meta.endDate.split('T')[0]   : '';
+            const qs = sParam && eParam ? `?start=${sParam}&end=${eParam}` : '';
+            router.push(`/owner/${meta.ownerUserId}${qs}` as any);
+          }}
+        >
+          <Ionicons name="storefront-outline" size={14} color={Colors.primaryDark} />
+          <Text style={styles.proCatalogBtnText}>
+            Voir tous les objets de @{meta.ownerUsername}
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={Colors.primaryDark} />
+        </TouchableOpacity>
+      )}
+
       {/* Review prompt: shown once the booking is completed. Edit
           window is 7 days from the review's creation. */}
       {bookingStatus === 'completed' && bookingId && meta && (() => {
@@ -2120,6 +2142,23 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
     backgroundColor: Colors.white,
     gap: 10,
+  },
+  proCatalogBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryLight + '30',
+  },
+  proCatalogBtnText: {
+    flex: 1,
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.primaryDark,
   },
   progressWrapper: {
     flex: 1,

@@ -44,10 +44,10 @@ Deno.serve(async (req: Request) => {
     const { data: bookings, error } = await supabase
       .from("bookings")
       .select(`
-        id, conversation_id, stripe_payment_intent_id,
+        id, owner_id, conversation_id, stripe_payment_intent_id,
         listing:listings(name),
         renter:profiles!bookings_renter_id_fkey(email),
-        owner:profiles!bookings_owner_id_fkey(email)
+        owner:profiles!bookings_owner_id_fkey(email, username, is_pro)
       `)
       .eq("status", "pending_owner_validation")
       .not("return_confirmed_at", "is", null)
@@ -138,15 +138,22 @@ Deno.serve(async (req: Request) => {
           is_read: false,
         });
 
-        const data = {
+        const ownerProfile = (booking as any).owner ?? {};
+        const baseData = {
           listing_name: (booking as any).listing?.name ?? "ta location",
           booking_id: booking.id,
           deposit_released: !!updateData.deposit_released_at,
         };
+        const renterData = {
+          ...baseData,
+          owner_id: (booking as any).owner_id,
+          owner_username: ownerProfile.username,
+          owner_is_pro: !!ownerProfile.is_pro,
+        };
         const renterEmail = (booking as any).renter?.email;
-        const ownerEmail = (booking as any).owner?.email;
-        if (renterEmail) await dispatchEmail(renterEmail, "booking_completed", data);
-        if (ownerEmail) await dispatchEmail(ownerEmail, "booking_completed", data);
+        const ownerEmail = ownerProfile.email;
+        if (renterEmail) await dispatchEmail(renterEmail, "booking_completed", renterData);
+        if (ownerEmail) await dispatchEmail(ownerEmail, "booking_completed", baseData);
 
         results.push({ id: booking.id, status: "auto_completed" });
       }

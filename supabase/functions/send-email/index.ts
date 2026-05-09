@@ -382,6 +382,10 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
       ${paragraph(`Ta location de <strong>"${asText(d.listing_name, "cet objet")}"</strong> est terminée. Ton avis aide la communauté à louer en confiance.`)}
       ${alertBox(`<strong>2 minutes</strong> suffisent : 1 à 5 étoiles + un commentaire optionnel. Tu peux modifier ta note pendant 7 jours après publication.`)}
       ${ctaButton("Donner mon avis →", `${APP_URL}/review/${asText(d.booking_id)}`)}
+      ${d.owner_is_pro && d.owner_id ? `
+        ${paragraph(`Tu as aimé ? <strong>@${asText(d.owner_username, "ce pro")}</strong> propose d'autres objets — il/elle a déjà ta confiance et tes coordonnées de paiement enregistrées.`)}
+        ${ctaButton(`Voir tous les objets de @${asText(d.owner_username, "ce pro")} →`, `${APP_URL}/owner/${asText(d.owner_id)}`)}
+      ` : ""}
     `, "Ta note aide la communauté LoueTonBien.")
   }),
 
@@ -395,6 +399,10 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
       ${paragraph(`Ta location de <strong>"${asText(d.listing_name, "cet objet")}"</strong> est terminée et validée. ${d.deposit_released ? "La caution a été libérée." : ""}`)}
       ${paragraph("Si tu as 2 minutes, partage ton expérience à l'autre partie — ça aide toute la communauté.")}
       ${ctaButton("Donner mon avis →", `${APP_URL}/review/${asText(d.booking_id)}`)}
+      ${d.owner_is_pro && d.owner_id ? `
+        ${paragraph(`<strong>@${asText(d.owner_username, "ce pro")}</strong> a d'autres objets à louer. Profite de la confiance déjà établie pour ta prochaine location.`)}
+        ${ctaButton(`Voir tous les objets de @${asText(d.owner_username, "ce pro")} →`, `${APP_URL}/owner/${asText(d.owner_id)}`)}
+      ` : ""}
     `, "Merci de faire vivre LoueTonBien.")
   }),
 

@@ -306,6 +306,12 @@ export default function PaymentScreen() {
   const [intentError, setIntentError] = useState<string | null>(null);
   const [stripeAccountError, setStripeAccountError] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  // 1-click : if create-payment-intent returns saved cards (the renter
+  // paid us at least once before), skip Stripe Elements by default.
+  const [savedCards, setSavedCards] = useState<Array<{ id: string; brand: string; last4: string; exp_month: number; exp_year: number }>>([]);
+  const [oneClickConfirming, setOneClickConfirming] = useState(false);
+  const [oneClickError, setOneClickError] = useState<string | null>(null);
+  const [forceFullForm, setForceFullForm] = useState(false);
 
   useEffect(() => {
     // Read once at mount; the user can't reach this page without a
@@ -372,6 +378,7 @@ export default function PaymentScreen() {
         if (!data.rental_client_secret) throw new Error('Client secret manquant');
         setRentalClientSecret(data.rental_client_secret);
         setRentalPaymentIntentId(data.rental_payment_intent_id ?? null);
+        if (Array.isArray(data.saved_cards)) setSavedCards(data.saved_cards);
       } catch (err) {
         setIntentError(translatePaymentError(err));
       } finally {
@@ -529,7 +536,95 @@ export default function PaymentScreen() {
               </View>
             )}
 
-            {rentalClientSecret && !loadingIntent && (
+            {rentalClientSecret && !loadingIntent && savedCards.length > 0 && !forceFullForm && (
+              <View style={styles.oneClickCard}>
+                <View style={styles.oneClickHeader}>
+                  <Ionicons name="flash-outline" size={18} color={Colors.primaryDark} />
+                  <Text style={styles.oneClickTitle}>Paiement en 1 clic</Text>
+                </View>
+                <Text style={styles.oneClickSub}>
+                  Tu as déjà payé chez nous — utilise ta carte enregistrée.
+                </Text>
+                <View style={styles.oneClickCardRow}>
+                  <View style={styles.oneClickBrandPill}>
+                    <Text style={styles.oneClickBrandText}>
+                      {savedCards[0].brand.toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={styles.oneClickLast4}>•••• {savedCards[0].last4}</Text>
+                  <Text style={styles.oneClickExp}>
+                    {String(savedCards[0].exp_month).padStart(2, '0')}/{String(savedCards[0].exp_year).slice(-2)}
+                  </Text>
+                </View>
+                {oneClickError && (
+                  <Text style={styles.oneClickError}>{oneClickError}</Text>
+                )}
+                <TouchableOpacity
+                  style={[styles.oneClickBtn, oneClickConfirming && { opacity: 0.6 }]}
+                  activeOpacity={0.85}
+                  disabled={oneClickConfirming}
+                  onPress={async () => {
+                    setOneClickConfirming(true);
+                    setOneClickError(null);
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (!session?.access_token) throw new Error('Session expirée');
+                      const res = await fetch(
+                        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/confirm-payment-saved-card`,
+                        {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+                            'Authorization': `Bearer ${session.access_token}`,
+                          },
+                          body: JSON.stringify({
+                            booking_id: booking_id,
+                            payment_method_id: savedCards[0].id,
+                            return_url: typeof window !== 'undefined' ? `${window.location.origin}/payment-success?booking_id=${booking_id}` : undefined,
+                          }),
+                        }
+                      );
+                      const result = await res.json();
+                      if (!res.ok || result.error) {
+                        // Fall back to full form for any issue (3DS, decline, etc.)
+                        setOneClickError(result.error ?? 'La carte enregistrée n\'a pas pu être utilisée. Saisis une autre carte.');
+                        setForceFullForm(true);
+                        return;
+                      }
+                      if (result.requires_action) {
+                        // Defer to Elements which handles 3DS natively.
+                        setOneClickError('Une vérification 3D Secure est nécessaire — confirme via le formulaire ci-dessous.');
+                        setForceFullForm(true);
+                        return;
+                      }
+                      // Succeeded → the webhook will flip booking to active.
+                      // Navigate to /payment-success which polls the booking.
+                      router.replace(`/payment-success?booking_id=${booking_id}` as any);
+                    } catch (err: any) {
+                      setOneClickError(err?.message ?? 'Erreur réseau');
+                      setForceFullForm(true);
+                    } finally {
+                      setOneClickConfirming(false);
+                    }
+                  }}
+                >
+                  {oneClickConfirming ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="flash-outline" size={16} color="#FFFFFF" />
+                      <Text style={styles.oneClickBtnText}>Confirmer le paiement</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setForceFullForm(true)} style={styles.oneClickAlt}>
+                  <Text style={styles.oneClickAltText}>Utiliser une autre carte</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {rentalClientSecret && !loadingIntent && (savedCards.length === 0 || forceFullForm) && (
               <StripeEmbedForm
                 rentalClientSecret={rentalClientSecret}
                 bookingId={booking_id!}
@@ -839,5 +934,88 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 13,
     color: '#721C24',
+  },
+  oneClickCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 20,
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.primaryDark,
+  },
+  oneClickHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  oneClickTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: Colors.text,
+  },
+  oneClickSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  oneClickCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  oneClickBrandPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: Colors.primaryDark,
+  },
+  oneClickBrandText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 11,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  oneClickLast4: {
+    fontFamily: Platform.OS === 'web' ? ('Menlo, monospace' as any) : 'Menlo',
+    fontSize: 16,
+    color: Colors.text,
+    letterSpacing: 1,
+  },
+  oneClickExp: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginLeft: 'auto',
+  },
+  oneClickError: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: '#C0392B',
+  },
+  oneClickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryDark,
+  },
+  oneClickBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  oneClickAlt: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  oneClickAltText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: Colors.primaryDark,
+    textDecorationLine: 'underline',
   },
 });

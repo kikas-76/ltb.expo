@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
         id, renter_id, owner_id, return_confirmed_at,
         listing:listings(name),
         renter:profiles!bookings_renter_id_fkey(email),
-        owner:profiles!bookings_owner_id_fkey(email)
+        owner:profiles!bookings_owner_id_fkey(email, username, is_pro)
       `)
       .eq("status", "completed")
       .not("return_confirmed_at", "is", null)
@@ -109,17 +109,21 @@ Deno.serve(async (req: Request) => {
     let sent = 0;
     for (const b of bookings as any[]) {
       const listingName = b.listing?.name ?? "ta location";
-      // Renter side
+      const ownerProfile = b.owner ?? {};
+      // Renter side gets the cross-sell tail when the owner is pro.
       if (!reviewedKeys.has(`${b.id}:${b.renter_id}`) && b.renter?.email) {
         await dispatchEmail(b.renter.email, "review_reminder", {
           listing_name: listingName,
           booking_id: b.id,
+          owner_id: b.owner_id,
+          owner_username: ownerProfile.username,
+          owner_is_pro: !!ownerProfile.is_pro,
         });
         sent++;
       }
-      // Owner side
-      if (!reviewedKeys.has(`${b.id}:${b.owner_id}`) && b.owner?.email) {
-        await dispatchEmail(b.owner.email, "review_reminder", {
+      // Owner side : no cross-sell tail (their own shop).
+      if (!reviewedKeys.has(`${b.id}:${b.owner_id}`) && ownerProfile.email) {
+        await dispatchEmail(ownerProfile.email, "review_reminder", {
           listing_name: listingName,
           booking_id: b.id,
         });
