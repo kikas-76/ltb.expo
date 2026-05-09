@@ -164,6 +164,16 @@ export default function ProfilScreen() {
       label: 'Mon portefeuille',
       onPress: () => router.push('/wallet' as any),
     },
+    // Pro-only : tableau de bord stats. La RPC get_pro_stats_summary
+    // refuse côté serveur si le caller n'est pas pro, donc le gating UI
+    // est uniquement cosmétique.
+    ...(profile?.is_pro
+      ? [{
+          icon: <Ionicons name="bar-chart-outline" size={isDesktop ? 20 : 17} color={Colors.primaryDark} />,
+          label: 'Statistiques pro',
+          onPress: () => router.push('/pro-stats' as any),
+        }]
+      : []),
   ];
 
   const supportRows: MenuRow[] = [
