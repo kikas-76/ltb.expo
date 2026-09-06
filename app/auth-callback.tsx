@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
@@ -86,7 +87,7 @@ export default function AuthCallbackScreen() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={Colors.primary} />
+      <LoadingBlock fill={false} />
     </View>
   );
 }

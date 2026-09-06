@@ -9,6 +9,8 @@ import {
   Platform,
   RefreshControl,
 } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,6 +48,7 @@ const STATUS_LABELS: Record<MyReport['status'], { label: string; color: string }
 };
 
 export default function MyReportsScreen() {
+  const headerTop = useHeaderTop();
   const { user } = useAuth();
   const [reports, setReports] = useState<MyReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +84,7 @@ export default function MyReportsScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
         </TouchableOpacity>
@@ -91,7 +94,7 @@ export default function MyReportsScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primaryDark} />
+          <LoadingBlock fill={false} />
         </View>
       ) : (
         <ScrollView

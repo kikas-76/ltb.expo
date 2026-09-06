@@ -11,6 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -85,6 +86,7 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
 }
 
 export default function BusinessHoursScreen() {
+  const headerTop = useHeaderTop();
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState<string | null>(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -149,8 +151,8 @@ export default function BusinessHoursScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <View style={[styles.header, { paddingTop: headerTop }]}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { top: headerTop }]} activeOpacity={0.7}>
             <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
           </TouchableOpacity>
           <Image
@@ -292,13 +294,13 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    paddingBottom: 48,
+    paddingBottom: 32,
   },
   header: {
     alignItems: 'center',
     paddingTop: 60,
     paddingBottom: 8,
-    gap: 20,
+    gap: 14,
   },
   backBtn: {
     position: 'absolute',
@@ -331,7 +333,7 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: 24,
-    paddingTop: 28,
+    paddingTop: 20,
     gap: 20,
     maxWidth: 430,
     width: '100%',

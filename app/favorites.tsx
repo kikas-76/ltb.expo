@@ -159,7 +159,7 @@ function FavoritesScreenContent() {
           <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mes favoris</Text>
-        <View style={styles.backBtn} />
+        <View style={{ width: 40 }} />
       </View>
 
       {loading ? (

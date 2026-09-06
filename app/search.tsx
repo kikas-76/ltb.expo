@@ -17,7 +17,11 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
+import { getCurrentPosition } from '@/lib/geolocation';
+import { readCache, writeCache } from '@/lib/queryCache';
 import ListingCard from '@/components/explore/ListingCard';
+import LoadingBlock from '@/components/LoadingBlock';
+import { useAuth } from '@/contexts/AuthContext';
 import SkeletonCard from '@/components/explore/SkeletonCard';
 import CategoryEmptyState from '@/components/explore/CategoryEmptyState';
 import FilterPanel, {
@@ -40,6 +44,8 @@ interface Listing {
   approx_longitude: number | null;
   owner_type: string | null;
   rank?: number;
+  rating_avg?: number | null;
+  rating_count?: number | null;
   owner: {
     id?: string;
     username: string | null;
@@ -92,8 +98,20 @@ function HighlightedText({ text, query, style, boldStyle }: {
   );
 }
 
+// Natif : l'historique vit en mémoire, hydraté depuis AsyncStorage au premier
+// affichage, puis persisté à chaque modification. Web : localStorage, synchrone.
+let nativeHistory: string[] = [];
+let nativeHydrated = false;
+
+async function hydrateHistory(): Promise<void> {
+  if (Platform.OS === 'web' || nativeHydrated) return;
+  nativeHydrated = true;
+  const saved = await readCache<string[]>('search:history');
+  if (Array.isArray(saved)) nativeHistory = saved;
+}
+
 function getLocalHistory(): string[] {
-  if (Platform.OS !== 'web') return [];
+  if (Platform.OS !== 'web') return nativeHistory;
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -102,21 +120,23 @@ function getLocalHistory(): string[] {
   }
 }
 
+function persistHistory(next: string[]) {
+  if (Platform.OS === 'web') {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); } catch {}
+  } else {
+    nativeHistory = next;
+    writeCache('search:history', next);
+  }
+}
+
 function saveToLocalHistory(query: string) {
-  if (Platform.OS !== 'web' || !query.trim()) return;
-  try {
-    const prev = getLocalHistory().filter((q) => q.toLowerCase() !== query.toLowerCase());
-    const next = [query.trim(), ...prev].slice(0, MAX_HISTORY);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-  } catch {}
+  if (!query.trim()) return;
+  const prev = getLocalHistory().filter((q) => q.toLowerCase() !== query.toLowerCase());
+  persistHistory([query.trim(), ...prev].slice(0, MAX_HISTORY));
 }
 
 function removeFromLocalHistory(query: string) {
-  if (Platform.OS !== 'web') return;
-  try {
-    const next = getLocalHistory().filter((q) => q.toLowerCase() !== query.toLowerCase());
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-  } catch {}
+  persistHistory(getLocalHistory().filter((q) => q.toLowerCase() !== query.toLowerCase()));
 }
 
 const SORT_LABEL: Record<SortKey, string> = {
@@ -128,6 +148,7 @@ const SORT_LABEL: Record<SortKey, string> = {
 
 export default function SearchScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const params = useLocalSearchParams<{ q?: string }>();
   const inputRef = useRef<TextInput>(null);
   const { isDesktop, width: windowWidth } = useResponsive();
@@ -160,18 +181,15 @@ export default function SearchScreen() {
       Animated.timing(slideAnim, { toValue: 0, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
     setTimeout(() => inputRef.current?.focus(), 150);
-    setLocalHistory(getLocalHistory());
+    hydrateHistory().then(() => setLocalHistory(getLocalHistory()));
   }, []);
 
   const requestGeo = useCallback(() => {
     if (geoRequested) return;
     setGeoRequested(true);
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {}
-      );
-    }
+    getCurrentPosition()
+      .then((pos) => setUserCoords({ lat: pos.latitude, lng: pos.longitude }))
+      .catch(() => {});
   }, [geoRequested]);
 
   useEffect(() => {
@@ -228,63 +246,57 @@ export default function SearchScreen() {
     animateSuggestions(hasSugg && showSuggestions);
   }, [suggestions, showSuggestions, showHistoryInDropdown]);
 
+  // Un seul aller-retour (search_listings_v2 renvoie déjà le propriétaire), cache
+  // mémoire par requête pour un affichage immédiat, et protection contre les
+  // réponses obsolètes quand on tape vite.
+  const requestSeq = useRef(0);
+  const resultCache = useRef(new Map<string, Listing[]>());
+
+  const applyResultFilters = useCallback((rows: Listing[]): Listing[] => {
+    let results = rows;
+    if (selectedCategoryIds.length > 0) {
+      results = results.filter((l) => selectedCategoryIds.includes(l.category_id ?? ''));
+    }
+    if (appliedFilters.ownerType !== 'all') {
+      results = results.filter((l) => l.owner_type === appliedFilters.ownerType);
+    }
+    if (appliedFilters.priceMin !== '') {
+      results = results.filter((l) => Number(l.price) >= Number(appliedFilters.priceMin));
+    }
+    if (appliedFilters.priceMax !== '') {
+      results = results.filter((l) => Number(l.price) <= Number(appliedFilters.priceMax));
+    }
+    if (appliedFilters.sortKey === 'price_asc') {
+      results = [...results].sort((a, b) => Number(a.price) - Number(b.price));
+    } else if (appliedFilters.sortKey === 'price_desc') {
+      results = [...results].sort((a, b) => Number(b.price) - Number(a.price));
+    }
+    return results;
+  }, [selectedCategoryIds, appliedFilters]);
+
   const fetchListings = useCallback(async () => {
-    setLoading(true);
+    const q = debouncedQuery.trim();
+    const seq = ++requestSeq.current;
     setHasSearched(true);
+
+    const cached = resultCache.current.get(q);
+    if (cached) {
+      setListings(applyResultFilters(cached));
+    } else {
+      setLoading(true);
+    }
+
     try {
-      let ownersMap: Record<string, any> = {};
+      type SearchRow = {
+        id: string; name: string; price: number; photos_url: string[] | null; category_name: string | null;
+        category_id: string | null; approx_latitude: number | null; approx_longitude: number | null;
+        owner_type: string | null; rank: number; rating_avg: number | null; rating_count: number | null;
+        owner_id: string | null; owner_username: string | null; owner_photo_url: string | null; owner_is_pro: boolean | null;
+      };
+      const { data } = await supabase.rpc('search_listings_v2', { search_query: q, lim: 200 });
+      if (seq !== requestSeq.current) return; // une requête plus récente est partie
 
-      const { data: ftsData } = await supabase.rpc('search_listings', {
-        search_query: debouncedQuery.trim(),
-        lim: 200,
-      });
-
-      if (!ftsData || ftsData.length === 0) {
-        setListings([]);
-        setLoading(false);
-        return;
-      }
-
-      type FtsRow = Omit<Listing, 'owner'> & { owner?: never };
-      let results: FtsRow[] = (ftsData ?? []) as FtsRow[];
-
-      if (selectedCategoryIds.length > 0) {
-        results = results.filter((l) => selectedCategoryIds.includes(l.category_id ?? ''));
-      }
-
-      if (appliedFilters.ownerType !== 'all') {
-        results = results.filter((l) => l.owner_type === appliedFilters.ownerType);
-      }
-
-      if (appliedFilters.priceMin !== '') {
-        results = results.filter((l) => Number(l.price) >= Number(appliedFilters.priceMin));
-      }
-      if (appliedFilters.priceMax !== '') {
-        results = results.filter((l) => Number(l.price) <= Number(appliedFilters.priceMax));
-      }
-
-      if (appliedFilters.sortKey === 'price_asc') {
-        results.sort((a, b) => Number(a.price) - Number(b.price));
-      } else if (appliedFilters.sortKey === 'price_desc') {
-        results.sort((a, b) => Number(b.price) - Number(a.price));
-      }
-
-      const ids = results.map((l) => l.id);
-      if (ids.length > 0) {
-        const { data: ownersData } = await supabase
-          .from('listings')
-          .select('id, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)')
-          .in('id', ids);
-
-        if (ownersData) {
-          type OwnerRow = { id: string; owner: Listing['owner'] | NonNullable<Listing['owner']>[] | null };
-          (ownersData as OwnerRow[]).forEach((row) => {
-            ownersMap[row.id] = Array.isArray(row.owner) ? (row.owner[0] ?? null) : row.owner;
-          });
-        }
-      }
-
-      const mapped: Listing[] = results.map((l) => ({
+      const mapped: Listing[] = ((data ?? []) as SearchRow[]).map((l) => ({
         id: l.id,
         name: l.name,
         price: l.price,
@@ -295,27 +307,31 @@ export default function SearchScreen() {
         approx_longitude: l.approx_longitude,
         owner_type: l.owner_type,
         rank: l.rank,
-        owner: ownersMap[l.id] ?? null,
+        rating_avg: l.rating_avg,
+        rating_count: l.rating_count,
+        owner: l.owner_id
+          ? { id: l.owner_id, username: l.owner_username, photo_url: l.owner_photo_url, is_pro: l.owner_is_pro ?? false }
+          : null,
       }));
+      resultCache.current.set(q, mapped);
+      setListings(applyResultFilters(mapped));
 
-      setListings(mapped);
-
-      if (debouncedQuery.trim()) {
-        saveToLocalHistory(debouncedQuery.trim());
+      // Historique : uniquement les recherches qui ont donné des résultats,
+      // et l'écriture serveur ne bloque pas l'affichage.
+      if (q && mapped.length > 0) {
+        saveToLocalHistory(q);
         setLocalHistory(getLocalHistory());
-        const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await supabase.from('search_history').insert({
-            user_id: user.id,
-            query: debouncedQuery.trim(),
-            result_count: mapped.length,
-          });
+          supabase
+            .from('search_history')
+            .insert({ user_id: user.id, query: q, result_count: mapped.length })
+            .then(() => {});
         }
       }
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
-  }, [debouncedQuery, selectedCategoryIds, appliedFilters]);
+  }, [debouncedQuery, applyResultFilters, user]);
 
   useEffect(() => {
     setPage(0);
@@ -425,7 +441,28 @@ export default function SearchScreen() {
   );
 
   const renderListHeader = () => (
-    <View style={styles.resultRow}>
+    <View>
+      {!debouncedQuery.trim() && localHistory.length > 0 && (
+        <View style={styles.recentBlock}>
+          <Text style={styles.recentTitle}>Recherches récentes</Text>
+          <View style={styles.recentChips}>
+            {localHistory.map((q) => (
+              <View key={q} style={styles.recentChip}>
+                <TouchableOpacity onPress={() => handleSelectSuggestion(q)} activeOpacity={0.7}>
+                  <Text style={styles.recentChipText}>{q}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleRemoveHistory(q)}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons name="close" size={13} color={Colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+      <View style={styles.resultRow}>
       <Text style={styles.resultCount}>
         <Text style={styles.resultCountNum}>{filtered.length}</Text>
         {' '}annonce{filtered.length !== 1 ? 's' : ''}
@@ -439,6 +476,7 @@ export default function SearchScreen() {
           <Text style={styles.locationChipText}>{locationChipLabel()}</Text>
         </View>
       )}
+      </View>
     </View>
   );
 
@@ -450,7 +488,6 @@ export default function SearchScreen() {
         </TouchableOpacity>
 
         <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={15} color={Colors.primary} />
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
@@ -472,9 +509,20 @@ export default function SearchScreen() {
               onPress={() => setSearchQuery('')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
+          {/* Même bouton loupe vert que la barre de l'accueil */}
+          <TouchableOpacity
+            style={styles.searchGo}
+            activeOpacity={0.85}
+            onPress={() => {
+              setShowSuggestions(false);
+              inputRef.current?.blur();
+            }}
+          >
+            <Ionicons name="search" size={18} color={Colors.white} />
+          </TouchableOpacity>
         </View>
       </Animated.View>
 
@@ -639,14 +687,8 @@ export default function SearchScreen() {
       </Animated.View>
 
       <Animated.View style={[styles.flex, { opacity: fadeAnim }]}>
-        {loading ? (
-          <View style={[styles.skeletonGrid, isDesktop && styles.skeletonGridDesktop]}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <View key={i} style={isDesktop ? styles.gridItemDesktop : styles.gridItem}>
-                <SkeletonCard variant="grid" />
-              </View>
-            ))}
-          </View>
+        {loading && filtered.length === 0 ? (
+          <LoadingBlock label="Recherche en cours…" size={100} />
         ) : filtered.length === 0 && hasSearched ? (
           <View style={styles.emptyWrap}>
             <CategoryEmptyState
@@ -726,6 +768,39 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
+  recentBlock: {
+    paddingHorizontal: 4,
+    paddingTop: 4,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  recentTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 17,
+    color: Colors.text,
+  },
+  recentChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  recentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: '#E7E3D5',
+    borderRadius: 999,
+    paddingLeft: 13,
+    paddingRight: 10,
+    paddingVertical: 8,
+  },
+  recentChipText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: Colors.text,
+  },
   safe: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -743,9 +818,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
@@ -758,24 +833,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.white,
-    borderRadius: 12,
+    borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: Colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    borderColor: '#E7E3D5',
+    paddingLeft: 20,
+    paddingRight: 6,
+    paddingVertical: 6,
     gap: 8,
     ...Platform.select({
-      ios: { shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 8 },
+      ios: { shadowColor: '#3B3A30', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 14 },
       android: { elevation: 3 },
       web: { boxShadow: `0 2px 8px ${Colors.primary}30` } as any,
     }),
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inter-SemiBold',
     fontSize: 16,
     color: Colors.text,
     padding: 0,
+    paddingVertical: 10,
+  },
+  searchGo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   suggestionsContainer: {
     marginHorizontal: 16,

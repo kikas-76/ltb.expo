@@ -10,6 +10,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -391,7 +392,7 @@ export default function PaymentScreen() {
     return (
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primaryDark} />
+          <LoadingBlock fill={false} />
         </View>
       </View>
     );

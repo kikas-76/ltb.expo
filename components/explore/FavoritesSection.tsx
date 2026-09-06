@@ -1,9 +1,10 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useState, useRef } from 'react';
 import { View, Text, FlatList, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
-import ListingCard from './ListingCard';
+import { readCache, writeCache } from '@/lib/queryCache';
+import ListingCard, { getRailCardWidth } from './ListingCard';
 import SkeletonCard from './SkeletonCard';
 import { useFavoritesContext } from '@/contexts/FavoritesContext';
 
@@ -27,12 +28,21 @@ interface Props {
   userId: string | null | undefined;
   userLat?: number | null;
   userLng?: number | null;
+  /** Fournies par l'accueil via get_home_feed : pas de requête propre tant que
+   *  l'utilisateur ne modifie pas ses favoris. */
+  listings?: Listing[];
+  loading?: boolean;
 }
 
-function FavoritesSection({ userId, userLat, userLng }: Props) {
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
+function FavoritesSection({ userId, userLat, userLng, listings: listingsProp, loading: loadingProp }: Props) {
+  const [ownListings, setListings] = useState<Listing[]>([]);
+  const [ownLoading, setLoading] = useState(true);
+  const [ownFetched, setOwnFetched] = useState(false);
   const { refreshKey } = useFavoritesContext();
+  const initialRefreshKey = useRef(refreshKey);
+  const useOwn = listingsProp === undefined || ownFetched;
+  const listings = useOwn ? ownListings : listingsProp!;
+  const loading = useOwn ? ownLoading : (loadingProp ?? false);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1024;
   const isTablet = width >= 768 && width < 1024;
@@ -42,6 +52,20 @@ function FavoritesSection({ userId, userLat, userLng }: Props) {
       setLoading(false);
       return;
     }
+    // Données de l'accueil déjà là : requête propre uniquement après un
+    // changement de favoris (refreshKey), pour refléter le nouvel état.
+    if (listingsProp !== undefined && refreshKey === initialRefreshKey.current) return;
+    setOwnFetched(true);
+
+    const cacheKey = `home:favorites:${userId}`;
+    let gotFresh = false;
+    // Cache local : affiche la dernière liste connue pendant que la requête part.
+    readCache<Listing[]>(cacheKey).then((cached) => {
+      if (cached && !gotFresh) {
+        setListings(cached);
+        setLoading(false);
+      }
+    });
 
     const fetch = async () => {
       const { data } = await supabase
@@ -69,6 +93,8 @@ function FavoritesSection({ userId, userLat, userLng }: Props) {
           })
           .filter(Boolean) as Listing[];
         setListings(mapped);
+        gotFresh = true;
+        writeCache(cacheKey, mapped);
       }
       setLoading(false);
     };
@@ -118,7 +144,7 @@ function FavoritesSection({ userId, userLat, userLng }: Props) {
           data={skeletons}
           keyExtractor={(i) => String(i)}
           renderItem={() => (
-            <View style={styles.cardWrapper}>
+            <View style={[styles.cardWrapper, { width: getRailCardWidth(width) }]}>
               <SkeletonCard variant="horizontal" />
             </View>
           )}
@@ -132,13 +158,13 @@ function FavoritesSection({ userId, userLat, userLng }: Props) {
           data={listings}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.cardWrapper}>
+            <View style={[styles.cardWrapper, { width: getRailCardWidth(width) }]}>
               <ListingCard listing={item} variant="horizontal" userLat={userLat} userLng={userLng} userId={userId} />
             </View>
           )}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          snapToInterval={Math.round(width * 0.7) + 12}
+          snapToInterval={getRailCardWidth(width) + 12}
           decelerationRate="fast"
         />
       )}
@@ -166,9 +192,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 12,
   },
-  cardWrapper: {
-    width: 180,
-  },
+  cardWrapper: {},
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',

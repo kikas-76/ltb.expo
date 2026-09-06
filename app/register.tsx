@@ -11,6 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import InfiniteIconStrip from '@/components/InfiniteIconStrip';
@@ -18,6 +19,7 @@ import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import GoogleButton from '@/components/GoogleButton';
+import AppleButton from '@/components/AppleButton';
 
 
 function Stepper({ active }: { active: number }) {
@@ -38,7 +40,8 @@ function getRedirectUrl() {
 }
 
 export default function RegisterScreen() {
-  const { signInWithGoogle } = useAuth();
+  const headerTop = useHeaderTop();
+  const { signInWithGoogle, signInWithApple } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -60,6 +63,14 @@ export default function RegisterScreen() {
     }
     if (googleError) {
       setError(googleError);
+    }
+  };
+
+  const handleAppleRegister = async () => {
+    setError(null);
+    const { error: appleError } = await signInWithApple();
+    if (appleError) {
+      setError(appleError);
     }
   };
 
@@ -113,7 +124,7 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: headerTop }]}>
           <Image
             source={require('@/assets/images/logoLTBwhitoutbaground.png')}
             style={styles.logo}
@@ -134,6 +145,7 @@ export default function RegisterScreen() {
             </View>
           )}
 
+          <AppleButton onPress={handleAppleRegister} />
           <GoogleButton onPress={handleGoogleRegister} loading={googleLoading} />
 
           <View style={styles.separator}>
@@ -226,13 +238,13 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    paddingBottom: 48,
+    paddingBottom: 32,
   },
   header: {
     alignItems: 'center',
     paddingTop: 60,
-    paddingBottom: 28,
-    gap: 20,
+    paddingBottom: 16,
+    gap: 14,
   },
   logo: {
     width: 200,
@@ -256,8 +268,8 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: 24,
-    paddingTop: 32,
-    gap: 14,
+    paddingTop: 20,
+    gap: 12,
     maxWidth: 390,
     width: '100%',
     alignSelf: 'center',

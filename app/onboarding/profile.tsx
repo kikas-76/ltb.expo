@@ -11,10 +11,13 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
+import { readUploadBody } from '@/lib/uploadBody';
+import { prepareImageForUpload } from '@/lib/prepareImageForUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
@@ -55,6 +58,7 @@ function formatPhone(raw: string): string {
 
 
 export default function OnboardingProfileScreen() {
+  const headerTop = useHeaderTop();
   const { user } = useAuth();
 
   const [username, setUsername] = useState('');
@@ -109,15 +113,15 @@ export default function OnboardingProfileScreen() {
 
     setAvatarUploading(true);
     try {
-      const response = await fetch(avatarUri);
-      const blob = await response.blob();
-      const ext = avatarUri.split('.').pop()?.split('?')[0]?.toLowerCase() ?? 'jpg';
+      const prepared = await prepareImageForUpload(avatarUri, { maxSize: 800 });
+      const { body } = await readUploadBody(prepared.uri);
+      const ext = prepared.uri.split('.').pop()?.split('?')[0]?.toLowerCase() ?? 'jpg';
       const safeExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg';
       const path = `${userId}/avatar.${safeExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(path, blob, { upsert: true, contentType: `image/${safeExt}` });
+        .upload(path, body, { upsert: true, contentType: `image/${safeExt}` });
 
       if (uploadError) return null;
 
@@ -204,8 +208,8 @@ export default function OnboardingProfileScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <View style={[styles.header, { paddingTop: headerTop }]}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { top: headerTop }]} activeOpacity={0.7}>
             <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
           </TouchableOpacity>
           <Image
@@ -321,13 +325,13 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    paddingBottom: 48,
+    paddingBottom: 32,
   },
   header: {
     alignItems: 'center',
     paddingTop: 60,
     paddingBottom: 8,
-    gap: 20,
+    gap: 14,
   },
   backBtn: {
     position: 'absolute',
@@ -360,7 +364,7 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 20,
     gap: 16,
     maxWidth: 390,
     width: '100%',

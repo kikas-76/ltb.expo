@@ -1,5 +1,8 @@
-import { memo, useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { memo, useMemo, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions, Animated } from 'react-native';
+import { haptics } from '@/lib/haptics';
+import { Image as ExpoImage } from 'expo-image';
+import { AdaptiveImage } from '@/components/AdaptiveImage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -39,35 +42,60 @@ interface ListingCardProps {
 
 function FavoriteButton({ listingId, userId, listingName }: { listingId: string; userId: string; listingName: string }) {
   const { isFavorite, toggle } = useFavorite(listingId, userId, listingName);
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const bounce = () => {
+    // Petit rebond du cœur, pilote natif (aucune autre animation sur cette vue).
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.35, useNativeDriver: true, speed: 40, bounciness: 12 }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 8 }),
+    ]).start();
+  };
 
   return (
     <TouchableOpacity
       style={styles.heartBtn}
       onPress={(e) => {
         e.stopPropagation?.();
+        haptics.tap();
+        bounce();
         toggle();
       }}
       activeOpacity={0.8}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <Ionicons
-        name={isFavorite ? 'heart' : 'heart-outline'}
-        size={14}
-        color={isFavorite ? Colors.notification : 'rgba(255,255,255,0.95)'}
-      />
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Ionicons
+          name={isFavorite ? 'heart' : 'heart-outline'}
+          size={14}
+          color={isFavorite ? Colors.notification : 'rgba(255,255,255,0.95)'}
+        />
+      </Animated.View>
     </TouchableOpacity>
   );
 }
 
+/**
+ * Largeur d'une card dans un rail horizontal. Sur mobile ≈ 2,2 cards visibles
+ * (comme les rails Leboncoin / Vinted) au lieu d'une seule card à 70 %.
+ */
+export function getRailCardWidth(width: number): number {
+  if (width < 768) return Math.round(width * 0.46);
+  if (width < 1024) return Math.min(width * 0.28, 220);
+  return Math.min(width * 0.18, 260);
+}
+
+// Vignettes carrées (comme Leboncoin / Vinted) : en cover, une photo verticale ou
+// horizontale perd au plus 25 %, contre 44 % pour une verticale dans un 4:3.
+// 2× la largeur affichée suffit (800×600 pesait ~350 Ko par card).
+export const CARD_IMAGE_TRANSFORM = Platform.OS === 'web'
+  ? { width: 640, height: 640, resize: 'cover' as const, quality: 70 }
+  : { width: 480, height: 480, resize: 'cover' as const, quality: 65 };
+
 function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: ListingCardProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isMobile = width < 768;
-  const cardWidth = isMobile
-    ? Math.round(width * 0.7)
-    : width < 1024
-    ? Math.min(width * 0.28, 220)
-    : Math.min(width * 0.18, 260);
+  const cardWidth = getRailCardWidth(width);
 
   const photo = listing.photos_url?.[0];
   const ownerInitials = listing.owner?.username
@@ -90,20 +118,33 @@ function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: Li
   return (
     <TouchableOpacity
       style={[styles.card, variant === 'horizontal' && { width: cardWidth }]}
-      onPress={() => router.push(`/listing/${listing.id}` as any)}
+      onPress={() => {
+        if (Platform.OS !== 'web' && photo) {
+          // Même URL que la galerie de la fiche : l'image est déjà en cache à l'arrivée.
+          ExpoImage.prefetch(
+            getOptimizedImageUrl(photo, { width: Math.round(width * 2), height: Math.round(width * 0.85 * 2), resize: 'cover', quality: 72 }) ?? photo,
+          ).catch(() => {});
+        }
+        router.push(`/listing/${listing.id}` as any);
+      }}
       activeOpacity={0.88}
     >
       <View style={styles.imageContainer}>
         {photo ? (
           Platform.OS === 'web' ? (
             <img
-              src={getOptimizedImageUrl(photo, { width: 800, height: 600, resize: 'cover' }) ?? photo}
+              src={getOptimizedImageUrl(photo, CARD_IMAGE_TRANSFORM) ?? photo}
               loading="lazy"
               decoding="async"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           ) : (
-            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 800, height: 600, resize: 'cover' }) ?? photo }} style={styles.image} resizeMode="cover" />
+            <AdaptiveImage
+              uri={getOptimizedImageUrl(photo, CARD_IMAGE_TRANSFORM) ?? photo}
+              style={styles.image}
+              transition={120}
+              recyclingKey={listing.id}
+            />
           )
         ) : (
           <View style={styles.imageFallback} />
@@ -142,7 +183,7 @@ function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: Li
 
         <View style={styles.footer}>
           {listing.owner?.photo_url ? (
-            <Image source={{ uri: getOptimizedImageUrl(listing.owner.photo_url, { width: 96, height: 96, resize: 'cover' }) ?? listing.owner.photo_url }} style={styles.ownerAvatar} />
+            <ExpoImage source={{ uri: getOptimizedImageUrl(listing.owner.photo_url, { width: 96, height: 96, resize: 'cover' }) ?? listing.owner.photo_url }} style={styles.ownerAvatar} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
             <View style={styles.ownerAvatarFallback}>
               <Text style={styles.ownerAvatarText}>{ownerInitials}</Text>
@@ -171,7 +212,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    aspectRatio: 1,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -231,8 +272,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: {
-    padding: 10,
-    gap: 3,
+    padding: 9,
+    gap: 2,
   },
   cityBadge: {
     flexDirection: 'row',

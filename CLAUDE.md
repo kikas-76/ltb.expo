@@ -61,10 +61,10 @@ All screens live in `app/`. The routing structure:
 Expo resolves `.native.tsx` over `.tsx` on iOS/Android, and `.web.tsx` over `.tsx` on web:
 - `components/StripeWrapper.tsx` — no-op on web (Stripe loads via `<script>` in iframe)
 - `components/StripeWrapper.native.tsx` — wraps in `<StripeProvider>` on native
-- `app/payment/[booking_id].web.tsx` — Stripe Elements in srcdoc iframe (web)
-- `app/payment/[booking_id].tsx` — Stripe native SDK (iOS/Android)
-- `app/wallet/onboarding.web.tsx` — Stripe Connect embedded onboarding (web)
-- `app/wallet/onboarding.tsx` — redirect fallback for native (real flow uses WebBrowser in wallet.tsx)
+- `components/screens/PaymentScreen.tsx` — Stripe Elements in srcdoc iframe (web); `PaymentScreen.native.tsx` — Stripe native SDK. The route `app/payment/[booking_id].tsx` only re-exports it.
+- `components/screens/WalletOnboardingScreen.tsx` — Stripe Connect embedded onboarding (web); `WalletOnboardingScreen.native.tsx` — native `ConnectAccountOnboarding` (stripe-react-native ≥ 0.69, Safari fallback via `/wallet?hosted=1`). Route `app/wallet/onboarding.tsx` re-exports it.
+- Never import `@stripe/stripe-react-native` from a file inside `app/`: the router's require.context bundles every non-platform route file on web, and the SDK's codegen specs break the web build.
+- `app/index.web.tsx` — public web landing; `app/index.tsx` is the native first-open screen (auto-redirects signed-in users to the tabs, native only)
 
 ### Responsive layout
 

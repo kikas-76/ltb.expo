@@ -20,6 +20,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { readUploadBody } from '@/lib/uploadBody';
+import { prepareImageForUpload } from '@/lib/prepareImageForUpload';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { updateBookingStatus } from '@/lib/updateBookingStatus';
 import HandoverQRDisplay from '@/components/handover/HandoverQRDisplay';
@@ -29,6 +31,11 @@ import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBoo
 import { getRentalDays } from '@/lib/pricing';
 import { privateUriFor, resolveAttachmentUrl } from '@/lib/signedUrl';
 import { Skeleton } from '@/components/Skeleton';
+import { Image as ExpoImage } from 'expo-image';
+import { AdaptiveImage } from '@/components/AdaptiveImage';
+import { getOptimizedImageUrl } from '@/lib/imageUrl';
+import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
+import { haptics } from '@/lib/haptics';
 import ReviewModal from '@/components/reviews/ReviewModal';
 import RatingStars from '@/components/reviews/RatingStars';
 import { useAuth } from '@/contexts/AuthContext';
@@ -96,6 +103,16 @@ export default function ChatScreen() {
   const { user } = useAuth();
   const { refresh: refreshUnread } = useUnread();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
+  const didInitialScroll = useRef(false);
+
+  // Le clavier réduit la zone visible : on recale la liste sur le dernier message.
+  useEffect(() => {
+    if (keyboardVisible) {
+      const t = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60);
+      return () => clearTimeout(t);
+    }
+  }, [keyboardVisible]);
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const isDesktop = width >= 1024 && Platform.OS === 'web';
@@ -436,6 +453,7 @@ export default function ChatScreen() {
     const trimmed = text.trim();
     if (!trimmed || !user || !id || sending) return;
 
+    haptics.tap();
     const tempId = `temp-${Date.now()}`;
     const now = new Date().toISOString();
     const optimistic: MessageItem = {
@@ -471,12 +489,35 @@ export default function ChatScreen() {
           : m
       )
     );
+
+    if (data?.id) notifyNewMessage(trimmed);
+  };
+
+  const notifyNewMessage = (preview: string) => {
+    supabase.auth.getSession().then(({ data: { session: notifySession } }) => {
+      if (!notifySession?.access_token) return;
+      fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat-notify`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+            'Authorization': `Bearer ${notifySession.access_token}`,
+          },
+          body: JSON.stringify({ event: 'new_message', conversation_id: id, preview }),
+        }
+      ).catch((e) => console.error('chat-notify new_message failed:', e));
+    });
   };
 
   const uploadAndSendImage = async (asset: ImagePicker.ImagePickerAsset) => {
     if (!user || !id) return;
     setUploading(true);
     setUploadError(null);
+    // Natif : JPEG ≤ 1600 px (HEIC iPhone converti, orientation appliquée).
+    const prepared = await prepareImageForUpload(asset.uri);
+    const sourceUri = prepared.uri;
     // Map picker output to a real mime that matches the bucket
     // allowed_mime_types. ImagePicker may return image/jpg (invalid),
     // and on web asset.uri is a blob: URL so split('.').pop() is unsafe.
@@ -489,8 +530,8 @@ export default function ChatScreen() {
       heif: 'image/heif',
       gif: 'image/gif',
     };
-    const rawExt = (asset.uri.split('.').pop() ?? '').split('?')[0].toLowerCase();
-    const declared = asset.mimeType?.split(';')[0]?.toLowerCase();
+    const rawExt = (sourceUri.split('.').pop() ?? '').split('?')[0].toLowerCase();
+    const declared = prepared.mimeType.split(';')[0]?.toLowerCase();
     const declaredFromExt = EXT_TO_MIME[rawExt];
     const mimeType =
       (declared && Object.values(EXT_TO_MIME).includes(declared))
@@ -523,11 +564,10 @@ export default function ChatScreen() {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
 
     try {
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
+      const { body } = await readUploadBody(sourceUri);
       const { error: storageError } = await supabase.storage
         .from('chat-attachments')
-        .upload(path, blob, { contentType: mimeType });
+        .upload(path, body, { contentType: mimeType });
 
       if (storageError) {
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
@@ -554,6 +594,8 @@ export default function ChatScreen() {
             : m
         )
       );
+
+      if (data?.id) notifyNewMessage('📷 Photo');
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setUploadError("Erreur lors de l'envoi de l'image.");
@@ -587,11 +629,10 @@ export default function ChatScreen() {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
 
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
+      const { body } = await readUploadBody(uri);
       const { error: storageError } = await supabase.storage
         .from('chat-attachments')
-        .upload(path, blob, { contentType: mimeType });
+        .upload(path, body, { contentType: mimeType });
 
       if (storageError) {
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
@@ -618,6 +659,8 @@ export default function ChatScreen() {
             : m
         )
       );
+
+      if (data?.id) notifyNewMessage(`📎 ${name}`);
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setUploadError("Erreur lors de l'envoi du fichier.");
@@ -996,7 +1039,7 @@ export default function ChatScreen() {
           <View style={[styles.bubble, item.isOwn ? styles.bubbleOwn : styles.bubbleOther, item.pending && styles.bubblePending, isDesktop && styles.bubbleDesktop]}>
             {item.imageUrl ? (
               <View>
-                <Image source={{ uri: item.imageUrl }} style={styles.bubbleImage} resizeMode="cover" />
+                <ExpoImage source={{ uri: item.imageUrl }} style={styles.bubbleImage} contentFit="cover" cachePolicy="memory-disk" transition={120} />
                 {item.pending && (
                   <View style={styles.imageUploadOverlay}>
                     <ActivityIndicator size="small" color="#fff" />
@@ -1479,7 +1522,19 @@ export default function ChatScreen() {
         renderItem={renderMessage}
         contentContainerStyle={[styles.messagesList, { paddingBottom: 16 }]}
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        onContentSizeChange={() => {
+          // Uniquement au premier rendu : ensuite chaque envoi/réception déclenche
+          // son propre scrollToEnd, et les images qui se chargent ne font plus sauter la liste.
+          if (!didInitialScroll.current) {
+            didInitialScroll.current = true;
+            listRef.current?.scrollToEnd({ animated: false });
+          }
+        }}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        initialNumToRender={20}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== 'web'}
         ListHeaderComponent={meta ? (
           <TouchableOpacity
             style={styles.recapCard}
@@ -1487,7 +1542,7 @@ export default function ChatScreen() {
             onPress={() => meta.listingId && router.push(`/listing/${meta.listingId}` as any)}
           >
             {meta.listingThumb ? (
-              <Image source={{ uri: meta.listingThumb }} style={styles.recapBannerImage} />
+              <AdaptiveImage uri={getOptimizedImageUrl(meta.listingThumb, { width: 800, height: 600, resize: 'cover' as const, quality: 70 }) ?? meta.listingThumb} style={styles.recapBannerImage} />
             ) : (
               <View style={styles.recapBannerFallback} />
             )}
@@ -1566,7 +1621,9 @@ export default function ChatScreen() {
       <Animated.View
         style={[
           styles.inputBar,
-          { paddingBottom: isDesktop ? 16 : insets.bottom + 8, transform: [{ scale: inputScale }] },
+          // Clavier ouvert : la zone sûre du bas est déjà couverte par le clavier,
+          // garder insets.bottom créait une grande bande blanche au-dessus.
+          { paddingBottom: isDesktop ? 16 : keyboardVisible ? 8 : insets.bottom + 8, transform: [{ scale: inputScale }] },
         ]}
       >
         <TouchableOpacity style={styles.attachBtn} onPress={sendFromGallery} activeOpacity={0.7}>

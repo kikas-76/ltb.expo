@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import EmptyState from '@/components/EmptyState';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -214,11 +215,7 @@ export default function NearbyPage() {
         </div>
         {loadingMore && <View style={styles.loadMoreIndicator}><ActivityIndicator size="small" color={Colors.primary} /></View>}
         {!loading && listings.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons name="location-outline" size={40} color={Colors.border} />
-            <Text style={styles.emptyTitle}>Aucune annonce à proximité</Text>
-            <Text style={styles.emptySubtitle}>Aucun résultat pour ces filtres</Text>
-          </View>
+          <EmptyState illustration="search" title="Rien à louer tout près pour l'instant" subtitle="Élargissez le rayon, ou soyez le premier à proposer un objet dans votre quartier." />
         )}
       </View>
     </ScrollView>

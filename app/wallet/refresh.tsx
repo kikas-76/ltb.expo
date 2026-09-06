@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
 import * as WebBrowser from 'expo-web-browser';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -108,7 +109,7 @@ export default function WalletRefreshScreen() {
   if (checking) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={Colors.primaryDark} />
+        <LoadingBlock fill={false} />
       </View>
     );
   }

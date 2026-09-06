@@ -14,6 +14,9 @@ import {
   Pressable,
   useWindowDimensions,
 } from 'react-native';
+import { EmptyIllustration } from '@/components/EmptyIllustration';
+import { AdaptiveImage } from '@/components/AdaptiveImage';
+import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -147,7 +150,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
         <View style={styles.cardInner}>
           <View style={[styles.cardImageWrap, isDesktop && desktopStyles.cardImageDesktop]}>
             {photo ? (
-              <Image source={{ uri: photo }} style={styles.cardImage} resizeMode="cover" />
+              <AdaptiveImage uri={getOptimizedImageUrl(photo, { width: 400, height: 480, resize: 'cover' as const, quality: 65 }) ?? photo} style={styles.cardImage} recyclingKey={item.id} />
             ) : (
               <View style={styles.cardImagePlaceholder}>
                 <Ionicons name="megaphone-outline" size={24} color={Colors.primary} />
@@ -527,10 +530,8 @@ export default function MesAnnoncesScreen() {
 
         {listings.length === 0 && (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons name="megaphone-outline" size={36} color={Colors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>Aucune annonce</Text>
+            <EmptyIllustration name="box" size={128} />
+            <Text style={styles.emptyTitle}>Votre première annonce vous attend</Text>
             <Text style={styles.emptySubtitle}>
               Publiez votre premier objet à louer et commencez à gagner de l'argent.
             </Text>

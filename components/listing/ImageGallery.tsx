@@ -1,7 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import {
   View,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Modal,
@@ -12,10 +11,14 @@ import {
   Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AdaptiveImage } from '@/components/AdaptiveImage';
 import { Colors } from '@/constants/colors';
 import { getOptimizedImageUrl } from '@/lib/imageUrl';
+import { CARD_IMAGE_TRANSFORM } from '@/components/explore/ListingCard';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -24,8 +27,13 @@ interface ImageGalleryProps {
   height?: number;
   containerWidth?: number;
   onPhotoChange?: (index: number) => void;
+  /** Titre de l'annonce, affiché en tête de la page photos. */
+  title?: string;
 }
 
+/* ------------------------------------------------------------------ */
+/* Zoom plein écran (double-tap) — ouvert depuis la page photos         */
+/* ------------------------------------------------------------------ */
 function LightboxModal({
   photos,
   initialIndex,
@@ -85,32 +93,22 @@ function LightboxModal({
     }
   };
 
-  const goTo = (dir: -1 | 1) => {
-    const next = Math.max(0, Math.min(photos.length - 1, currentIndex + dir));
-    scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
-    setCurrentIndex(next);
-  };
-
   return (
     <Modal visible transparent animationType="none" onShow={openAnim} statusBarTranslucent>
       <Animated.View style={[styles.lightboxBg, { opacity: opacityAnim }]} />
-
       <Animated.View
         style={[styles.lightboxContainer, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}
       >
-        {/* Close button */}
         <TouchableOpacity style={styles.lightboxClose} onPress={handleClose} activeOpacity={0.8}>
           <Ionicons name="close-outline" size={20} color="#fff" />
         </TouchableOpacity>
 
-        {/* Counter */}
         <View style={styles.lightboxCounter}>
           <Text style={styles.lightboxCounterText}>
             {currentIndex + 1} / {photos.length}
           </Text>
         </View>
 
-        {/* Images scrollable */}
         <ScrollView
           ref={scrollRef}
           horizontal
@@ -128,7 +126,8 @@ function LightboxModal({
               style={styles.lightboxPage}
             >
               <Animated.Image
-                source={{ uri: getOptimizedImageUrl(photo, { width: 2000, quality: 85 }) ?? photo }}
+                // Ajustement dans un carré de 2000 px : ratio conservé, photo entière.
+                source={{ uri: getOptimizedImageUrl(photo, { width: 2000, height: 2000, resize: 'contain', quality: 85 }) ?? photo }}
                 style={[
                   styles.lightboxImage,
                   i === currentIndex && { transform: [{ scale: zoomScale }] },
@@ -139,32 +138,6 @@ function LightboxModal({
           ))}
         </ScrollView>
 
-        {/* Prev / next arrows */}
-        {photos.length > 1 && (
-          <>
-            {currentIndex > 0 && (
-              <TouchableOpacity style={[styles.lightboxArrow, styles.lightboxArrowLeft]} onPress={() => goTo(-1)}>
-                <Ionicons name="chevron-back-outline" size={22} color="#fff" />
-              </TouchableOpacity>
-            )}
-            {currentIndex < photos.length - 1 && (
-              <TouchableOpacity style={[styles.lightboxArrow, styles.lightboxArrowRight]} onPress={() => goTo(1)}>
-                <Ionicons name="chevron-forward-outline" size={22} color="#fff" />
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-
-        {/* Dot indicators */}
-        {photos.length > 1 && (
-          <View style={styles.lightboxDots}>
-            {photos.map((_, i) => (
-              <View key={i} style={[styles.lightboxDot, i === currentIndex && styles.lightboxDotActive]} />
-            ))}
-          </View>
-        )}
-
-        {/* Zoom hint */}
         <View style={styles.zoomHint}>
           <Ionicons name="expand-outline" size={12} color="rgba(255,255,255,0.6)" />
           <Text style={styles.zoomHintText}>Double-tap pour zoomer</Text>
@@ -174,44 +147,108 @@ function LightboxModal({
   );
 }
 
-export default function ImageGallery({ photos, height = 340, containerWidth, onPhotoChange }: ImageGalleryProps) {
+/* ------------------------------------------------------------------ */
+/* Page photos façon Leboncoin : titre + toutes les photos entières,    */
+/* l'une sous l'autre, chacune dans un cadre arrondi à son propre ratio */
+/* ------------------------------------------------------------------ */
+function PhotoListModal({
+  photos,
+  title,
+  initialIndex,
+  onClose,
+}: {
+  photos: string[];
+  title?: string;
+  initialIndex: number;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const { width: winW } = useWindowDimensions();
+  const cardW = Math.min(winW, 720) - 32;
+  const [ratios, setRatios] = useState<Record<number, number>>({});
+  const [zoomIndex, setZoomIndex] = useState<number | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrolled = useRef(false);
+
+  const onItemLayout = (i: number, y: number) => {
+    if (i === initialIndex && initialIndex > 0 && !scrolled.current) {
+      scrolled.current = true;
+      setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: false }), 0);
+    }
+  };
+
+  return (
+    <Modal visible animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <View style={[styles.listRoot, { paddingTop: insets.top }]}>
+        <View style={styles.listTopBar}>
+          <TouchableOpacity onPress={onClose} style={styles.listBackBtn} activeOpacity={0.8}>
+            <Ionicons name="chevron-back" size={22} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.listTitle} numberOfLines={1}>{title ?? 'Photos'}</Text>
+        </View>
+
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {photos.map((photo, i) => {
+            const ratio = ratios[i] ?? 4 / 3;
+            // Photo entière (ajustée dans 1600 px), le cadre prend son ratio réel.
+            const uri = getOptimizedImageUrl(photo, { width: 1200, height: 1200, resize: 'contain', quality: 80 }) ?? photo;
+            // Le héros (déjà chargé) sert de placeholder instantané.
+            const heroUri = getOptimizedImageUrl(photo, { width: 786, height: 668, resize: 'cover', quality: 72 });
+            return (
+              <TouchableOpacity
+                key={i}
+                activeOpacity={0.95}
+                onPress={() => setZoomIndex(i)}
+                onLayout={(e) => onItemLayout(i, e.nativeEvent.layout.y)}
+                style={[styles.listCard, { width: cardW, aspectRatio: ratio }]}
+              >
+                <AdaptiveImage
+                  uri={uri}
+                  style={StyleSheet.absoluteFill}
+                  backgroundColor="#E9E6DA"
+                  placeholderUri={heroUri}
+                  onRatio={(r) => setRatios((prev) => (prev[i] ? prev : { ...prev, [i]: r }))}
+                />
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {zoomIndex !== null && (
+          <LightboxModal photos={photos} initialIndex={zoomIndex} onClose={() => setZoomIndex(null)} />
+        )}
+      </View>
+    </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Héros de la fiche : cadre fixe, photo en cover, compteur en bas à    */
+/* droite ; le tap ouvre la page photos                                  */
+/* ------------------------------------------------------------------ */
+export default function ImageGallery({ photos, height = 340, containerWidth, onPhotoChange, title }: ImageGalleryProps) {
   const slideWidth = containerWidth ?? SCREEN_WIDTH;
   const [activeIndex, setActiveIndex] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [listOpen, setListOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const dotAnim = useRef(photos.map(() => new Animated.Value(0))).current;
-
-  const animateDot = (index: number) => {
-    dotAnim.forEach((anim, i) => {
-      Animated.spring(anim, {
-        toValue: i === index ? 1 : 0,
-        useNativeDriver: false,
-        damping: 16,
-        stiffness: 220,
-      }).start();
-    });
-  };
+  const showArrows = Platform.OS === 'web' && slideWidth >= 768 && photos.length > 1;
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
     if (idx !== activeIndex) {
       setActiveIndex(idx);
-      animateDot(idx);
       onPhotoChange?.(idx);
     }
-  };
-
-  const openLightbox = (index: number) => {
-    setLightboxIndex(index);
-    setLightboxOpen(true);
   };
 
   const goTo = (dir: -1 | 1) => {
     const next = Math.max(0, Math.min(photos.length - 1, activeIndex + dir));
     scrollRef.current?.scrollTo({ x: next * slideWidth, animated: true });
     setActiveIndex(next);
-    animateDot(next);
     onPhotoChange?.(next);
   };
 
@@ -231,92 +268,67 @@ export default function ImageGallery({ photos, height = 340, containerWidth, onP
         style={{ width: slideWidth, height }}
         decelerationRate="fast"
       >
-        {photos.map((photo, i) => (
-          <TouchableOpacity
-            key={i}
-            activeOpacity={0.97}
-            onPress={() => openLightbox(i)}
-            style={{ width: slideWidth, height }}
-          >
-            <Image source={{ uri: getOptimizedImageUrl(photo, { width: 1600, quality: 80 }) ?? photo }} style={{ width: slideWidth, height }} resizeMode="contain" />
-          </TouchableOpacity>
-        ))}
+        {photos.map((photo, i) => {
+          // Le serveur recadre exactement au ratio du cadre (2× pour l'écran Retina) :
+          // recadrage centré comme Leboncoin, poids minimal. Seules la photo affichée
+          // et ses voisines se chargent.
+          const uri = getOptimizedImageUrl(photo, {
+            width: Math.round(slideWidth * 2),
+            height: Math.round(height * 2),
+            resize: 'cover',
+            quality: 72,
+          }) ?? photo;
+          const shouldLoad = Math.abs(i - activeIndex) <= 1;
+          // Même URL que la vignette de la card : déjà en cache, affichée à l'instant
+          // pendant que le héros haute définition se charge.
+          const thumb = getOptimizedImageUrl(photo, CARD_IMAGE_TRANSFORM);
+          return (
+            <TouchableOpacity
+              key={i}
+              activeOpacity={0.97}
+              onPress={() => setListOpen(true)}
+              style={{ width: slideWidth, height }}
+            >
+              {shouldLoad ? (
+                <AdaptiveImage
+                  uri={uri}
+                  style={{ width: slideWidth, height }}
+                  backgroundColor={Colors.background}
+                  transition={150}
+                  placeholderUri={thumb}
+                  priority={i === activeIndex ? 'high' : 'normal'}
+                />
+              ) : (
+                <View style={{ width: slideWidth, height, backgroundColor: Colors.background }} />
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
-      {/* Zoom icon hint */}
-      <View style={styles.zoomIconHint} pointerEvents="none">
-        <Ionicons name="expand-outline" size={14} color="rgba(255,255,255,0.9)" />
-      </View>
-
-      {/* Prev/Next buttons for multi-photo */}
-      {photos.length > 1 && activeIndex > 0 && (
+      {showArrows && activeIndex > 0 && (
         <TouchableOpacity style={[styles.navArrow, styles.navArrowLeft]} onPress={() => goTo(-1)} activeOpacity={0.85}>
           <Ionicons name="chevron-back-outline" size={18} color="#fff" />
         </TouchableOpacity>
       )}
-      {photos.length > 1 && activeIndex < photos.length - 1 && (
+      {showArrows && activeIndex < photos.length - 1 && (
         <TouchableOpacity style={[styles.navArrow, styles.navArrowRight]} onPress={() => goTo(1)} activeOpacity={0.85}>
           <Ionicons name="chevron-forward-outline" size={18} color="#fff" />
         </TouchableOpacity>
       )}
 
-      {/* Dot indicators */}
-      {photos.length > 1 && (
-        <View style={styles.dots}>
-          {photos.map((_, i) => {
-            const width = dotAnim[i].interpolate({ inputRange: [0, 1], outputRange: [6, 20] });
-            const opacity = dotAnim[i].interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
-            return (
-              <TouchableOpacity key={i} onPress={() => {
-                scrollRef.current?.scrollTo({ x: i * SCREEN_WIDTH, animated: true });
-                setActiveIndex(i);
-                animateDot(i);
-              }}>
-                <Animated.View style={[styles.dot, { width, opacity }]} />
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+      {/* Compteur façon Leboncoin, en bas à droite */}
+      <View style={styles.countBadge} pointerEvents="none">
+        <Ionicons name="camera-outline" size={13} color="#fff" />
+        <Text style={styles.countBadgeText}>{activeIndex + 1}/{photos.length}</Text>
+      </View>
 
-      {/* Thumbnail strip */}
-      {photos.length > 1 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.thumbStrip}
-          contentContainerStyle={styles.thumbStripContent}
-        >
-          {photos.map((photo, i) => (
-            <TouchableOpacity
-              key={i}
-              onPress={() => {
-                scrollRef.current?.scrollTo({ x: i * SCREEN_WIDTH, animated: true });
-                setActiveIndex(i);
-                animateDot(i);
-              }}
-              activeOpacity={0.8}
-              style={[styles.thumbBtn, i === activeIndex && styles.thumbBtnActive]}
-            >
-              <Image source={{ uri: getOptimizedImageUrl(photo, { width: 200, height: 200, resize: 'cover' }) ?? photo }} style={styles.thumbImg} resizeMode="cover" />
-              {i === activeIndex && <View style={styles.thumbOverlay} />}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
-      {/* Photo count badge (top-right) */}
-      {photos.length > 1 && (
-        <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{activeIndex + 1}/{photos.length}</Text>
-        </View>
-      )}
-
-      {lightboxOpen && (
-        <LightboxModal
+      {listOpen && (
+        <PhotoListModal
           photos={photos}
-          initialIndex={lightboxIndex}
-          onClose={() => setLightboxOpen(false)}
+          title={title}
+          initialIndex={activeIndex}
+          onClose={() => setListOpen(false)}
         />
       )}
     </View>
@@ -334,7 +346,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  /* Nav arrows */
+  /* Flèches (web large uniquement) */
   navArrow: {
     position: 'absolute',
     top: '42%',
@@ -349,62 +361,18 @@ const styles = StyleSheet.create({
   navArrowLeft: { left: 12 },
   navArrowRight: { right: 12 },
 
-  /* Dots */
-  dots: {
-    position: 'absolute',
-    bottom: 64,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 5,
-    zIndex: 4,
-  },
-  dot: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#fff',
-  },
-
-  /* Thumbnails */
-  thumbStrip: {
-    position: 'absolute',
-    bottom: 10,
-    left: 0,
-    right: 0,
-    zIndex: 4,
-  },
-  thumbStripContent: {
-    paddingHorizontal: 16,
-    gap: 6,
-  },
-  thumbBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  thumbBtnActive: {
-    borderColor: '#fff',
-  },
-  thumbImg: {
-    width: '100%',
-    height: '100%',
-  },
-  thumbOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-
-  /* Count badge */
+  /* Compteur */
   countBadge: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 54 : 40,
+    bottom: 38,
     right: 14,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 99,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     zIndex: 5,
   },
   countBadgeText: {
@@ -413,18 +381,50 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-  /* Zoom hint */
-  zoomIconHint: {
-    position: 'absolute',
-    bottom: 72,
-    right: 14,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    borderRadius: 99,
-    padding: 6,
-    zIndex: 4,
+  /* Page photos */
+  listRoot: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  listTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    height: 60,
+  },
+  listBackBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6 },
+      android: { elevation: 3 },
+      web: { boxShadow: '0 2px 6px rgba(0,0,0,0.12)' },
+    }),
+  },
+  listTitle: {
+    flex: 1,
+    fontFamily: 'Inter-Bold',
+    fontSize: 17,
+    color: Colors.text,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 16,
+    alignItems: 'center',
+  },
+  listCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#E9E6DA',
   },
 
-  /* Lightbox */
+  /* Zoom */
   lightboxBg: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
   },
   lightboxImage: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.75,
+    height: SCREEN_HEIGHT * 0.8,
   },
   lightboxClose: {
     position: 'absolute',
@@ -472,37 +472,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
     color: 'rgba(255,255,255,0.85)',
-  },
-  lightboxArrow: {
-    position: 'absolute',
-    top: '48%',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  lightboxArrowLeft: { left: 14 },
-  lightboxArrowRight: { right: 14 },
-  lightboxDots: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 48 : 32,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    zIndex: 10,
-  },
-  lightboxDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-  },
-  lightboxDotActive: {
-    backgroundColor: '#fff',
-    width: 18,
   },
   zoomHint: {
     position: 'absolute',

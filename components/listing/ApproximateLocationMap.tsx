@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Platform, LayoutChangeEvent } from 'react-nativ
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
-import { getGoogleMapsEmbedUrl } from '@/lib/googleMaps';
+import { getGoogleMapsEmbedUrl, getGoogleMapsEmbedHtml, GOOGLE_MAPS_WEBVIEW_BASE_URL } from '@/lib/googleMaps';
 
 interface ApproximateLocationMapProps {
   lat: number;
@@ -110,7 +110,8 @@ function NativeWebView({ uri, width, height }: { uri: string; width: number; hei
   const { WebView } = require('react-native-webview');
   return (
     <WebView
-      source={{ uri }}
+      source={{ html: getGoogleMapsEmbedHtml(uri), baseUrl: GOOGLE_MAPS_WEBVIEW_BASE_URL }}
+      originWhitelist={['*']}
       style={{ width, height }}
       scrollEnabled={false}
       javaScriptEnabled={true}

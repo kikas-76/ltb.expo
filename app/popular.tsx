@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import SharedEmptyState from '@/components/EmptyState';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -301,11 +302,7 @@ export default function PopularPage() {
 
 function EmptyState() {
   return (
-    <View style={styles.emptyState}>
-      <Ionicons name="trending-up-outline" size={40} color={Colors.border} />
-      <Text style={styles.emptyTitle}>Aucune annonce populaire</Text>
-      <Text style={styles.emptySubtitle}>Aucun résultat pour ces filtres</Text>
-    </View>
+    <SharedEmptyState illustration="search" title="Aucune annonce populaire pour ces filtres" subtitle="Retirez un filtre pour découvrir les objets les plus consultés." />
   );
 }
 

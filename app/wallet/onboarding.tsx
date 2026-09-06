@@ -1,22 +1,4 @@
-import { useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
-import { Colors } from '@/constants/colors';
-
-export default function WalletOnboardingNative() {
-  useEffect(() => {
-    router.replace('/wallet');
-  }, []);
-
-  return (
-    <View style={styles.root}>
-      <ActivityIndicator size="large" color="#1B4332" />
-      <Text style={styles.text}>Redirection...</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  text: { fontFamily: 'Inter-Regular', fontSize: 14, color: '#6B6B6B', marginTop: 12 },
-});
+// Écran résolu par plateforme hors du dossier app : .native.tsx (SDK Stripe natif)
+// et .tsx (web). Un seul fichier de route, donc le bundle web n'embarque jamais
+// @stripe/stripe-react-native (ses specs codegen cassent Metro web).
+export { default } from '@/components/screens/WalletOnboardingScreen';

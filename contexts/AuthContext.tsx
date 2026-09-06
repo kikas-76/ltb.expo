@@ -4,6 +4,8 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { registerForPushNotifications, unregisterPushToken } from '@/lib/pushNotifications';
+import { readCache, writeCache } from '@/lib/queryCache';
 
 interface Profile {
   id: string;
@@ -27,6 +29,7 @@ interface AuthContextType {
   profileLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null; emailConflict?: string }>;
+  signInWithApple: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -40,19 +43,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  const fetchProfile = async (_userId: string) => {
+  const fetchProfile = async (userId: string) => {
     setProfileLoading(true);
+    // Profil en cache local → disponible tout de suite : le guard de navigation
+    // n'attend plus le réseau au démarrage. Le RPC rafraîchit juste derrière.
+    const cached = await readCache<Profile>(`profile:${userId}`);
+    if (cached) {
+      setProfile((current) => current ?? cached);
+      setProfileLoading(false);
+    }
     // Direct SELECT on profiles is column-restricted for authenticated users
     // (email, phone_number, role, onboarding_completed are revoked). The
     // SECURITY DEFINER RPC reads auth.uid() server-side and returns the
-    // caller's full row. The userId param is now redundant but kept to avoid
-    // touching the call sites; the RPC keys on the JWT, not on the param.
+    // caller's full row. The RPC keys on the JWT, not on the param.
     const { data, error } = await supabase.rpc('get_my_profile');
     if (error) {
-      setProfile(null);
+      // Erreur réseau : on garde le profil connu plutôt que de vider l'UI.
+      if (!cached) setProfile(null);
     } else {
       const row = Array.isArray(data) ? data[0] : data;
       setProfile(row ?? null);
+      if (row) writeCache(`profile:${userId}`, row);
     }
     setProfileLoading(false);
   };
@@ -65,14 +76,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
+    const bootstrap = async () => {
+      // Web ouvert dans la WebView de l'app (onboarding Stripe embarqué) : l'app
+      // passe sa session dans le fragment d'URL, jamais envoyé au serveur, puis
+      // on l'efface de la barre d'adresse. Gardé par handoff=1 pour ne pas
+      // interférer avec les liens magiques Supabase (auth-callback, etc.).
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const at = params.get('access_token');
+        const rt = params.get('refresh_token');
+        if (params.get('handoff') === '1' && at && rt) {
+          try {
+            await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+          } catch {}
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      }
+      const { data: { session: s } } = await supabase.auth.getSession();
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
         fetchProfile(s.user.id);
       }
       setLoading(false);
-    });
+    };
+    bootstrap();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
@@ -88,6 +116,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (user?.id) {
+      registerForPushNotifications();
+    }
+  }, [user?.id]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -167,13 +202,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithApple = async (): Promise<{ error: string | null }> => {
+    if (Platform.OS !== 'ios') {
+      return { error: "La connexion avec Apple n'est disponible que sur iPhone et iPad." };
+    }
+    try {
+      // require dynamique : le module natif n'existe pas sur web/Android
+      const AppleAuthentication = require('expo-apple-authentication');
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        return { error: "Apple n'a pas renvoyé de jeton d'identité. Réessayez." };
+      }
+
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+      if (error) return { error: error.message };
+
+      return { error: null };
+    } catch (e: any) {
+      if (e?.code === 'ERR_REQUEST_CANCELED') {
+        return { error: null };
+      }
+      const message = e instanceof Error ? e.message : 'Erreur lors de la connexion Apple.';
+      return { error: message };
+    }
+  };
+
   const signOut = async () => {
+    await unregisterPushToken();
     await supabase.auth.signOut();
     setProfile(null);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, profileLoading, signIn, signInWithGoogle, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, profileLoading, signIn, signInWithGoogle, signInWithApple, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

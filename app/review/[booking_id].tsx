@@ -8,6 +8,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -141,7 +142,7 @@ export default function ReviewScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primaryDark} />
+          <LoadingBlock fill={false} />
         </View>
       ) : error ? (
         <View style={styles.center}>

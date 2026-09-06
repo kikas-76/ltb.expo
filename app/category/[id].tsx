@@ -12,6 +12,8 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
+import { CategoryIcon } from '@/components/CategoryIcon';
+import { categoryTheme } from '@/constants/categories';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -54,7 +56,8 @@ const SORT_LABEL: Record<SortKey, string> = {
 
 export default function CategoryScreen() {
   const router = useRouter();
-  const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
+  const { id, name, value } = useLocalSearchParams<{ id: string; name: string; value?: string }>();
+  const catTheme = categoryTheme(value);
   const { isDesktop, isTablet } = useResponsive();
   const numColumns = isDesktop ? 4 : isTablet ? 3 : 2;
   const isWide = Platform.OS === 'web' && (isDesktop || isTablet);
@@ -235,8 +238,13 @@ export default function CategoryScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
             <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title} numberOfLines={1}>{name}</Text>
-          <View style={styles.backBtn} />
+          <View style={styles.titleRow}>
+            <View style={[styles.titleIcon, { backgroundColor: catTheme.tint }]}>
+              <CategoryIcon value={value} size={18} color={catTheme.ink} />
+            </View>
+            <Text style={[styles.title, { flex: 0, flexShrink: 1 }]} numberOfLines={1}>{name}</Text>
+          </View>
+          <View style={{ width: 38 }} />
         </View>
       </Animated.View>
 
@@ -245,11 +253,10 @@ export default function CategoryScreen() {
       >
         <View style={isWide ? styles.filterBarInner : undefined}>
         <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={15} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder={`Rechercher dans ${name}…`}
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor="#8E8C80"
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
@@ -259,9 +266,12 @@ export default function CategoryScreen() {
               onPress={() => setSearchQuery('')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close-outline" size={14} color={Colors.textMuted} />
+              <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
+          <View style={styles.searchGo}>
+            <Ionicons name="search" size={15} color={Colors.white} />
+          </View>
         </View>
 
         <ScrollView
@@ -461,6 +471,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
+  titleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 8,
+  },
+  titleIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: {
     fontFamily: 'Inter-Bold',
     fontSize: 17,
@@ -490,21 +515,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#E7E3D5',
+    paddingLeft: 16,
+    paddingRight: 5,
+    paddingVertical: 5,
     gap: 8,
     marginHorizontal: 16,
     marginBottom: 10,
+    ...Platform.select({
+      ios: { shadowColor: '#3B3A30', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10 },
+      android: { elevation: 3 },
+      web: { boxShadow: '0 4px 10px rgba(59,58,48,0.08)' },
+    }),
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'Inter-Regular',
-    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
     color: Colors.text,
     padding: 0,
+    paddingVertical: 7,
+  },
+  searchGo: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipsScroll: {
     flexGrow: 0,

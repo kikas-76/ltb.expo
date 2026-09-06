@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import EmptyState from '@/components/EmptyState';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -219,11 +220,7 @@ export default function DealsPage() {
         </div>
         {loadingMore && <View style={styles.loadMoreIndicator}><ActivityIndicator size="small" color={Colors.primary} /></View>}
         {!loading && listings.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons name="pricetag-outline" size={40} color={Colors.border} />
-            <Text style={styles.emptyTitle}>Aucune annonce</Text>
-            <Text style={styles.emptySubtitle}>Aucun résultat pour ces filtres</Text>
-          </View>
+          <EmptyState illustration="search" title="Aucune bonne affaire pour ces filtres" subtitle="Élargissez la zone ou retirez un filtre pour voir plus d'annonces." />
         )}
       </View>
     </ScrollView>
@@ -250,11 +247,7 @@ export default function DealsPage() {
       )}
       ListFooterComponent={loadingMore ? <View style={styles.loadMoreIndicator}><ActivityIndicator size="small" color={Colors.primary} /></View> : null}
       ListEmptyComponent={
-        <View style={styles.emptyState}>
-          <Ionicons name="pricetag-outline" size={40} color={Colors.border} />
-          <Text style={styles.emptyTitle}>Aucune annonce</Text>
-          <Text style={styles.emptySubtitle}>Aucun résultat pour ces filtres</Text>
-        </View>
+        <EmptyState illustration="search" title="Aucune bonne affaire pour ces filtres" subtitle="Élargissez la zone ou retirez un filtre pour voir plus d'annonces." />
       }
     />
   );

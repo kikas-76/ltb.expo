@@ -10,6 +10,9 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
+import { AdaptiveImage } from '@/components/AdaptiveImage';
+import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -183,7 +186,7 @@ export default function DirectBookPage() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.primaryDark} />
+        <LoadingBlock fill={false} />
       </View>
     );
   }
@@ -298,7 +301,7 @@ export default function DirectBookPage() {
           <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topBarTitle} numberOfLines={1}>Réservation directe</Text>
-        <View style={styles.backBtn} />
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -313,7 +316,7 @@ export default function DirectBookPage() {
           <View style={styles.wideLayout}>
             <View style={styles.wideLeft}>
               {thumb ? (
-                <Image source={{ uri: thumb }} style={styles.heroImage} resizeMode="cover" />
+                <AdaptiveImage uri={getOptimizedImageUrl(thumb, { width: 800, height: 600, resize: 'cover' as const, quality: 70 }) ?? thumb} style={styles.heroImage} />
               ) : (
                 <View style={[styles.heroImage, { backgroundColor: Colors.primarySurface }]} />
               )}
@@ -369,7 +372,7 @@ export default function DirectBookPage() {
         ) : (
           <>
             {thumb ? (
-              <Image source={{ uri: thumb }} style={styles.heroImageMobile} resizeMode="cover" />
+              <AdaptiveImage uri={getOptimizedImageUrl(thumb, { width: 800, height: 600, resize: 'cover' as const, quality: 70 }) ?? thumb} style={styles.heroImageMobile} />
             ) : (
               <View style={[styles.heroImageMobile, { backgroundColor: Colors.primarySurface }]} />
             )}

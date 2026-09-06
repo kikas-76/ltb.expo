@@ -11,6 +11,9 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import { EmptyIllustration } from '@/components/EmptyIllustration';
+import { AdaptiveImage } from '@/components/AdaptiveImage';
+import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Ionicons } from '@expo/vector-icons';
 import BookingBadge from '@/components/BookingBadge';
@@ -776,10 +779,8 @@ export default function MessagesScreen() {
         </View>
       ) : conversations.length === 0 ? (
         <View style={styles.emptyState}>
-          <View style={styles.emptyIconWrap}>
-            <Ionicons name="chatbubble-outline" size={36} color={Colors.primary} />
-          </View>
-          <Text style={styles.emptyTitle}>Aucun message</Text>
+          <EmptyIllustration name="chat" size={128} />
+          <Text style={styles.emptyTitle}>Aucun message pour l'instant</Text>
           <Text style={styles.emptySubtitle}>
             Vos échanges avec les locataires et propriétaires apparaîtront ici.
           </Text>
@@ -1022,7 +1023,7 @@ export default function MessagesScreen() {
             return (
               <ScrollView style={{ flex: 1 }} contentContainerStyle={desktopStyles.detailContent}>
                 {conv.listingThumb ? (
-                  <Image source={{ uri: conv.listingThumb }} style={desktopStyles.detailBanner} resizeMode="cover" />
+                  <AdaptiveImage uri={getOptimizedImageUrl(conv.listingThumb, { width: 800, height: 600, resize: 'cover' as const, quality: 70 }) ?? conv.listingThumb} style={desktopStyles.detailBanner} />
                 ) : (
                   <View style={[desktopStyles.detailBanner, { backgroundColor: Colors.primarySurface }]} />
                 )}
@@ -1107,7 +1108,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 30,
+    fontSize: 28,
     fontFamily: 'Inter-Bold',
     color: Colors.text,
     letterSpacing: -0.7,

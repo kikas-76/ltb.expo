@@ -10,10 +10,12 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { supabase } from '@/lib/supabase';
+import { getCurrentPosition, geoErrorMessage } from '@/lib/geolocation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   fetchPlaceSuggestions,
@@ -71,6 +73,7 @@ function DynamicMap({ lat, lng }: { lat: number | null; lng: number | null }) {
 }
 
 export default function EditAddressScreen() {
+  const headerTop = useHeaderTop();
   const { refreshProfile } = useAuth();
   const [address, setAddress] = useState('');
   const [lat, setLat] = useState<number | null>(null);
@@ -130,31 +133,23 @@ export default function EditAddressScreen() {
     setUsingGPS(false);
   };
 
-  const handleUseLocation = () => {
+  const handleUseLocation = async () => {
     setGeoError(null);
-    if (!navigator?.geolocation) {
-      setGeoError("La géolocalisation n'est pas disponible sur cet appareil.");
-      return;
-    }
     setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const result = await reverseGeocode(latitude, longitude);
-        setLat(latitude);
-        setLng(longitude);
-        setAddress(result?.address ?? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
-        setUsingGPS(true);
-        setSuggestions([]);
-        setShowSuggestions(false);
-        setGeoLoading(false);
-      },
-      () => {
-        setGeoError("Impossible d'obtenir votre position. Vérifiez les permissions.");
-        setGeoLoading(false);
-      },
-      { timeout: 10000, enableHighAccuracy: false }
-    );
+    try {
+      const { latitude, longitude } = await getCurrentPosition();
+      const result = await reverseGeocode(latitude, longitude);
+      setLat(latitude);
+      setLng(longitude);
+      setAddress(result?.address ?? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+      setUsingGPS(true);
+      setSuggestions([]);
+      setShowSuggestions(false);
+    } catch (e) {
+      setGeoError(geoErrorMessage(e));
+    } finally {
+      setGeoLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -203,8 +198,8 @@ export default function EditAddressScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <View style={[styles.header, { paddingTop: headerTop }]}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { top: headerTop }]} activeOpacity={0.7}>
             <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Mon adresse</Text>
@@ -330,7 +325,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { position: 'absolute', left: 20, top: 60, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontFamily: 'Inter-Bold', fontSize: 17, color: Colors.text, letterSpacing: -0.3 },
-  body: { paddingHorizontal: 24, paddingTop: 28, gap: 16, maxWidth: 390, width: '100%', alignSelf: 'center' },
+  body: { paddingHorizontal: 24, paddingTop: 20, gap: 16, maxWidth: 390, width: '100%', alignSelf: 'center' },
   title: { fontSize: 26, fontFamily: 'Inter-Bold', color: Colors.text, letterSpacing: -0.5, lineHeight: 32 },
   subtitle: { fontSize: 15, fontFamily: 'Inter-Regular', color: Colors.textSecondary, marginTop: -4, lineHeight: 22 },
   errorBox: { backgroundColor: '#FDECEA', borderRadius: 12, padding: 12 },

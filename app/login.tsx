@@ -13,17 +13,20 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDeepLink } from '@/contexts/DeepLinkContext';
 import { Colors } from '@/constants/colors';
 import GoogleButton from '@/components/GoogleButton';
+import AppleButton from '@/components/AppleButton';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 
 
 export default function LoginScreen() {
-  const { signIn, signInWithGoogle, profile, profileLoading, session } = useAuth();
+  const headerTop = useHeaderTop();
+  const { signIn, signInWithGoogle, signInWithApple, profile, profileLoading, session } = useAuth();
   const { pendingListingId, setPendingListingId } = useDeepLink();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -120,6 +123,14 @@ export default function LoginScreen() {
     }
   };
 
+  const handleAppleLogin = async () => {
+    setError(null);
+    const { error: appleError } = await signInWithApple();
+    if (appleError) {
+      setError(appleError);
+    }
+  };
+
   const handleLogin = async () => {
     animateBtnPress();
     setError(null);
@@ -153,7 +164,7 @@ export default function LoginScreen() {
         <Animated.View
           style={[
             styles.header,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }], paddingTop: headerTop },
           ]}
         >
           <Image
@@ -178,6 +189,7 @@ export default function LoginScreen() {
             </Animated.View>
           )}
 
+          <AppleButton onPress={handleAppleLogin} />
           <GoogleButton onPress={handleGoogleLogin} loading={googleLoading} />
 
           <View style={styles.separator}>
@@ -256,12 +268,12 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    paddingBottom: 48,
+    paddingBottom: 32,
   },
   header: {
     alignItems: 'center',
     paddingTop: 60,
-    paddingBottom: 28,
+    paddingBottom: 16,
   },
   logo: {
     width: 200,
@@ -269,8 +281,8 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: 24,
-    paddingTop: 32,
-    gap: 14,
+    paddingTop: 20,
+    gap: 12,
     maxWidth: 390,
     width: '100%',
     alignSelf: 'center',

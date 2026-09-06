@@ -9,25 +9,22 @@ interface Props {
 
 const INFINITY_STEPS = 300;
 
-function buildInfinityPath(cx: number, cy: number, a: number): string {
+/** yScale > 1 arrondit les lobes (le ∞ du logo est proche de 2:1 ; la lemniscate brute fait ~2,8:1). */
+export function buildInfinityPath(cx: number, cy: number, a: number, yScale = 1): string {
   let d = '';
   for (let i = 0; i <= INFINITY_STEPS; i++) {
-    const t = i / INFINITY_STEPS;
-    const angle = t * 2 * Math.PI;
-    const scale = 1 / (Math.sin(angle) * Math.sin(angle) + 1);
-    const x = cx + a * Math.cos(angle) * scale;
-    const y = cy + a * Math.sin(angle) * Math.cos(angle) * scale;
+    const { x, y } = getInfinityPoint(i / INFINITY_STEPS, cx, cy, a, yScale);
     d += i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`;
   }
   return d + ' Z';
 }
 
-function getInfinityPoint(t: number, cx: number, cy: number, a: number) {
+export function getInfinityPoint(t: number, cx: number, cy: number, a: number, yScale = 1) {
   const angle = t * 2 * Math.PI;
   const scale = 1 / (Math.sin(angle) * Math.sin(angle) + 1);
   return {
     x: cx + a * Math.cos(angle) * scale,
-    y: cy + a * Math.sin(angle) * Math.cos(angle) * scale,
+    y: cy + a * Math.sin(angle) * Math.cos(angle) * scale * yScale,
   };
 }
 
@@ -53,16 +50,16 @@ export function InfinityHero({ size = 280 }: Props) {
     const DURATION = 4200;
 
     Animated.loop(
-      Animated.timing(orb1, { toValue: 1, duration: DURATION, easing: Easing.linear, useNativeDriver: false })
+      Animated.timing(orb1, { toValue: 1, duration: DURATION, easing: Easing.linear, useNativeDriver: true })
     ).start();
     Animated.loop(
-      Animated.timing(orb2, { toValue: 1.333, duration: DURATION, easing: Easing.linear, useNativeDriver: false })
+      Animated.timing(orb2, { toValue: 1.333, duration: DURATION, easing: Easing.linear, useNativeDriver: true })
     ).start();
     Animated.loop(
-      Animated.timing(orb3, { toValue: 1.666, duration: DURATION, easing: Easing.linear, useNativeDriver: false })
+      Animated.timing(orb3, { toValue: 1.666, duration: DURATION, easing: Easing.linear, useNativeDriver: true })
     ).start();
     Animated.loop(
-      Animated.timing(orb4, { toValue: 1.15, duration: DURATION * 1.4, easing: Easing.linear, useNativeDriver: false })
+      Animated.timing(orb4, { toValue: 1.15, duration: DURATION * 1.4, easing: Easing.linear, useNativeDriver: true })
     ).start();
 
     Animated.loop(
@@ -225,7 +222,8 @@ export function InfinityHero({ size = 280 }: Props) {
             width: s * 0.075, height: s * 0.075,
             borderRadius: s * 0.0375,
             marginLeft: -(s * 0.0375), marginTop: -(s * 0.0375),
-            left: orb1Points.x as any, top: orb1Points.y as any,
+            left: 0, top: 0,
+            transform: [{ translateX: orb1Points.x }, { translateY: orb1Points.y }],
           },
         ]}
       />
@@ -237,7 +235,8 @@ export function InfinityHero({ size = 280 }: Props) {
             width: s * 0.052, height: s * 0.052,
             borderRadius: s * 0.026,
             marginLeft: -(s * 0.026), marginTop: -(s * 0.026),
-            left: orb2Points.x as any, top: orb2Points.y as any,
+            left: 0, top: 0,
+            transform: [{ translateX: orb2Points.x }, { translateY: orb2Points.y }],
           },
         ]}
       />
@@ -249,7 +248,8 @@ export function InfinityHero({ size = 280 }: Props) {
             width: s * 0.038, height: s * 0.038,
             borderRadius: s * 0.019,
             marginLeft: -(s * 0.019), marginTop: -(s * 0.019),
-            left: orb3Points.x as any, top: orb3Points.y as any,
+            left: 0, top: 0,
+            transform: [{ translateX: orb3Points.x }, { translateY: orb3Points.y }],
           },
         ]}
       />
@@ -261,7 +261,8 @@ export function InfinityHero({ size = 280 }: Props) {
             width: s * 0.024, height: s * 0.024,
             borderRadius: s * 0.012,
             marginLeft: -(s * 0.012), marginTop: -(s * 0.012),
-            left: orb4Points.x as any, top: orb4Points.y as any,
+            left: 0, top: 0,
+            transform: [{ translateX: orb4Points.x }, { translateY: orb4Points.y }],
             opacity: trailOpacity,
           },
         ]}

@@ -10,9 +10,11 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Switch,
   Animated,
   useWindowDimensions,
 } from 'react-native';
+import { prepareImageForUpload } from '@/lib/prepareImageForUpload';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -21,7 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type Section = 'menu' | 'photo' | 'username' | 'bio' | 'email' | 'phone' | 'password' | 'delete';
+type Section = 'menu' | 'photo' | 'username' | 'bio' | 'email' | 'phone' | 'password' | 'delete' | 'notifications';
 
 function SuccessBanner({ message }: { message: string }) {
   return (
@@ -149,11 +151,13 @@ export default function AccountSettingsScreen() {
     setPhotoError(null);
     setPhotoSuccess(false);
     try {
-      const uriParts = asset.uri.split('.');
+      // Natif : JPEG ≤ 800 px (HEIC iPhone converti, orientation appliquée).
+      const prepared = await prepareImageForUpload(asset.uri, { maxSize: 800 });
+      const uriParts = prepared.uri.split('.');
       const ext = uriParts[uriParts.length - 1]?.toLowerCase().split('?')[0] ?? 'jpg';
       const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
       const fileName = `${user!.id}/avatar_${Date.now()}.${ext}`;
-      const response = await fetch(asset.uri);
+      const response = await fetch(prepared.uri);
       const arrayBuffer = await response.arrayBuffer();
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -401,6 +405,13 @@ export default function AccountSettingsScreen() {
       onPress: () => router.push('/edit-address'),
     },
     {
+      icon: <Ionicons name="notifications-outline" size={18} color={Colors.primaryDark} />,
+      label: 'Notifications',
+      value: 'Messages, réservations, rappels',
+      preview: undefined as string | undefined,
+      onPress: () => openSection('notifications'),
+    },
+    {
       icon: <Ionicons name="lock-closed-outline" size={18} color={Colors.primaryDark} />,
       label: 'Mot de passe',
       value: '••••••••',
@@ -543,6 +554,50 @@ export default function AccountSettingsScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+    );
+  }
+
+  if (section === 'notifications') {
+    const prefs: Record<string, boolean> = {
+      messages: true, bookings: true, reminders: true, news: true,
+      ...((profile as any)?.notification_prefs ?? {}),
+    };
+    const rows: { key: string; label: string; hint: string }[] = [
+      { key: 'messages', label: 'Messages', hint: 'Nouveaux messages dans vos conversations' },
+      { key: 'bookings', label: 'Réservations', hint: 'Demandes, réponses, paiements, cautions, avis' },
+      { key: 'reminders', label: 'Rappels', hint: 'Veille de location, jour du retour, validations à faire' },
+      { key: 'news', label: 'Nouveautés', hint: 'Annonces près de chez vous et actualités LoueTonBien' },
+    ];
+    const toggle = async (key: string, value: boolean) => {
+      const next = { ...prefs, [key]: value };
+      await supabase.from('profiles').update({ notification_prefs: next }).eq('id', user!.id);
+      await refreshProfile();
+    };
+    return (
+      <View style={styles.root}>
+        <View style={{ paddingTop: insets.top }}>
+          <SectionHeader onBack={() => setSection('menu')} title="Notifications" />
+        </View>
+        <ScrollView contentContainerStyle={[styles.sectionBody, isDesktop && deskStyles.centeredBody]} showsVerticalScrollIndicator={false}>
+          <Text style={styles.fieldDescription}>
+            Choisissez ce que vous recevez sur votre téléphone. Le centre de notifications de l'app garde tout, quoi qu'il arrive.
+          </Text>
+          {rows.map((r) => (
+            <View key={r.key} style={prefStyles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={prefStyles.label}>{r.label}</Text>
+                <Text style={prefStyles.hint}>{r.hint}</Text>
+              </View>
+              <Switch
+                value={prefs[r.key] !== false}
+                onValueChange={(v) => toggle(r.key, v)}
+                trackColor={{ false: '#D9D5C8', true: Colors.primary }}
+                thumbColor={Colors.white}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
     );
   }
 
@@ -1238,4 +1293,13 @@ const deskStyles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 40,
   },
+});
+
+const prefStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 16,
+    backgroundColor: Colors.white, borderRadius: 16, borderWidth: 1, borderColor: '#EDEAE0', marginBottom: 10,
+  },
+  label: { fontFamily: 'Inter-SemiBold', fontSize: 15, color: Colors.text },
+  hint: { fontFamily: 'Inter-Regular', fontSize: 12, lineHeight: 17, color: Colors.textMuted, marginTop: 2 },
 });

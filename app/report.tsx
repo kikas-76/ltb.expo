@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -115,6 +116,7 @@ const CONVERSATION_CATEGORIES: ReportCategory[] = [
 ];
 
 export default function ReportScreen() {
+  const headerTop = useHeaderTop();
   const params = useLocalSearchParams<{ type: string; targetId: string; targetLabel?: string }>();
   const type = params.type as 'listing' | 'conversation';
   const targetId = params.targetId;
@@ -168,11 +170,11 @@ export default function ReportScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         {step !== 'done' ? (
           <TouchableOpacity
             onPress={() => (step === 'details' ? setStep('category') : router.back())}
-            style={styles.backBtn}
+            style={[styles.backBtn, { top: headerTop }]}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />

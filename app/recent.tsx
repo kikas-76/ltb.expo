@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import EmptyState from '@/components/EmptyState';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -199,7 +200,7 @@ export default function RecentPage() {
               ))}
         </div>
         {loadingMore && <View style={styles.loadMoreIndicator}><ActivityIndicator size="small" color={Colors.primary} /></View>}
-        {!loading && listings.length === 0 && <EmptyState icon="time-outline" title="Aucune annonce" subtitle="Aucun résultat pour ces filtres" />}
+        {!loading && listings.length === 0 && <EmptyState illustration="box" title="Aucune nouveauté pour ces filtres" subtitle="Les prochaines annonces publiées apparaîtront ici." />}
       </View>
     </ScrollView>
   );
@@ -224,7 +225,7 @@ export default function RecentPage() {
         </View>
       )}
       ListFooterComponent={loadingMore ? <View style={styles.loadMoreIndicator}><ActivityIndicator size="small" color={Colors.primary} /></View> : null}
-      ListEmptyComponent={<EmptyState icon="time-outline" title="Aucune annonce" subtitle="Aucun résultat pour ces filtres" />}
+      ListEmptyComponent={<EmptyState illustration="box" title="Aucune nouveauté pour ces filtres" subtitle="Les prochaines annonces publiées apparaîtront ici." />}
     />
   );
 
@@ -246,15 +247,6 @@ export default function RecentPage() {
   );
 }
 
-function EmptyState({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
-  return (
-    <View style={styles.emptyState}>
-      <Ionicons name={icon as any} size={40} color={Colors.border} />
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptySubtitle}>{subtitle}</Text>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },

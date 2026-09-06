@@ -11,6 +11,7 @@ import {
   Easing,
   ActivityIndicator,
 } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -125,7 +126,7 @@ export default function ResetPasswordScreen() {
   if (checking) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={Colors.primaryDark} />
+        <LoadingBlock fill={false} />
         <Text style={styles.checkingText}>Vérification du lien...</Text>
       </View>
     );

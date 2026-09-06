@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useResponsive } from '@/hooks/useResponsive';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -35,6 +36,11 @@ import ApproximateLocationMap from '@/components/listing/ApproximateLocationMap'
 import ShareLinkModal from '@/components/listing/ShareLinkModal';
 import { Skeleton } from '@/components/Skeleton';
 import { getOptimizedImageUrl } from '@/lib/imageUrl';
+import { readCache, writeCache } from '@/lib/queryCache';
+import { CategoryIcon } from '@/components/CategoryIcon';
+import { categoryTheme } from '@/constants/categories';
+import { haptics } from '@/lib/haptics';
+import LoadingBlock from '@/components/LoadingBlock';
 
 const RECENTLY_VIEWED_KEY = 'ltb_recently_viewed';
 const MAX_RECENTLY_VIEWED = 5;
@@ -51,8 +57,8 @@ function trackRecentlyViewed(listingId: string) {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const HEADER_IMAGE_HEIGHT = SCREEN_HEIGHT * 0.42;
-const SCROLL_THRESHOLD = HEADER_IMAGE_HEIGHT - 80;
+// Héros proche du 4:3 sur mobile (≈ 320 px sur un iPhone standard) plutôt que 42 % de la hauteur d'écran.
+const HEADER_IMAGE_HEIGHT = Math.max(240, Math.min(Math.round(SCREEN_WIDTH * 0.82), Math.round(SCREEN_HEIGHT * 0.42)));
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   electronique: { bg: '#E8F2FF', text: '#3A6BBF', border: '#B8D4FF' },
@@ -142,6 +148,7 @@ export default function ListingDetailScreen() {
   const { showSnackbar } = useFavoritesContext();
   const { isDesktop, isTabletOrDesktop } = useResponsive();
   const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const [listing, setListing] = useState<Listing | null>(null);
   const { isFavorite, toggle: toggleFavorite } = useFavorite(id ?? '', userId, listing?.name ?? undefined);
@@ -149,6 +156,7 @@ export default function ListingDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [activePhoto, setActivePhoto] = useState(0);
   const [calendarVisible, setCalendarVisible] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
   const [viewCount, setViewCount] = useState(0);
   const [likeCount, setLikeCount] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -195,6 +203,13 @@ export default function ListingDetailScreen() {
   const [cityName, setCityName] = useState<string | null>(null);
   const [shareLinkVisible, setShareLinkVisible] = useState(false);
   const [firstPhotoAspect, setFirstPhotoAspect] = useState<number>(4 / 3);
+
+  // Le ratio réel de la première photo est remonté par la galerie au chargement
+  // de l'image elle-même : aucune requête supplémentaire.
+  // Héros façon Leboncoin : cadre fixe un peu plus large que haut, photo en cover
+  // recadrée au centre (le serveur livre exactement ce format).
+  const galleryHeight = Math.round(windowWidth * 0.85);
+  const scrollThreshold = galleryHeight - 80;
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -284,9 +299,12 @@ export default function ListingDetailScreen() {
   // siblings; guards on the listing existing.
   useEffect(() => {
     const firstPhoto = listing?.photos_url?.[0];
-    if (!firstPhoto) return;
+    // Seule la mise en page desktop (galerie à hauteur adaptative) a besoin du ratio.
+    // Et on mesure une miniature de 200 px : l'ancien code téléchargeait l'original
+    // (jusqu'à 4 Mo) à chaque ouverture de fiche, juste pour lire ses dimensions.
+    if (!firstPhoto || windowWidth < 1024) return;
     Image.getSize(
-      firstPhoto,
+      getOptimizedImageUrl(firstPhoto, { width: 200, height: 200, resize: 'contain', quality: 50 }) ?? firstPhoto,
       (w, h) => {
         if (w > 0 && h > 0) {
           setFirstPhotoAspect(Math.max(0.55, Math.min(1.9, w / h)));
@@ -314,6 +332,15 @@ export default function ListingDetailScreen() {
   }, [loading, listing]);
 
   const fetchListing = async () => {
+    // Fiche déjà vue : affichage immédiat depuis le cache local, puis rafraîchissement.
+    const cacheKey = `listing:${id}`;
+    const cached = await readCache<Listing>(cacheKey);
+    if (cached) {
+      setListing(cached);
+      setLikeCount((cached as any).saves_count ?? 0);
+      setViewCount((cached as any).views_count ?? 0);
+      setLoading(false);
+    }
     try {
       // Both calls are keyed by id and independent — fire in parallel
       // to halve the initial wait on detail page load.
@@ -349,6 +376,7 @@ export default function ListingDetailScreen() {
         }
 
         setListing(mapped);
+        writeCache(cacheKey, mapped);
 
         // Initial qty: smallest allowed pack (if packs defined), else 1.
         const initialQty = Array.isArray(mapped.packs) && mapped.packs.length > 0
@@ -531,6 +559,7 @@ export default function ListingDetailScreen() {
   );
 
   const handleRequestPress = () => {
+    haptics.confirm();
     if (!selectedDays || !selectedStart || !selectedEnd) return;
     setMessageModalVisible(true);
   };
@@ -649,7 +678,7 @@ export default function ListingDetailScreen() {
   };
 
   const headerOpacity = scrollY.interpolate({
-    inputRange: [SCROLL_THRESHOLD - 60, SCROLL_THRESHOLD],
+    inputRange: [scrollThreshold - 60, scrollThreshold],
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
@@ -657,17 +686,7 @@ export default function ListingDetailScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.background }}>
-        <Skeleton height={HEADER_IMAGE_HEIGHT} radius={0} />
-        <View style={{ padding: 16, gap: 14 }}>
-          <Skeleton height={28} width="75%" />
-          <Skeleton height={18} width="40%" />
-          <Skeleton height={48} width="100%" radius={12} />
-          <Skeleton height={14} width="100%" />
-          <Skeleton height={14} width="92%" />
-          <Skeleton height={14} width="60%" />
-          <View style={{ height: 12 }} />
-          <Skeleton height={56} width="100%" radius={999} />
-        </View>
+        <LoadingBlock label="Chargement de l'annonce…" />
       </View>
     );
   }
@@ -688,6 +707,7 @@ export default function ListingDetailScreen() {
 
   const catValue = listing.category?.value ?? '';
   const catColors = CATEGORY_COLORS[catValue] ?? CATEGORY_COLORS['autre'];
+  const catTheme = categoryTheme(catValue);
   const ownerPhoto = listing.owner?.avatar_url ?? listing.owner?.photo_url;
   const ownerName = listing.owner?.username ? `@${listing.owner.username}` : 'Utilisateur';
   const ownerInitials = (listing.owner?.username ?? 'U').slice(0, 2).toUpperCase();
@@ -749,6 +769,7 @@ export default function ListingDetailScreen() {
                 <ImageGallery
                   photos={photos}
                   height={adaptiveHeight}
+                  title={listing.name}
                   containerWidth={galleryWidth}
                   onPhotoChange={(i) => setActivePhoto(i)}
                 />
@@ -758,15 +779,15 @@ export default function ListingDetailScreen() {
               <View style={styles.metaRow}>
                 {listing.category_name && (
                   <TouchableOpacity
-                    style={[styles.categoryPill, { backgroundColor: catColors.bg, borderColor: catColors.border }]}
+                    style={[styles.categoryPill, { backgroundColor: catTheme.tint, borderColor: 'transparent' }]}
                     activeOpacity={0.7}
                     onPress={() => listing.category_id && router.push({
                       pathname: '/category/[id]',
                       params: { id: listing.category_id, name: listing.category_name ?? '', value: listing.category?.value ?? '' },
                     } as any)}
                   >
-                    <Ionicons name="pricetag-outline" size={11} color={catColors.text} />
-                    <Text style={[styles.categoryPillText, { color: catColors.text }]}>{listing.category_name}</Text>
+                    <CategoryIcon value={catValue} size={15} color={catTheme.ink} />
+                    <Text style={[styles.categoryPillText, { color: catTheme.ink }]}>{listing.category_name}</Text>
                   </TouchableOpacity>
                 )}
                 {distanceText && (
@@ -798,11 +819,18 @@ export default function ListingDetailScreen() {
 
               {listing.description && (
                 <>
-                  <View style={styles.descriptionBlock}>
-                    <Text style={styles.sectionTitle}>Description</Text>
-                    <View style={styles.descriptionSeparator} />
-                    <Text style={styles.descriptionText}>{listing.description}</Text>
-                  </View>
+                  <View style={styles.descriptionCard}>
+                    <View style={styles.descriptionHead}>
+                      <View style={styles.descriptionAccent} />
+                      <Text style={styles.sectionTitle}>Description</Text>
+                    </View>
+                    <Text style={styles.descriptionText} numberOfLines={descExpanded ? undefined : 6}>{listing.description}</Text>
+                    {listing.description.length > 260 && (
+                      <TouchableOpacity onPress={() => setDescExpanded((v) => !v)} activeOpacity={0.7} style={styles.descriptionMore}>
+                        <Text style={styles.descriptionMoreText}>{descExpanded ? 'Réduire' : 'Lire la suite'}</Text>
+                      </TouchableOpacity>
+                    )}
+</View>
                   <View style={styles.divider} />
                 </>
               )}
@@ -1019,7 +1047,7 @@ export default function ListingDetailScreen() {
                     activeOpacity={0.8}
                     onPress={() => setCalendarVisible(true)}
                   >
-                    <View style={styles.datePickerIcon}><Ionicons name="calendar-outline" size={17} color={Colors.primary} /></View>
+                    <View style={styles.datePickerIcon}><Ionicons name="calendar" size={20} color={Colors.primaryDark} /></View>
                     <View style={styles.datePickerContent}>
                       {selectedDays > 0 && selectedStart ? (
                         <>
@@ -1030,10 +1058,15 @@ export default function ListingDetailScreen() {
                           <Text style={styles.datePickerDaysCount}>{selectedDays} jour{selectedDays > 1 ? 's' : ''}</Text>
                         </>
                       ) : (
-                        <Text style={styles.datePickerText}>Choisir des dates de location</Text>
+                        <>
+                      <Text style={styles.datePickerText}>Choisir mes dates</Text>
+                      <Text style={styles.datePickerHint}>Prix total et disponibilité en un coup d'œil</Text>
+                    </>
                       )}
                     </View>
-                    <Ionicons name="chevron-forward-outline" size={16} color={Colors.primary} />
+                    <View style={styles.datePickerChevron}>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.white} />
+                </View>
                   </TouchableOpacity>
                   <View style={styles.promoBadgeRow}>
                     <View style={styles.promoBadge}>
@@ -1161,12 +1194,12 @@ export default function ListingDetailScreen() {
   return (
     <View style={styles.container}>
       {/* Floating top bar */}
-      <Animated.View style={[styles.floatingHeader, { opacity: headerOpacity }]}>
+      <Animated.View style={[styles.floatingHeader, { opacity: headerOpacity, height: insets.top + 48, paddingTop: insets.top }]}>
         <Text style={styles.floatingHeaderTitle} numberOfLines={1}>{listing.name}</Text>
       </Animated.View>
 
       {/* Nav buttons */}
-      <View style={styles.navBar} pointerEvents="box-none">
+      <View style={[styles.navBar, { top: insets.top + 6 }]} pointerEvents="box-none">
         <TouchableOpacity onPress={handleBack} style={styles.navBtn} activeOpacity={0.85}>
           <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
@@ -1198,7 +1231,8 @@ export default function ListingDetailScreen() {
         {/* Hero gallery */}
         <ImageGallery
           photos={photos}
-          height={HEADER_IMAGE_HEIGHT}
+          height={galleryHeight}
+          title={listing.name}
           onPhotoChange={(i) => setActivePhoto(i)}
         />
 
@@ -1206,22 +1240,23 @@ export default function ListingDetailScreen() {
         <Animated.View
           style={[
             styles.contentCard,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            // Assez haut pour atteindre le bas de l'écran, sans forcer un défilement inutile.
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }], minHeight: SCREEN_HEIGHT - galleryHeight + 24 },
           ]}
         >
           {/* Category + Distance row */}
           <View style={styles.metaRow}>
             {listing.category_name && (
               <TouchableOpacity
-                style={[styles.categoryPill, { backgroundColor: catColors.bg, borderColor: catColors.border }]}
+                style={[styles.categoryPill, { backgroundColor: catTheme.tint, borderColor: 'transparent' }]}
                 activeOpacity={0.7}
                 onPress={() => listing.category_id && router.push({
                   pathname: '/category/[id]',
                   params: { id: listing.category_id, name: listing.category_name ?? '', value: listing.category?.value ?? '' },
                 } as any)}
               >
-                <Ionicons name="pricetag-outline" size={11} color={catColors.text} />
-                <Text style={[styles.categoryPillText, { color: catColors.text }]}>
+                <CategoryIcon value={catValue} size={15} color={catTheme.ink} />
+                <Text style={[styles.categoryPillText, { color: catTheme.ink }]}>
                   {listing.category_name}
                 </Text>
               </TouchableOpacity>
@@ -1258,11 +1293,18 @@ export default function ListingDetailScreen() {
           {/* Description */}
           {listing.description && (
             <>
-              <View style={styles.descriptionBlock}>
-                <Text style={styles.sectionTitle}>Description</Text>
-                <View style={styles.descriptionSeparator} />
-                <Text style={styles.descriptionText}>{listing.description}</Text>
-              </View>
+              <View style={styles.descriptionCard}>
+                <View style={styles.descriptionHead}>
+                  <View style={styles.descriptionAccent} />
+                  <Text style={styles.sectionTitle}>Description</Text>
+                </View>
+                <Text style={styles.descriptionText} numberOfLines={descExpanded ? undefined : 6}>{listing.description}</Text>
+                {listing.description.length > 260 && (
+                  <TouchableOpacity onPress={() => setDescExpanded((v) => !v)} activeOpacity={0.7} style={styles.descriptionMore}>
+                    <Text style={styles.descriptionMoreText}>{descExpanded ? 'Réduire' : 'Lire la suite'}</Text>
+                  </TouchableOpacity>
+                )}
+</View>
               <View style={styles.divider} />
             </>
           )}
@@ -1427,7 +1469,7 @@ export default function ListingDetailScreen() {
                 onPress={() => setCalendarVisible(true)}
               >
                 <View style={styles.datePickerIcon}>
-                  <Ionicons name="calendar-outline" size={17} color={Colors.primary} />
+                  <Ionicons name="calendar" size={20} color={Colors.primaryDark} />
                 </View>
                 <View style={styles.datePickerContent}>
                   {selectedDays > 0 && selectedStart ? (
@@ -1443,10 +1485,15 @@ export default function ListingDetailScreen() {
                       </Text>
                     </>
                   ) : (
-                    <Text style={styles.datePickerText}>Choisir des dates de location</Text>
+                    <>
+                      <Text style={styles.datePickerText}>Choisir mes dates</Text>
+                      <Text style={styles.datePickerHint}>Prix total et disponibilité en un coup d'œil</Text>
+                    </>
                   )}
                 </View>
-                <Ionicons name="chevron-forward-outline" size={16} color={Colors.primary} />
+                <View style={styles.datePickerChevron}>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.white} />
+                </View>
               </TouchableOpacity>
 
               {/* Badges promo */}
@@ -1870,8 +1917,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 20,
-    height: Platform.OS === 'ios' ? 88 : 64,
-    paddingTop: Platform.OS === 'ios' ? 44 : 20,
     backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'flex-end',
@@ -1894,7 +1939,6 @@ const styles = StyleSheet.create({
   /* Nav buttons */
   navBar: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 54 : 30,
     left: 0,
     right: 0,
     zIndex: 30,
@@ -1932,7 +1976,6 @@ const styles = StyleSheet.create({
     marginTop: -24,
     paddingTop: 28,
     paddingHorizontal: 20,
-    minHeight: SCREEN_HEIGHT,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 12 },
       android: { elevation: 6 },
@@ -2010,7 +2053,7 @@ const styles = StyleSheet.create({
   /* Title */
   listingTitle: {
     fontFamily: 'Inter-Bold',
-    fontSize: 26,
+    fontSize: 28,
     color: Colors.text,
     letterSpacing: -0.6,
     marginBottom: 16,
@@ -2264,6 +2307,34 @@ const styles = StyleSheet.create({
     color: Colors.text,
     letterSpacing: -0.3,
   },
+  descriptionCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 18,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#EDEAE0',
+  },
+  descriptionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  descriptionAccent: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: Colors.primary,
+  },
+  descriptionMore: {
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  descriptionMoreText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: Colors.primaryDark,
+  },
   descriptionBlock: {
     gap: 0,
   },
@@ -2277,27 +2348,46 @@ const styles = StyleSheet.create({
   descriptionText: {
     fontFamily: 'Inter-Regular',
     fontSize: 15,
-    color: Colors.textSecondary,
-    lineHeight: 24,
+    color: Colors.text,
+    lineHeight: 25,
   },
 
   /* Date picker */
+  // Le bouton dates est l'appel à l'action de la fiche : carte vert foncé,
+  // icône dans une pastille blanche, accroche, chevron.
   datePicker: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    borderRadius: 18,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    backgroundColor: Colors.primaryLight + '25',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: Colors.primaryDark,
+    ...Platform.select({
+      ios: { shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16 },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 8px 16px rgba(78,107,56,0.25)' },
+    }),
   },
   datePickerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: Colors.primaryLight + '90',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  datePickerHint: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.78)',
+    marginTop: 2,
+  },
+  datePickerChevron: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2309,20 +2399,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   datePickerText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: Colors.text,
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: Colors.white,
   },
   datePickerDates: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 14,
-    color: Colors.text,
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: Colors.white,
   },
   datePickerDaysCount: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
-    color: Colors.primary,
-    marginTop: 1,
+    color: 'rgba(255,255,255,0.78)',
+    marginTop: 2,
   },
 
   /* Owner */

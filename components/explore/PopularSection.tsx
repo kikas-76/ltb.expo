@@ -4,7 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
-import ListingCard from './ListingCard';
+import { readCache, writeCache } from '@/lib/queryCache';
+import ListingCard, { getRailCardWidth } from './ListingCard';
 import SkeletonCard from './SkeletonCard';
 
 interface Listing {
@@ -28,24 +29,41 @@ interface Props {
   userLat?: number | null;
   userLng?: number | null;
   userId?: string | null;
+  /** Fournies par l'accueil via get_home_feed : la section ne fait alors aucune requête. */
+  listings?: Listing[];
+  loading?: boolean;
 }
 
-function PopularSection({ userLat, userLng, userId }: Props) {
+function PopularSection({ userLat, userLng, userId, listings: listingsProp, loading: loadingProp }: Props) {
+  const hasProp = listingsProp !== undefined;
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const isDesktop = width >= 1024;
   const isTablet = width >= 768 && width < 1024;
   const cardWidth = isMobile
-    ? Math.round(width * 0.7)
+    ? getRailCardWidth(width)
     : isDesktop
     ? Math.min(width * 0.18, 260)
     : Math.min(width * 0.28, 220);
 
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [ownListings, setListings] = useState<Listing[]>([]);
+  const [ownLoading, setLoading] = useState(true);
+  const listings = hasProp ? listingsProp! : ownListings;
+  const loading = hasProp ? (loadingProp ?? false) : ownLoading;
 
   useEffect(() => {
+    if (hasProp) return;
+    const cacheKey = 'home:popular';
+    let gotFresh = false;
+    // Cache local : affiche la dernière liste connue pendant que la requête part.
+    readCache<Listing[]>(cacheKey).then((cached) => {
+      if (cached && !gotFresh) {
+        setListings(cached);
+        setLoading(false);
+      }
+    });
+
     const fetch = async () => {
       const { data } = await supabase
         .from('listings')
@@ -68,6 +86,8 @@ function PopularSection({ userLat, userLng, userId }: Props) {
           view_count: l.views_count ?? 0,
         }));
         setListings(mapped);
+        gotFresh = true;
+        writeCache(cacheKey, mapped);
       }
       setLoading(false);
     };
@@ -225,7 +245,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   sectionTitleMobile: {
-    fontSize: 18,
+    fontSize: 17,
   },
   listContent: {
     paddingHorizontal: 20,

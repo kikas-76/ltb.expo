@@ -50,7 +50,8 @@ export default function PickupMap({ lat, lng }: PickupMapProps) {
         style={styles.webview}
         scrollEnabled={false}
         pointerEvents="none"
-        source={{ html: getMapHtml(lat, lng) }}
+        source={{ html: getMapHtml(lat, lng), baseUrl: 'https://app.louetonbien.fr/' }}
+        originWhitelist={['*']}
       />
     </View>
   );

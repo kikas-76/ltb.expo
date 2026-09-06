@@ -13,10 +13,17 @@ import {
   Dimensions,
   useWindowDimensions,
 } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
+import { CategoryIcon } from '@/components/CategoryIcon';
+import { categoryTheme } from '@/constants/categories';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { readUploadBody } from '@/lib/uploadBody';
+import { prepareImageForUpload } from '@/lib/prepareImageForUpload';
+import { haptics } from '@/lib/haptics';
 import { Colors } from '@/constants/colors';
 import SuccessOverlay from '@/components/listing/SuccessOverlay';
 import ShareLinkModal from '@/components/listing/ShareLinkModal';
@@ -68,23 +75,6 @@ const STEP_SUBTITLES: Record<Step, string> = {
   PRICING: 'Déterminez le prix et vérifiez votre annonce',
 };
 
-const CATEGORY_ICONS: Record<string, { iconName: string; bg: string; iconColor: string }> = {
-  electronique: { iconName: 'tv-outline', bg: '#D6E8FF', iconColor: '#4A7EC7' },
-  bricolage: { iconName: 'construct-outline', bg: '#D6EDD6', iconColor: '#4A8C4A' },
-  sport: { iconName: 'barbell-outline', bg: '#FFE8D6', iconColor: '#C07840' },
-  maison: { iconName: 'home-outline', bg: '#F5E8C8', iconColor: '#A07830' },
-  evenementiel: { iconName: 'sparkles-outline', bg: '#FFE8F5', iconColor: '#C050A0' },
-  vetements: { iconName: 'shirt-outline', bg: '#FFD6D6', iconColor: '#B85050' },
-  enfants: { iconName: 'happy-outline', bg: '#EDD6FF', iconColor: '#8050B8' },
-  autre: { iconName: 'cube-outline', bg: '#E8E5D8', iconColor: '#7A7A6A' },
-  mobilite: { iconName: 'bicycle-outline', bg: '#D6F0E8', iconColor: '#3A8C6A' },
-  hightech: { iconName: 'game-controller-outline', bg: '#D6E0FF', iconColor: '#4A5EC7' },
-  musique: { iconName: 'musical-notes-outline', bg: '#FFE8F0', iconColor: '#C04070' },
-  cuisine: { iconName: 'restaurant-outline', bg: '#FFF0D6', iconColor: '#C08030' },
-  camping: { iconName: 'compass-outline', bg: '#E0F0D6', iconColor: '#5A9040' },
-  pro: { iconName: 'briefcase-outline', bg: '#E8E0D6', iconColor: '#8A6A50' },
-};
-const DEFAULT_CAT_ICON = { iconName: 'cube-outline', bg: '#E8E5D8', iconColor: '#7A7A6A' };
 
 interface Category {
   id: string;
@@ -106,6 +96,7 @@ interface PhotoItem {
 }
 
 export default function CreateListingScreen() {
+  const headerTop = useHeaderTop();
   const { editId } = useLocalSearchParams<{ editId?: string }>();
   const isEditMode = !!editId;
   const { width: screenWidth } = useWindowDimensions();
@@ -385,6 +376,18 @@ export default function CreateListingScreen() {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Réorganisation : flèches gauche/droite, ou « mettre en avant » (devient la principale).
+  const movePhoto = (index: number, dir: -1 | 1 | 'first') => {
+    setPhotos((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      const target = dir === 'first' ? 0 : index + dir;
+      next.splice(Math.max(0, Math.min(next.length, target)), 0, item);
+      return next;
+    });
+    haptics.selection();
+  };
+
   const uploadPhotos = async (): Promise<string[]> => {
     const urls: string[] = [];
     const { data: { user } } = await supabase.auth.getUser();
@@ -394,7 +397,7 @@ export default function CreateListingScreen() {
       if (photo.uploadedUrl) { urls.push(photo.uploadedUrl); continue; }
 
       try {
-        let blob: Blob;
+        let body: Blob | ArrayBuffer;
         let contentType: string;
 
         if (Platform.OS === 'web' && photo.file) {
@@ -407,18 +410,19 @@ export default function CreateListingScreen() {
             setError('Chaque photo doit faire moins de 8 Mo.');
             return urls;
           }
-          blob = photo.file;
+          body = photo.file;
         } else {
-          const response = await fetch(photo.uri);
-          blob = await response.blob();
-          contentType = blob.type && blob.type !== 'application/octet-stream'
-            ? blob.type
-            : 'image/jpeg';
+          // Natif : ré-encodage JPEG ≤ 1600 px (orientation appliquée). Plus de HEIC
+          // dans le bucket, et un poids divisé par 4 à 5.
+          const prepared = await prepareImageForUpload(photo.uri);
+          const upload = await readUploadBody(prepared.uri);
+          body = upload.body;
+          contentType = prepared.mimeType;
           if (!ALLOWED_IMAGE_TYPES.includes(contentType)) {
             setError('Format non pris en charge. Utilisez JPG, PNG ou WEBP.');
             return urls;
           }
-          if (blob.size > MAX_PHOTO_SIZE_BYTES) {
+          if (upload.size > MAX_PHOTO_SIZE_BYTES) {
             setError('Chaque photo doit faire moins de 8 Mo.');
             return urls;
           }
@@ -437,7 +441,7 @@ export default function CreateListingScreen() {
 
         const { data, error: upErr } = await supabase.storage
           .from('listing-photos')
-          .upload(path, blob, { contentType });
+          .upload(path, body, { contentType });
 
         if (upErr) throw upErr;
 
@@ -544,14 +548,12 @@ export default function CreateListingScreen() {
   const earnings3 = priceNum > 0 ? (priceNum * 3 * 0.9 * (1 - COMMISSION)).toFixed(2) : null;
   const earnings7 = priceNum > 0 ? (priceNum * 7 * 0.8 * (1 - COMMISSION)).toFixed(2) : null;
 
-  const catStyle = selectedCategory
-    ? (CATEGORY_ICONS[selectedCategory.value] ?? DEFAULT_CAT_ICON)
-    : null;
+  const catStyle = selectedCategory ? categoryTheme(selectedCategory.value) : null;
 
   if (loadingEdit) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <LoadingBlock fill={false} />
         <Text style={styles.loadingText}>Chargement de l'annonce…</Text>
       </View>
     );
@@ -581,7 +583,7 @@ export default function CreateListingScreen() {
     >
       <View style={[styles.container, isPricingStep && styles.containerPricing]}>
         {/* Header */}
-        <View style={[styles.header, isPricingStep && styles.headerPricing]}>
+        <View style={[styles.header, isPricingStep && styles.headerPricing, { paddingTop: headerTop }]}>
           <View style={isDesktop ? styles.desktopHeaderInner : styles.headerInner}>
             <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
               <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
@@ -671,7 +673,7 @@ export default function CreateListingScreen() {
                   <View style={[styles.categoryGrid, isDesktop && styles.categoryGridDesktop]}>
                     {categories.map((cat) => {
                       const isSelected = selectedCategory?.id === cat.id;
-                      const cs = CATEGORY_ICONS[cat.value] ?? DEFAULT_CAT_ICON;
+                      const cs = categoryTheme(cat.value);
                       return (
                         <TouchableOpacity
                           key={cat.id}
@@ -679,8 +681,8 @@ export default function CreateListingScreen() {
                           onPress={() => handleSelectCategory(cat)}
                           activeOpacity={0.75}
                         >
-                          <View style={[styles.categoryIconWrap, { backgroundColor: isSelected ? Colors.primary + '22' : cs.bg }]}>
-                            <Ionicons name={cs.iconName as any} size={30} color={isSelected ? Colors.primaryDark : cs.iconColor} />
+                          <View style={[styles.categoryIconWrap, { backgroundColor: isSelected ? Colors.primary + '22' : cs.tint }]}>
+                            <CategoryIcon value={cat.value} size={38} color={isSelected ? Colors.primaryDark : cs.ink} />
                           </View>
                           <Text style={[styles.categoryName, isSelected && styles.categoryNameSelected]}>
                             {cat.name}
@@ -772,13 +774,13 @@ export default function CreateListingScreen() {
                       <Text style={styles.photoCountPillText}>{photos.length}/{MAX_PHOTO_COUNT}</Text>
                     </View>
                   </View>
-                  <View style={[styles.photoGrid, isDesktop && styles.photoGridDesktop]}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRail}>
                     {photos.map((photo, index) => (
-                      <View key={index} style={[styles.photoCell, isDesktop && styles.photoCellDesktop, index === 0 && styles.photoCellMain, index === 0 && isDesktop && styles.photoCellMainDesktop]}>
+                      <View key={`${photo.uri}-${index}`} style={[styles.photoTile, index === 0 && styles.photoTileMain]}>
                         <Image source={{ uri: photo.uri }} style={styles.photoImage} resizeMode="cover" />
                         {index === 0 && (
                           <View style={styles.photoPrimaryBadge}>
-                            <Text style={styles.photoPrimaryText}>Photo principale</Text>
+                            <Text style={styles.photoPrimaryText}>Principale</Text>
                           </View>
                         )}
                         <TouchableOpacity
@@ -786,13 +788,39 @@ export default function CreateListingScreen() {
                           onPress={() => removePhoto(index)}
                           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                         >
-                          <Ionicons name="close-outline" size={12} color={Colors.text} />
+                          <Ionicons name="close" size={14} color={Colors.text} />
                         </TouchableOpacity>
+                        <View style={styles.photoMoveRow}>
+                          <TouchableOpacity
+                            style={[styles.photoMoveBtn, index === 0 && styles.photoMoveBtnDisabled]}
+                            disabled={index === 0}
+                            onPress={() => movePhoto(index, -1)}
+                            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                          >
+                            <Ionicons name="chevron-back" size={15} color={Colors.white} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.photoMoveBtn, index === 0 && styles.photoMoveBtnDisabled]}
+                            disabled={index === 0}
+                            onPress={() => movePhoto(index, 'first')}
+                            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                          >
+                            <Ionicons name={index === 0 ? 'star' : 'star-outline'} size={14} color={Colors.white} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.photoMoveBtn, index === photos.length - 1 && styles.photoMoveBtnDisabled]}
+                            disabled={index === photos.length - 1}
+                            onPress={() => movePhoto(index, 1)}
+                            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                          >
+                            <Ionicons name="chevron-forward" size={15} color={Colors.white} />
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     ))}
                     {photos.length < MAX_PHOTO_COUNT && (
                       <TouchableOpacity
-                        style={[styles.photoAddCell, isDesktop && styles.photoCellDesktop]}
+                        style={styles.photoAddTile}
                         onPress={handlePickPhoto}
                         activeOpacity={0.7}
                         disabled={photoProcessing}
@@ -801,13 +829,16 @@ export default function CreateListingScreen() {
                           <ActivityIndicator size="small" color={Colors.primary} />
                         ) : (
                           <>
-                            <Ionicons name="add-outline" size={22} color={Colors.primary} />
+                            <Ionicons name="add" size={26} color={Colors.primaryDark} />
                             <Text style={styles.photoAddText}>Ajouter</Text>
                           </>
                         )}
                       </TouchableOpacity>
                     )}
-                  </View>
+                  </ScrollView>
+                  <Text style={styles.photoReorderHint}>
+                    La première photo est celle que vos voisins verront en premier. Flèches pour déplacer, étoile pour mettre en avant.
+                  </Text>
                 </>
               )}
             </View>
@@ -1019,14 +1050,6 @@ export default function CreateListingScreen() {
                     </View>
                   </View>
 
-                  <View style={styles.commissionNote}>
-                    <Ionicons name="information-circle-outline" size={13} color={Colors.primaryDark} />
-                    <Text style={styles.commissionNoteText}>
-                      Sans commission de notre part, vous toucheriez{' '}
-                      <Text style={styles.commissionNoteHighlight}>{priceNum.toFixed(2)} € / jour</Text>
-                      . Proposer un tarif compétitif reste votre meilleur levier.
-                    </Text>
-                  </View>
                 </View>
               )}
 
@@ -1045,8 +1068,8 @@ export default function CreateListingScreen() {
                     <View style={styles.previewBody}>
                       {selectedCategory && catStyle && (
                         <View style={styles.previewCatRow}>
-                          <View style={[styles.previewCatIconWrap, { backgroundColor: catStyle.bg }]}>
-                            <Ionicons name={(catStyle as any).iconName} size={13} color={catStyle.iconColor} />
+                          <View style={[styles.previewCatIconWrap, { backgroundColor: catStyle.tint }]}>
+                            <CategoryIcon value={selectedCategory.value} size={15} color={catStyle.ink} />
                           </View>
                           <Text style={styles.previewCatLabel}>{selectedCategory.name}</Text>
                         </View>
@@ -1550,6 +1573,66 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 12,
     color: Colors.primaryDark,
+  },
+  photoRail: {
+    gap: 10,
+    paddingVertical: 4,
+    paddingRight: 8,
+    alignItems: 'flex-end',
+  },
+  photoTile: {
+    width: 118,
+    height: 118,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: Colors.borderLight,
+  },
+  photoTileMain: {
+    width: 150,
+    height: 150,
+    borderRadius: 18,
+    borderWidth: 2.5,
+    borderColor: Colors.primaryDark,
+  },
+  photoMoveRow: {
+    position: 'absolute',
+    left: 6,
+    right: 6,
+    bottom: 6,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  photoMoveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoMoveBtnDisabled: {
+    opacity: 0.25,
+  },
+  photoAddTile: {
+    width: 118,
+    height: 118,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  photoReorderHint: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.textMuted,
+    marginTop: 10,
   },
   photoGrid: {
     flexDirection: 'row',

@@ -160,6 +160,23 @@ export async function getCityFromCoords(lat: number, lng: number): Promise<strin
   return result?.city ?? null;
 }
 
+/**
+ * Page HTML minimale qui charge l'Embed API dans une <iframe>, pour les
+ * WebView natives : l'Embed API refuse d'être chargée directement comme
+ * page principale (« must be used in an iframe »).
+ */
+export function getGoogleMapsEmbedHtml(embedUrl: string): string {
+  return `<!DOCTYPE html><html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<style>* { margin:0; padding:0; box-sizing:border-box; } html,body,iframe { width:100%; height:100%; border:none; display:block; background:#eee; }</style>
+</head><body>
+<iframe src="${embedUrl}" width="100%" height="100%" frameborder="0" allowfullscreen style="pointer-events:none"></iframe>
+</body></html>`;
+}
+
+/** Origine envoyée en Referer par les WebView natives (restrictions HTTP referrer de la clé Maps). */
+export const GOOGLE_MAPS_WEBVIEW_BASE_URL = 'https://app.louetonbien.fr/';
+
 export function getGoogleMapsEmbedUrl(lat: number, lng: number, zoom = 14): string {
   return (
     `https://www.google.com/maps/embed/v1/view` +

@@ -9,6 +9,8 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -123,7 +125,7 @@ export default function ProStatsScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primaryDark} />
+        <LoadingBlock fill={false} />
       </View>
     );
   }
@@ -385,8 +387,9 @@ export default function ProStatsScreen() {
 }
 
 function Header({ onRefresh }: { onRefresh: () => void }) {
+  const headerTop = useHeaderTop();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: headerTop }]}>
       <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
         <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
       </TouchableOpacity>

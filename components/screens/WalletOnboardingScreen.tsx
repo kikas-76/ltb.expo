@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, Modal } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +50,14 @@ export default function WalletOnboardingScreen() {
 
 function WalletOnboardingContent() {
   const insets = useSafeAreaInsets();
-  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const { mode, embedded } = useLocalSearchParams<{ mode?: string; embedded?: string }>();
+  // embedded=1 : la page est affichée dans la WebView de l'app iOS/Android.
+  // L'app fournit l'en-tête et la navigation ; on lui envoie des messages.
+  const isEmbedded = embedded === '1';
+  const notifyApp = (type: string) => {
+    const w = window as any;
+    w.ReactNativeWebView?.postMessage(JSON.stringify({ type }));
+  };
   const [step, setStep] = useState<Step>('checking');
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -61,6 +69,10 @@ function WalletOnboardingContent() {
   useEffect(() => {
     checkProfileAndDecideStep();
   }, []);
+
+  useEffect(() => {
+    if (isEmbedded && step !== 'checking') notifyApp('ready');
+  }, [isEmbedded, step]);
 
   const checkProfileAndDecideStep = async () => {
     try {
@@ -172,6 +184,10 @@ function WalletOnboardingContent() {
       }
     } catch {}
 
+    if (isEmbedded) {
+      notifyApp('stripe_onboarding_exit');
+      return;
+    }
     if (mode === 'edit') {
       router.replace('/wallet/manage');
     } else {
@@ -182,7 +198,7 @@ function WalletOnboardingContent() {
   if (step === 'checking') {
     return (
       <View style={[styles.root, styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={Colors.primaryDark} />
+        <LoadingBlock fill={false} />
         <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
@@ -194,7 +210,7 @@ function WalletOnboardingContent() {
         <Ionicons name="warning-outline" size={48} color="#D97706" />
         <Text style={styles.errorTitle}>Erreur</Text>
         <Text style={styles.errorText}>{errorMessage}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={() => router.replace('/wallet')}>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => (isEmbedded ? notifyApp('close') : router.replace('/wallet'))}>
           <Text style={styles.retryBtnText}>Retour au portefeuille</Text>
         </TouchableOpacity>
       </View>
@@ -203,19 +219,21 @@ function WalletOnboardingContent() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => step === 'stripe' ? setShowExitModal(true) : router.replace('/wallet')}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {mode === 'edit' ? 'Modifier mes informations' : 'Active tes virements'}
-        </Text>
-        <View style={{ width: 36 }} />
-      </View>
+      {!isEmbedded && (
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => step === 'stripe' ? setShowExitModal(true) : router.replace('/wallet')}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back-outline" size={22} color="#1C1C18" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {mode === 'edit' ? 'Modifier mes informations' : 'Active tes virements'}
+          </Text>
+          <View style={{ width: 36 }} />
+        </View>
+      )}
 
       <Modal
         visible={showExitModal}
@@ -322,7 +340,7 @@ function WalletOnboardingContent() {
                 )}
                 {!stripeConnectInstance && (
                   <View style={styles.stripeLoading}>
-                    <ActivityIndicator size="large" color={Colors.primaryDark} />
+                    <LoadingBlock fill={false} />
                     <Text style={styles.loadingText}>Chargement du formulaire Stripe...</Text>
                   </View>
                 )}

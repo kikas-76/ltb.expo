@@ -2,7 +2,8 @@ import { memo, useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
-import ListingCard from './ListingCard';
+import { readCache, writeCache } from '@/lib/queryCache';
+import ListingCard, { getRailCardWidth } from './ListingCard';
 import SkeletonCard from './SkeletonCard';
 
 const STORAGE_KEY = 'ltb_recently_viewed';
@@ -58,6 +59,16 @@ function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
       return;
     }
 
+    const cacheKey = `home:recent:${ids.slice(0, 10).join(",")}`;
+    let gotFresh = false;
+    // Cache local : affiche la dernière liste connue pendant que la requête part.
+    readCache<Listing[]>(cacheKey).then((cached) => {
+      if (cached && !gotFresh) {
+        setListings(cached);
+        setLoading(false);
+      }
+    });
+
     const fetch = async () => {
       const { data } = await supabase
         .from('listings')
@@ -80,6 +91,8 @@ function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
           .filter((l) => !userId || l!.owner?.id !== userId)
           .slice(0, 10) as Listing[];
         setListings(ordered);
+        gotFresh = true;
+        writeCache(cacheKey, ordered);
       }
       setLoading(false);
     };
@@ -164,7 +177,7 @@ function RecentlyViewedSection({ userLat, userLng, userId }: Props) {
   // ListingCard variant="horizontal" sets its own width to width * 0.7,
   // so the wrapper must match to avoid the inner card overflowing and
   // overlapping the next one.
-  const mobileCardWidth = Math.round(width * 0.7);
+  const mobileCardWidth = getRailCardWidth(width);
 
   return (
     <View style={styles.section}>

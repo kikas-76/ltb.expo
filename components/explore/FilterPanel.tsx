@@ -10,6 +10,8 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
+import { CategoryIcon } from '@/components/CategoryIcon';
+import { categoryTheme } from '@/constants/categories';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -89,24 +91,6 @@ const SORT_OPTIONS: { key: SortKey; label: string; icon: string }[] = [
 // Keep this map in sync with components/explore/CategoryStrip.tsx. Adding a
 // new category to the DB requires adding it here too, otherwise the filter
 // list falls back to the generic cube icon and several categories collide.
-const CATEGORY_ICONS: Record<string, { iconName: string; bg: string; iconColor: string }> = {
-  electronique: { iconName: 'desktop-outline',         bg: '#D6E8FF', iconColor: '#4A7EC7' },
-  bricolage:    { iconName: 'construct-outline',       bg: '#D6EDD6', iconColor: '#4A8C4A' },
-  sport:        { iconName: 'barbell-outline',         bg: '#FFE8D6', iconColor: '#C07840' },
-  maison:       { iconName: 'home-outline',            bg: '#F5E8C8', iconColor: '#A07830' },
-  evenementiel: { iconName: 'sparkles-outline',        bg: '#FFE8F5', iconColor: '#C050A0' },
-  vetements:    { iconName: 'shirt-outline',           bg: '#FFD6D6', iconColor: '#B85050' },
-  enfants:      { iconName: 'happy-outline',           bg: '#EDD6FF', iconColor: '#8050B8' },
-  mobilite:     { iconName: 'bicycle-outline',         bg: '#D6F0E8', iconColor: '#3A8C6A' },
-  hightech:     { iconName: 'game-controller-outline', bg: '#D6E0FF', iconColor: '#4A5EC7' },
-  musique:      { iconName: 'musical-notes-outline',   bg: '#FFE8F0', iconColor: '#C04070' },
-  cuisine:      { iconName: 'restaurant-outline',      bg: '#FFF0D6', iconColor: '#C08030' },
-  camping:      { iconName: 'compass-outline',         bg: '#E0F0D6', iconColor: '#5A9040' },
-  pro:          { iconName: 'briefcase-outline',       bg: '#E8E0D6', iconColor: '#8A6A50' },
-  autre:        { iconName: 'cube-outline',            bg: '#E8E5D8', iconColor: '#7A7A6A' },
-};
-
-const DEFAULT_CATEGORY_ICON = { iconName: 'cube-outline', bg: '#E8E5D8', iconColor: '#7A7A6A' };
 
 export default function FilterPanel({
   visible,
@@ -458,7 +442,7 @@ export default function FilterPanel({
                 <View style={styles.categoryGrid}>
                   {categories.map((cat) => {
                     const isSelected = selectedCategoryIds.includes(cat.id);
-                    const catStyle = CATEGORY_ICONS[cat.value] ?? DEFAULT_CATEGORY_ICON;
+                    const catStyle = categoryTheme(cat.value);
                     return (
                       <TouchableOpacity
                         key={cat.id}
@@ -468,13 +452,9 @@ export default function FilterPanel({
                       >
                         <View style={[
                           styles.categoryChipIconWrap,
-                          { backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : catStyle.bg },
+                          { backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : catStyle.tint },
                         ]}>
-                          <Ionicons
-                            name={catStyle.iconName as any}
-                            size={13}
-                            color={isSelected ? Colors.white : catStyle.iconColor}
-                          />
+                          <CategoryIcon value={cat.value} size={16} color={isSelected ? Colors.white : catStyle.ink} />
                         </View>
                         <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextActive]}>
                           {cat.name}

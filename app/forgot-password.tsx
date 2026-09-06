@@ -10,6 +10,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -17,6 +18,7 @@ import { Colors } from '@/constants/colors';
 
 
 export default function ForgotPasswordScreen() {
+  const headerTop = useHeaderTop();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +114,7 @@ export default function ForgotPasswordScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.container}>
-        <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
+        <Animated.View style={[styles.topBar, { opacity: fadeAnim, paddingTop: headerTop }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
             <Ionicons name="arrow-back-outline" size={20} color="#1C1C18" />
           </TouchableOpacity>

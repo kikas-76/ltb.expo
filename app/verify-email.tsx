@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -17,6 +18,7 @@ import { supabase } from '@/lib/supabase';
 const RESEND_COOLDOWN = 60;
 
 export default function VerifyEmailScreen() {
+  const headerTop = useHeaderTop();
   const params = useLocalSearchParams<{ email: string }>();
   const email = params.email ?? '';
 
@@ -82,7 +84,7 @@ export default function VerifyEmailScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+      <TouchableOpacity style={[styles.backBtn, { top: headerTop }]} onPress={() => router.back()} activeOpacity={0.7}>
         <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
       </TouchableOpacity>
 

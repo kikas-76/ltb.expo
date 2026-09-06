@@ -48,11 +48,11 @@ const styles = StyleSheet.create({
   },
   imageArea: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    aspectRatio: 1,
     backgroundColor: Colors.borderLight,
   },
   imageAreaHorizontal: {
-    aspectRatio: 4 / 3,
+    aspectRatio: 1,
   },
   body: {
     padding: 10,

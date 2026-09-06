@@ -11,6 +11,8 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
+import { AdaptiveImage } from '@/components/AdaptiveImage';
+import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -104,7 +106,7 @@ function ListingMiniCard({
     >
       <View style={styles.listingImageWrap}>
         {photo ? (
-          <Image source={{ uri: photo }} style={styles.listingImage} resizeMode="cover" />
+          <AdaptiveImage uri={getOptimizedImageUrl(photo, { width: 480, height: 360, resize: 'cover' as const, quality: 65 }) ?? photo} style={styles.listingImage} />
         ) : (
           <View style={styles.listingImageFallback}>
             <Ionicons name="cube-outline" size={26} color={Colors.primary} />
@@ -470,7 +472,7 @@ export default function OwnerProfilePage() {
         <View style={[styles.heroSection, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity
             onPress={() => router.back()}
-            style={styles.backBtn}
+            style={[styles.backBtn, { top: insets.top + 8 }]}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back-outline" size={18} color={Colors.text} />

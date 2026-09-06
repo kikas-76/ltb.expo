@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnread } from '@/contexts/UnreadContext';
 import { supabase } from '@/lib/supabase';
+import { readCache, writeCache } from '@/lib/queryCache';
 import HomeHeader from '@/components/explore/HomeHeader';
 import SearchBar from '@/components/explore/SearchBar';
 import CategoryStrip from '@/components/explore/CategoryStrip';
@@ -28,6 +29,7 @@ import RecentlyViewedSection from '@/components/explore/RecentlyViewedSection';
 import FavoritesSection from '@/components/explore/FavoritesSection';
 import PopularSection from '@/components/explore/PopularSection';
 import DealsSection from '@/components/explore/DealsSection';
+import HomeIntro from '@/components/HomeIntro';
 import { useResponsive } from '@/hooks/useResponsive';
 
 interface Category {
@@ -54,6 +56,29 @@ interface Listing {
   } | null;
 }
 
+interface PopularListing extends Listing {
+  view_count: number;
+}
+
+/** Réponse de get_home_feed (un seul aller-retour serveur pour tout l'accueil). */
+interface HomeFeed {
+  categories: Category[];
+  recent: Listing[];
+  nearby: any[] | null;
+  popular: (Listing & { views_count?: number | null })[];
+  deals: Listing[];
+  favorites: Listing[];
+}
+
+interface HomeCache {
+  categories: Category[];
+  listings: Listing[];
+  nearby: Listing[];
+  popular: PopularListing[];
+  deals: Listing[];
+  favorites: Listing[];
+}
+
 export default function ExploreScreen() {
   const router = useRouter();
   const { profile, session, loading: authLoading } = useAuth();
@@ -65,7 +90,13 @@ export default function ExploreScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
   const [nearbyData, setNearbyData] = useState<Listing[]>([]);
+  const [popular, setPopular] = useState<PopularListing[]>([]);
+  const [deals, setDeals] = useState<Listing[]>([]);
+  const [favorites, setFavorites] = useState<Listing[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  // Intro animée : uniquement quand aucune donnée n'est en cache (premier lancement).
+  const [introVisible, setIntroVisible] = useState(true);
+  const introStartedAt = useRef(Date.now());
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -74,33 +105,50 @@ export default function ExploreScreen() {
     }
   }, [session, authLoading]);
 
+  // Affichage immédiat depuis le cache local, puis rafraîchissement réseau.
+  const gotFreshHome = useRef(false);
+  useEffect(() => {
+    readCache<HomeCache>('home:v2').then((cached) => {
+      if (!cached || gotFreshHome.current) return;
+      setIntroVisible(false);
+      setCategories(cached.categories);
+      setListings(cached.listings);
+      setNearbyData(cached.nearby);
+      setPopular(cached.popular ?? []);
+      setDeals(cached.deals ?? []);
+      setFavorites(cached.favorites ?? []);
+      setLoadingData(false);
+    });
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       const lat = profile?.location_data?.lat ?? null;
       const lng = profile?.location_data?.lng ?? null;
       const hasLocation = lat !== null && lng !== null;
 
-      const baseSelect =
-        'id, name, price, photos_url, category_name, category_id, approx_latitude, approx_longitude, rating_avg, rating_count, owner:profiles!listings_owner_id_fkey(id, username, photo_url, is_pro)';
-
-      const [catRes, listingsRes, nearbyRes] = await Promise.all([
-        supabase.from('categories').select('id, name, value, icon_path').order('order'),
-        supabase
-          .from('listings')
-          .select(baseSelect)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(19),
-        hasLocation
-          ? supabase.rpc('get_nearby_listings', {
-              user_lat: lat,
-              user_lng: lng,
-              radius_km: 9999,
-              lim: 19,
-              offset_val: 0,
-            })
-          : Promise.resolve({ data: null }),
-      ]);
+      // Un seul aller-retour serveur pour tout l'accueil (catégories, récentes,
+      // à proximité, populaires, bonnes affaires, favoris). Auparavant sept
+      // requêtes parallèles se disputaient le processeur partagé de l'instance.
+      const { data: feedData, error: feedError } = await supabase.rpc('get_home_feed', {
+        p_lat: lat,
+        p_lng: lng,
+        p_limit: 19,
+      });
+      if (feedError) {
+        console.error('get_home_feed failed:', feedError);
+        return;
+      }
+      const feed = (feedData ?? {}) as HomeFeed;
+      const catRes = { data: feed.categories ?? [] };
+      const listingsRes = { data: feed.recent ?? [] };
+      const nearbyRes = { data: hasLocation ? feed.nearby ?? null : null };
+      const popularMapped: PopularListing[] = (feed.popular ?? []).map((l) => ({ ...l, view_count: l.views_count ?? 0 }));
+      const dealsList: Listing[] = feed.deals ?? [];
+      const favoritesList: Listing[] = feed.favorites ?? [];
+      setPopular(popularMapped);
+      setDeals(dealsList);
+      setFavorites(favoritesList);
 
       if (catRes.data) setCategories(catRes.data);
 
@@ -140,6 +188,7 @@ export default function ExploreScreen() {
         distance_km: number | null;
       };
       const nearbyData = nearbyRes?.data as NearbyRow[] | null | undefined;
+      let nearbyForCache: Listing[] = [];
       if (nearbyData) {
         const ordered: Listing[] = nearbyData.map((r) => ({
           id: r.id,
@@ -162,10 +211,22 @@ export default function ExploreScreen() {
             : null,
         }));
         setNearbyData(ordered);
+        nearbyForCache = ordered;
       } else {
         // No location → reuse the recent feed so the section is not empty
         setNearbyData(recentMapped);
+        nearbyForCache = recentMapped;
       }
+      gotFreshHome.current = true;
+      const toCache: HomeCache = {
+        categories: catRes.data ?? [],
+        listings: recentMapped,
+        nearby: nearbyForCache,
+        popular: popularMapped,
+        deals: dealsList,
+        favorites: favoritesList,
+      };
+      writeCache('home:v2', toCache);
     } finally {
       setLoadingData(false);
     }
@@ -174,6 +235,14 @@ export default function ExploreScreen() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loadingData) return;
+    // Laisser l'intro finir sa phrase avant de la fondre (mini 1,6 s).
+    const remaining = Math.max(0, 1600 - (Date.now() - introStartedAt.current));
+    const t = setTimeout(() => setIntroVisible(false), remaining);
+    return () => clearTimeout(t);
+  }, [loadingData]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -219,21 +288,9 @@ export default function ExploreScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.topBar, isTabletOrDesktop && { paddingHorizontal: hPad }]}>
-        <View style={innerStyle}>
-          <HomeHeader
-            username={profile?.username ?? null}
-            photoUrl={profile?.photo_url ?? null}
-            notificationCount={incomingRequestCount}
-          />
-          <SearchBar
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onPress={() => router.push('/search')}
-          />
-        </View>
-      </View>
-
+      <HomeIntro visible={introVisible} />
+      {/* Le bonjour défile avec le contenu ; la barre de recherche reste collée en haut
+          (stickyHeaderIndices) : aucun saut de mise en page, tout est géré nativement. */}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
@@ -241,6 +298,7 @@ export default function ExploreScreen() {
           isTabletOrDesktop && { paddingHorizontal: hPad },
         ]}
         showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[1]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -251,13 +309,28 @@ export default function ExploreScreen() {
         }
       >
         <View style={innerStyle}>
+          <HomeHeader
+            username={profile?.username ?? null}
+            photoUrl={profile?.photo_url ?? null}
+            notificationCount={incomingRequestCount}
+          />
+        </View>
+        <View style={[styles.stickyBar, innerStyle]}>
+          <SearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onPress={() => router.push('/search')}
+            prominent
+          />
+        </View>
+        <View style={innerStyle}>
           <CategoryStrip categories={categories} />
           <LocationBanner address={address} />
 
           <RecentlyViewedSection userLat={userLat} userLng={userLng} userId={session?.user.id} />
-          <FavoritesSection userId={session?.user.id} userLat={userLat} userLng={userLng} />
-          <PopularSection userLat={userLat} userLng={userLng} userId={session?.user.id} />
-          <DealsSection userLat={userLat} userLng={userLng} userId={session?.user.id} />
+          <FavoritesSection userId={session?.user.id} userLat={userLat} userLng={userLng} listings={favorites} loading={loadingData} />
+          <PopularSection userLat={userLat} userLng={userLng} userId={session?.user.id} listings={popular} loading={loadingData} />
+          <DealsSection userLat={userLat} userLng={userLng} userId={session?.user.id} listings={deals} loading={loadingData} />
 
           <View style={styles.section}>
             <TouchableOpacity style={styles.sectionHeader} activeOpacity={0.7} onPress={() => router.push('/nearby')}>
@@ -384,6 +457,10 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { position: 'sticky' as any, top: 0, zIndex: 10 },
     }),
+  },
+  stickyBar: {
+    backgroundColor: Colors.background,
+    paddingBottom: 4,
   },
   scroll: {
     flex: 1,

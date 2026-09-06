@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
@@ -420,6 +420,8 @@ function WalletScreenContent() {
   // only need a binary "can the user receive payouts right now".
   const accountComplete = connectStatus === 'active';
   const [activateLoading, setActivateLoading] = useState(false);
+  const { hosted } = useLocalSearchParams<{ hosted?: string }>();
+  const hostedTriggered = useRef(false);
   const [manageLoading, setManageLoading] = useState(false);
   const [earnings, setEarnings] = useState<Earnings>({ monthly: 0, total: 0, pending: 0 });
   const [earningsLoading, setEarningsLoading] = useState(true);
@@ -659,7 +661,20 @@ function WalletScreenContent() {
     }, [])
   );
 
+  // Onboarding embarqué dans l'app (WebView de notre page web Stripe) sur toutes
+  // les plateformes. Le flux hébergé Stripe (Safari) reste disponible en secours.
   const activateStripeAccount = async () => {
+    router.push('/wallet/onboarding');
+  };
+
+  useEffect(() => {
+    if (hosted === '1' && !hostedTriggered.current && Platform.OS !== 'web') {
+      hostedTriggered.current = true;
+      openHostedOnboarding();
+    }
+  }, [hosted]);
+
+  const openHostedOnboarding = async () => {
     if (Platform.OS === 'web') {
       router.push('/wallet/onboarding');
     } else {

@@ -2,6 +2,7 @@
   "expo": {
     "name": "LoueTonBien",
     "slug": "louetonbien",
+    "owner": "louetonbien",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,11 +10,20 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "fr.louetonbien.app",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "fr",
+        "CFBundleLocalizations": [
+          "fr"
+        ]
+      }
     },
     "web": {
       "bundler": "metro",
-      "output": "spa",
+      "output": "single",
       "favicon": "./assets/images/LTB_favicon.png",
       "lang": "fr",
       "meta": {
@@ -28,10 +38,64 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication",
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.louetonbien",
+          "enableGooglePay": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "L'app a besoin d'accéder à la caméra pour scanner les QR codes de remise et photographier vos objets."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "L'app a besoin d'accéder à votre galerie pour ajouter des photos à vos annonces et à votre profil.",
+          "cameraPermission": "L'app a besoin d'accéder à la caméra pour prendre des photos pour vos annonces et conversations."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "L'app utilise votre position pour définir votre adresse et afficher les annonces autour de vous."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F5F2E3",
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://app.louetonbien.fr"
+      },
+      "eas": {
+        "projectId": "c05f5d6a-d3a3-468d-a59d-abfdc209dcad"
+      }
+    },
+    "locales": {
+      "fr": "./locales/fr.json"
     }
   }
 }

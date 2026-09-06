@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Tabs, router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { TabIcon } from '@/components/TabIcon';
 import { TouchableOpacity, Text, View, StyleSheet, Platform, Image } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -96,21 +97,21 @@ function DesktopSidebar({ collapsed, onToggle, hideToggle }: { collapsed: boolea
       route: 'index',
       label: 'Explorer',
       description: 'Parcourir les annonces',
-      icon: (focused: boolean) => <Ionicons name="home-outline" size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
+      icon: (focused: boolean) => <TabIcon name="explore" size={22} active={focused} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
       onPress: () => router.push('/(tabs)'),
     },
     {
       route: 'create-listing',
       label: 'Louer un objet',
       description: 'Publier une annonce',
-      icon: (focused: boolean) => <Ionicons name="add-circle-outline" size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
+      icon: (focused: boolean) => <TabIcon name="listings" size={22} active={focused} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
       onPress: () => router.push('/create-listing'),
     },
     {
       route: 'reservations',
       label: 'Messages',
       description: 'Vos échanges',
-      icon: (focused: boolean) => <Ionicons name="chatbubble-outline" size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
+      icon: (focused: boolean) => <TabIcon name="inbox" size={22} active={focused} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
       onPress: () => router.push('/(tabs)/reservations'),
       showDot: hasIncomingRequests,
     },
@@ -118,7 +119,7 @@ function DesktopSidebar({ collapsed, onToggle, hideToggle }: { collapsed: boolea
       route: 'profil',
       label: 'Mon Compte',
       description: 'Profil & paramètres',
-      icon: (focused: boolean) => <Ionicons name="person-outline" size={20} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
+      icon: (focused: boolean) => <TabIcon name="profile" size={22} active={focused} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
       onPress: () => router.push('/(tabs)/profil'),
     },
     ...(isAdmin ? [{
@@ -276,7 +277,7 @@ export default function TabLayout() {
         options={{
           tabBarButton: makeTabButton(
             () => router.push('/(tabs)'),
-            (c) => <Ionicons name="search-outline" size={22} color={c} />,
+            (c) => <TabIcon name="explore" size={26} color={c} active={c === Colors.primaryDark} />,
             'Rechercher',
             ['/', '/search', '/category', '/listing', '/popular', '/deals', '/favorites'],
           ),
@@ -287,7 +288,7 @@ export default function TabLayout() {
         options={{
           tabBarButton: makeTabButton(
             () => router.push('/create-listing'),
-            (c) => <Ionicons name="add-circle-outline" size={22} color={c} />,
+            (c) => <TabIcon name="listings" size={26} color={c} active={c === Colors.primaryDark} />,
             'Louer',
             ['/create-listing', '/mes-annonces'],
           ),
@@ -298,7 +299,7 @@ export default function TabLayout() {
         options={{
           tabBarButton: makeTabButton(
             () => router.push('/(tabs)/reservations'),
-            (c) => <Ionicons name="chatbubble-outline" size={22} color={c} />,
+            (c) => <TabIcon name="inbox" size={26} color={c} active={c === Colors.primaryDark} />,
             'Messages',
             ['/reservations', '/chat'],
             hasIncomingRequests,
@@ -310,7 +311,7 @@ export default function TabLayout() {
         options={{
           tabBarButton: makeTabButton(
             () => router.push('/(tabs)/profil'),
-            (c) => <Ionicons name="person-outline" size={22} color={c} />,
+            (c) => <TabIcon name="profile" size={26} color={c} active={c === Colors.primaryDark} />,
             'Mon Compte',
             ['/profil', '/account-settings', '/edit-address', '/wallet', '/onboarding'],
           ),

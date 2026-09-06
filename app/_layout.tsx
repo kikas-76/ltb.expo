@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import LoadingBlock from '@/components/LoadingBlock';
 import { useFonts } from 'expo-font';
 import {
   PlusJakartaSans_400Regular,
@@ -22,10 +23,12 @@ import { PRELAUNCH_MODE, PRELAUNCH_ALLOWED_SEGMENTS } from '@/lib/launchConfig';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { UnreadProvider } from '@/contexts/UnreadContext';
+import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { DeepLinkProvider, useDeepLink } from '@/contexts/DeepLinkContext';
 import { Colors } from '@/constants/colors';
 import StripeWrapper from '@/components/StripeWrapper';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import AnimatedSplash from '@/components/AnimatedSplash';
 import { supabase } from '@/lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
@@ -86,6 +89,37 @@ function RootNavigator() {
       return () => sub.remove();
     }
   }, [session]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    // require dynamique : pas de runtime web pour expo-notifications
+    const Notifications = require('expo-notifications');
+
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+
+    const routeFromNotification = (response: any) => {
+      const url = response?.notification?.request?.content?.data?.url;
+      if (typeof url === 'string' && url.startsWith('/')) {
+        router.push(url as any);
+      }
+    };
+
+    // App tuée puis ouverte via une notif : le listener n'a pas encore
+    // existé au moment du tap, on rejoue la dernière réponse.
+    Notifications.getLastNotificationResponseAsync().then((response: any) => {
+      if (response) routeFromNotification(response);
+    });
+
+    const sub = Notifications.addNotificationResponseReceivedListener(routeFromNotification);
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (loading || profileLoading) return;
@@ -152,7 +186,11 @@ function RootNavigator() {
       }
     }
 
-    if (profile?.onboarding_completed && isAuthRoute) {
+    // La page de première ouverture (« / », segment undefined) se comporte comme
+    // un écran de connexion : session + onboarding terminé → accueil direct.
+    // Natif uniquement : sur le web, « / » reste la page vitrine publique.
+    const isLandingRoute = seg === undefined && Platform.OS !== 'web';
+    if (profile?.onboarding_completed && (isAuthRoute || isLandingRoute)) {
       if (PRELAUNCH_MODE && profile?.role !== 'admin') {
         // Deep links to blocked routes are dropped during prelaunch;
         // otherwise the router would push /listing/... and the guard
@@ -190,7 +228,7 @@ function RootNavigator() {
   if (loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <LoadingBlock fill={false} />
       </View>
     );
   }
@@ -246,6 +284,24 @@ function RootNavigator() {
       <StatusBar style="dark" />
     </>
   );
+}
+
+/**
+ * Splash animé (symbole infini) affiché par-dessus la navigation jusqu'à ce que
+ * la session et le profil soient connus, avec une durée minimale pour que
+ * l'animation soit vue même quand le cache local répond instantanément.
+ */
+function BootSplash() {
+  const { loading, profileLoading, session } = useAuth();
+  const [minElapsed, setMinElapsed] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMinElapsed(true), 1700);
+    return () => clearTimeout(t);
+  }, []);
+
+  const ready = !loading && (!session || !profileLoading);
+  return <AnimatedSplash visible={!(ready && minElapsed)} />;
 }
 
 export default function RootLayout() {
@@ -325,11 +381,14 @@ export default function RootLayout() {
       <StripeWrapper>
         <DeepLinkProvider>
           <AuthProvider>
+            <NotificationsProvider>
             <UnreadProvider>
               <FavoritesProvider>
                 <RootNavigator />
+                <BootSplash />
               </FavoritesProvider>
             </UnreadProvider>
+            </NotificationsProvider>
           </AuthProvider>
         </DeepLinkProvider>
       </StripeWrapper>
