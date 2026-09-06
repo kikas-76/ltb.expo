@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
+import { sendPushToUsers } from "../_shared/push.ts";
 
 const corsOpts: CorsOptions = {
   methods: "POST, OPTIONS",
@@ -82,6 +83,22 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Push mirror of dispatchEmail. Fire-and-forget: a push failure must
+    // never block or fail the email path.
+    async function dispatchPush(userIds: string[], title: string, bodyText: string, url?: string) {
+      try {
+        await sendPushToUsers(supabaseAdmin, userIds, {
+          title,
+          body: bodyText,
+          data: url ? { url } : {},
+          type: String(event),
+          category: event === "new_message" ? "messages" : "bookings",
+        });
+      } catch (err) {
+        console.error("Push dispatch failed:", err);
+      }
+    }
+
     if (event === "booking_accepted" || event === "booking_rejected") {
       if (!conversation_id) {
         return new Response(
@@ -148,6 +165,15 @@ Deno.serve(async (req: Request) => {
           owner_name: ownerName,
         });
       }
+
+      await dispatchPush(
+        [(conv as any).requester_id],
+        event === "booking_accepted" ? "Demande acceptée 🎉" : "Demande refusée",
+        event === "booking_accepted"
+          ? `${ownerName} a accepté ta demande pour « ${listingName} »`
+          : `${ownerName} a refusé ta demande pour « ${listingName} »`,
+        `/chat/${conversation_id}`
+      );
 
       return new Response(
         JSON.stringify({ success: true, event }),
@@ -242,6 +268,13 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      await dispatchPush(
+        [(conv as any).owner_id],
+        "Nouvelle demande de location",
+        `${requester.username ?? "Un locataire"} souhaite louer « ${listing.name ?? "votre objet"} »`,
+        `/chat/${conv.id}`
+      );
+
       return new Response(
         JSON.stringify({ success: true, event }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -293,6 +326,13 @@ Deno.serve(async (req: Request) => {
           owner_name: (bookingRow.owner as any)?.username ?? "le propriétaire",
         });
       }
+
+      await dispatchPush(
+        [(bookingRow as any).renter_id],
+        "Caution libérée",
+        `Ta caution pour « ${(bookingRow.listing as any)?.name ?? "ta location"} » a été libérée`,
+        "/reservations"
+      );
 
       return new Response(
         JSON.stringify({ success: true, event }),
@@ -357,6 +397,13 @@ Deno.serve(async (req: Request) => {
       if (renterP?.email) await dispatchEmail(renterP.email, "dispute_opened", emailData);
       if (ownerP?.email) await dispatchEmail(ownerP.email, "dispute_opened", emailData);
 
+      await dispatchPush(
+        [(bookingRow as any).renter_id, (bookingRow as any).owner_id],
+        "Litige ouvert",
+        `Un litige a été ouvert sur « ${(bookingRow.listing as any)?.name ?? "une location"} »`,
+        "/reservations"
+      );
+
       return new Response(
         JSON.stringify({ success: true, event }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -419,6 +466,13 @@ Deno.serve(async (req: Request) => {
       if (renterEmail) await dispatchEmail(renterEmail, "booking_completed", renterData);
       if (ownerEmail) await dispatchEmail(ownerEmail, "booking_completed", baseData);
 
+      await dispatchPush(
+        [(bookingRow as any).renter_id, (bookingRow as any).owner_id],
+        "Location terminée ✅",
+        `La location « ${(bookingRow.listing as any)?.name ?? "" } » est finalisée`,
+        "/reservations"
+      );
+
       return new Response(
         JSON.stringify({ success: true, event }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -464,6 +518,71 @@ Deno.serve(async (req: Request) => {
           reviewed_id: (reviewRow as any).reviewed_id,
         });
       }
+
+      await dispatchPush(
+        [(reviewRow as any).reviewed_id],
+        "Nouvel avis reçu ⭐",
+        `${(reviewRow.reviewer as any)?.username ?? "Un utilisateur"} a laissé un avis (${(reviewRow as any).rating}★) sur « ${(reviewRow.listing as any)?.name ?? "ton objet"} »`,
+        `/owner/${(reviewRow as any).reviewed_id}`
+      );
+
+      return new Response(
+        JSON.stringify({ success: true, event }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (event === "new_message") {
+      // Push-only event (no email) fired by the client right after a chat
+      // message insert. The caller must be a participant; the recipient is
+      // always the *other* participant, so a user can't push to arbitrary
+      // targets — no more than they already can by sending a chat message.
+      if (!conversation_id) {
+        return new Response(
+          JSON.stringify({ error: "conversation_id requis" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: conv } = await supabaseAdmin
+        .from("conversations")
+        .select("id, owner_id, requester_id")
+        .eq("id", conversation_id)
+        .maybeSingle();
+
+      if (!conv) {
+        return new Response(
+          JSON.stringify({ error: "Conversation introuvable" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const ownerId = (conv as any).owner_id;
+      const requesterId = (conv as any).requester_id;
+      if (ownerId !== user.id && requesterId !== user.id) {
+        return new Response(
+          JSON.stringify({ error: "Accès refusé : vous n'êtes pas participant de cette conversation" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const recipientId = ownerId === user.id ? requesterId : ownerId;
+
+      const { data: senderProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("username")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const rawPreview = typeof body?.preview === "string" ? body.preview.trim() : "";
+      const preview = rawPreview ? rawPreview.slice(0, 120) : "Nouveau message";
+
+      await dispatchPush(
+        [recipientId],
+        senderProfile?.username ?? "Nouveau message",
+        preview,
+        `/chat/${conversation_id}`
+      );
 
       return new Response(
         JSON.stringify({ success: true, event }),

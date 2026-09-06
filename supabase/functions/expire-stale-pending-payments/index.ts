@@ -1,3 +1,4 @@
+import { sendPushToUsers } from "../_shared/push.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { constantTimeEquals, requireEnv } from "../_shared/auth.ts";
@@ -37,7 +38,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: staleBookings, error: fetchError } = await supabase
       .from("bookings")
-      .select("id, conversation_id, status")
+      .select("id, conversation_id, status, renter_id, listing:listings(name)")
       .eq("status", "pending_payment")
       .lt("created_at", cutoff);
 
@@ -67,6 +68,19 @@ Deno.serve(async (req: Request) => {
       if (bookingUpdateError) continue;
 
       expiredIds.push(booking.id);
+
+      try {
+        const listingName = (booking as any).listing?.name ?? "votre location";
+        await sendPushToUsers(supabase, [(booking as any).renter_id], {
+          title: "Réservation expirée",
+          body: `Le paiement de « ${listingName} » n'a pas été finalisé dans les 2 h : la demande est annulée. Vous pouvez en refaire une.`,
+          data: { url: booking.conversation_id ? `/chat/${booking.conversation_id}` : "/(tabs)/reservations", booking_id: booking.id },
+          type: "booking_expired",
+          category: "bookings",
+        });
+      } catch (e) {
+        console.error("Push booking_expired failed:", e);
+      }
 
       if (booking.conversation_id) {
         await supabase

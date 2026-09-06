@@ -1,3 +1,4 @@
+import { sendPushToUsers } from "../_shared/push.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildCorsHeaders, preflightResponse, type CorsOptions } from "../_shared/cors.ts";
@@ -165,6 +166,27 @@ Deno.serve(async (req: Request) => {
     const endDate = formatDate(booking.end_date);
 
     const internalSecret = Deno.env.get("INTERNAL_EDGE_SECRET");
+
+    // Push (et centre de notifications) : paiement confirmé, location active.
+    try {
+      const chatUrl = booking.conversation_id ? `/chat/${booking.conversation_id}` : "/(tabs)/reservations";
+      await sendPushToUsers(supabaseAdmin, [booking.owner_id], {
+        title: "Paiement reçu 💸",
+        body: `${renterName} a payé la location de « ${listingName} » du ${startDate} au ${endDate}.`,
+        data: { url: chatUrl, booking_id },
+        type: "payment_confirmed_owner",
+        category: "bookings",
+      });
+      await sendPushToUsers(supabaseAdmin, [booking.renter_id], {
+        title: "Paiement confirmé ✅",
+        body: `Votre location de « ${listingName} » est confirmée du ${startDate} au ${endDate}.`,
+        data: { url: chatUrl, booking_id },
+        type: "payment_confirmed_renter",
+        category: "bookings",
+      });
+    } catch (pushErr) {
+      console.error("Push payment_confirmed failed:", pushErr);
+    }
 
     if (renterEmail) {
       try {

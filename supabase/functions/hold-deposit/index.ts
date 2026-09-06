@@ -1,3 +1,4 @@
+import { sendPushToUsers } from "../_shared/push.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { constantTimeEquals, requireEnv } from "../_shared/auth.ts";
@@ -96,7 +97,7 @@ Deno.serve(async (req: Request) => {
     let query = supabase
       .from("bookings")
       .select(`
-        id, renter_id, deposit_amount, end_date, conversation_id, deposit_hold_failed,
+        id, renter_id, owner_id, deposit_amount, end_date, conversation_id, deposit_hold_failed,
         listing:listings(name),
         renter:profiles!bookings_renter_id_fkey(stripe_customer_id, email, username),
         owner:profiles!bookings_owner_id_fkey(email, username)
@@ -137,6 +138,25 @@ Deno.serve(async (req: Request) => {
       const ownerEmail = (booking.owner as any)?.email;
       const data = { listing_name: listingName, deposit: booking.deposit_amount };
       const headers = internalSecret ? { "x-internal-secret": internalSecret } : {};
+      try {
+        const url = booking.conversation_id ? `/chat/${booking.conversation_id}` : "/(tabs)/reservations";
+        await sendPushToUsers(supabase, [booking.renter_id], {
+          title: "Caution non réservée ⚠️",
+          body: `Impossible de réserver la caution de ${booking.deposit_amount} € pour « ${listingName} ». Mettez à jour votre carte.`,
+          data: { url, booking_id: booking.id },
+          type: "deposit_hold_failed_renter",
+          category: "bookings",
+        });
+        await sendPushToUsers(supabase, [booking.owner_id], {
+          title: "Caution non réservée",
+          body: `La caution de « ${listingName} » n'a pas pu être réservée. Le locataire a été prévenu.`,
+          data: { url, booking_id: booking.id },
+          type: "deposit_hold_failed_owner",
+          category: "bookings",
+        });
+      } catch (e) {
+        console.error("Push deposit_hold_failed failed:", e);
+      }
       for (const to of [renterEmail, ownerEmail]) {
         if (!to) continue;
         try {

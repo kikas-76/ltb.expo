@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { sendPushToUsers } from "../_shared/push.ts";
 
 /**
  * Stripe Webhook Handler pour LoueTonBien
@@ -225,7 +226,7 @@ Deno.serve(async (req: Request) => {
           const { data: booking, error: fetchError } = await supabase
             .from("bookings")
             .select(`
-              id, total_price, deposit_amount, start_date, end_date,
+              id, total_price, deposit_amount, start_date, end_date, renter_id, owner_id, conversation_id,
               listing:listings(name, owner_commission_percent),
               renter:profiles!bookings_renter_id_fkey(email, username),
               owner:profiles!bookings_owner_id_fkey(email, username)
@@ -240,6 +241,28 @@ Deno.serve(async (req: Request) => {
           }
 
           if (booking) {
+            // Push + centre de notifications (idempotent côté finalize : le webhook
+            // n'arrive ici que si c'est lui qui a activé la réservation).
+            try {
+              const chatUrl = booking.conversation_id ? `/chat/${booking.conversation_id}` : "/(tabs)/reservations";
+              const name = booking.listing?.name ?? "votre location";
+              await sendPushToUsers(supabase, [booking.owner_id], {
+                title: "Paiement reçu 💸",
+                body: `${booking.renter?.username ?? "Un locataire"} a payé la location de « ${name} » du ${fmt(booking.start_date)} au ${fmt(booking.end_date)}.`,
+                data: { url: chatUrl, booking_id: bookingId },
+                type: "payment_confirmed_owner",
+                category: "bookings",
+              });
+              await sendPushToUsers(supabase, [booking.renter_id], {
+                title: "Paiement confirmé ✅",
+                body: `Votre location de « ${name} » est confirmée du ${fmt(booking.start_date)} au ${fmt(booking.end_date)}.`,
+                data: { url: chatUrl, booking_id: bookingId },
+                type: "payment_confirmed_renter",
+                category: "bookings",
+              });
+            } catch (pushErr) {
+              console.error("Push payment_confirmed failed:", pushErr);
+            }
             const commissionPercent = (booking.listing?.owner_commission_percent ?? 8) / 100;
             const ownerEarnings = Math.round((booking.total_price ?? 0) * (1 - commissionPercent) * 100) / 100;
 
