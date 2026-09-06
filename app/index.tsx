@@ -22,19 +22,24 @@ import { buildInfinityPath } from '@/components/landing/InfinityHero';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/contexts/AuthContext';
+import { useResponsive } from '@/hooks/useResponsive';
 
 /**
- * Première ouverture : la page reprend le langage du splash. Le ∞ du logo se
- * trace au centre, le ruban des pictogrammes catégories défile sous la
- * promesse, et un grand ∞ en filigrane traverse le fond.
+ * Page publique (web) et première ouverture (app) : la page reprend le langage
+ * du splash. Le ∞ du logo se trace au centre, le ruban des pictogrammes
+ * catégories défile sous la promesse, et un grand ∞ en filigrane traverse le
+ * fond. Sur desktop, texte à gauche et ∞ à droite.
  */
 
-function InfinityWatermark({ width }: { width: number }) {
-  const w = Math.round(width * 1.7);
+function InfinityWatermark({ width, desktop }: { width: number; desktop: boolean }) {
+  const w = Math.round(width * (desktop ? 1.05 : 1.7));
   const h = Math.round(w * 0.52);
   const d = buildInfinityPath(w / 2, h / 2, w / 2 - w * 0.06, 1.35);
+  const position = desktop
+    ? { top: -h * 0.22, left: width - w * 0.68 }
+    : { top: -h * 0.28, left: -w * 0.2 };
   return (
-    <View pointerEvents="none" style={[styles.watermark, { width: w, height: h, top: -h * 0.28, left: -w * 0.2 }]}>
+    <View pointerEvents="none" style={[styles.watermark, { width: w, height: h }, position]}>
       <Svg width={w} height={h}>
         <Path d={d} fill="none" stroke={Colors.primaryLight} strokeWidth={w * 0.075} strokeLinecap="round" strokeLinejoin="round" opacity={0.28} />
       </Svg>
@@ -60,10 +65,52 @@ const TRUST = [
   { label: 'Entre voisins', dot: '#A8562A' },
 ];
 
+const TITLE = PRELAUNCH_MODE ? (
+  <>
+    Dépose ta première annonce{' '}
+    <Text style={{ color: Colors.primaryDark }}>avant l'ouverture.</Text>
+  </>
+) : (
+  <>
+    Tout ce dont vous avez besoin,{'\n'}
+    <Text style={{ color: Colors.primaryDark }}>autour de vous.</Text>
+  </>
+);
+
+const SUBTITLE = PRELAUNCH_MODE
+  ? "Crée ton compte et publie ton annonce dès maintenant. La marketplace ouvre au public très bientôt."
+  : 'Louez, prêtez et partagez des objets avec vos voisins, en toute confiance.';
+
+const PRIMARY_LABEL = PRELAUNCH_MODE ? 'Déposer mon annonce' : 'Commencer gratuitement';
+
+function PrelaunchBadge({ align }: { align: 'center' | 'flex-start' }) {
+  if (!PRELAUNCH_MODE) return null;
+  return (
+    <View style={[styles.badge, { alignSelf: align }]}>
+      <View style={styles.badgeDot} />
+      <Text style={styles.badgeText}>Avant-première · dépôt d'annonces ouvert</Text>
+    </View>
+  );
+}
+
+function TrustPills({ justify }: { justify: 'center' | 'flex-start' }) {
+  return (
+    <View style={[styles.trustRow, { justifyContent: justify }]}>
+      {TRUST.map((t) => (
+        <View key={t.label} style={styles.trustPill}>
+          <View style={[styles.trustDot, { backgroundColor: t.dot }]} />
+          <Text style={styles.trustText}>{t.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function LandingScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { session, loading: authLoading } = useAuth();
+  const { isDesktop, isTablet } = useResponsive();
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -81,20 +128,94 @@ export default function LandingScreen() {
   const ribbonReveal = useReveal(1100);
   const ctaReveal = useReveal(1300);
 
-  const isTall = height > 740;
-  const heroSize = Math.min(Math.round(width * 0.62), isTall ? 250 : 210);
-  const maxContentWidth = Math.min(width, 520);
+  const startRegister = () => {
+    haptics.confirm();
+    router.push('/register');
+  };
 
   // Session en cours de lecture, ou utilisateur déjà connecté : on n'affiche pas la
-  // page (le guard du layout redirige vers l'accueil). Évite le passage par cette
-  // page à chaque réouverture de l'app.
+  // page (le guard du layout redirige vers l'accueil).
   if (authLoading || session) {
     return <View style={styles.root} />;
   }
 
+  // ---------------------------------------------------------------- Desktop
+  if (isDesktop) {
+    const heroSize = Math.round(Math.min(400, Math.max(300, width * 0.26)));
+    return (
+      <View style={styles.root}>
+        <InfinityWatermark width={width} desktop />
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { minHeight: height, paddingTop: 28, paddingBottom: 28 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={desk.page}>
+            <Animated.View style={[desk.topBar, logoReveal]}>
+              <Image
+                source={require('@/assets/images/logoLTBwhitoutbaground.png')}
+                style={desk.logo}
+                resizeMode="contain"
+              />
+              <TouchableOpacity onPress={() => router.push('/login')} activeOpacity={0.7} style={desk.topLogin}>
+                <Text style={desk.topLoginText}>Se connecter</Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <View style={desk.hero}>
+              <View style={desk.heroText}>
+                <Animated.View style={titleReveal}>
+                  <PrelaunchBadge align="flex-start" />
+                  <Text style={[styles.title, desk.title]}>{TITLE}</Text>
+                </Animated.View>
+                <Animated.View style={subReveal}>
+                  <Text style={[styles.sub, desk.sub]}>{SUBTITLE}</Text>
+                </Animated.View>
+                <Animated.View style={[desk.ctaRow, ctaReveal]}>
+                  <TouchableOpacity style={desk.primaryBtn} onPress={startRegister} activeOpacity={0.85}>
+                    <Text style={desk.primaryBtnText}>{PRIMARY_LABEL}</Text>
+                    <View style={styles.primaryBtnArrow}>
+                      <Ionicons name="arrow-forward" size={16} color={Colors.primaryDark} />
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={desk.ctaHint}>Gratuit, sans engagement.</Text>
+                </Animated.View>
+                <Animated.View style={ctaReveal}>
+                  <TrustPills justify="flex-start" />
+                </Animated.View>
+              </View>
+
+              <Animated.View style={[desk.heroVisual, heroReveal]}>
+                <View style={desk.heroCard}>
+                  <InfinityLoader size={heroSize} drawDuration={1400} />
+                </View>
+              </Animated.View>
+            </View>
+          </View>
+
+          <Animated.View style={[desk.ribbon, ribbonReveal]}>
+            <InfiniteIconStrip />
+          </Animated.View>
+
+          <Animated.View style={[desk.footer, ctaReveal]}>
+            <TouchableOpacity onPress={() => router.push('/legal')} activeOpacity={0.7}>
+              <Text style={styles.legal}>Mentions légales · CGU · Confidentialité</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ------------------------------------------------------ Mobile et tablette
+  const isTall = height > 740;
+  const heroSize = isTablet
+    ? Math.min(Math.round(width * 0.4), 300)
+    : Math.min(Math.round(width * 0.62), isTall ? 250 : 210);
+  const maxContentWidth = Math.min(width, isTablet ? 640 : 520);
+
   return (
     <View style={styles.root}>
-      <InfinityWatermark width={width} />
+      <InfinityWatermark width={width} desktop={false} />
 
       <ScrollView
         contentContainerStyle={[
@@ -118,31 +239,12 @@ export default function LandingScreen() {
           </Animated.View>
 
           <Animated.View style={[styles.titleWrap, titleReveal]}>
-            {PRELAUNCH_MODE ? (
-              <>
-                <View style={styles.badge}>
-                  <View style={styles.badgeDot} />
-                  <Text style={styles.badgeText}>Avant-première · dépôt d'annonces ouvert</Text>
-                </View>
-                <Text style={styles.title}>
-                  Dépose ta première annonce{' '}
-                  <Text style={styles.titleAccent}>avant l'ouverture.</Text>
-                </Text>
-              </>
-            ) : (
-              <Text style={styles.title}>
-                Tout ce dont vous avez besoin,{'\n'}
-                <Text style={styles.titleAccent}>autour de vous.</Text>
-              </Text>
-            )}
+            <PrelaunchBadge align="center" />
+            <Text style={[styles.title, isTablet && styles.titleTablet]}>{TITLE}</Text>
           </Animated.View>
 
           <Animated.View style={[styles.subWrap, subReveal]}>
-            <Text style={styles.sub}>
-              {PRELAUNCH_MODE
-                ? "Crée ton compte et publie ton annonce dès maintenant. La marketplace ouvre au public très bientôt."
-                : 'Louez, prêtez et partagez des objets avec vos voisins, en toute confiance.'}
-            </Text>
+            <Text style={[styles.sub, isTablet && styles.subTablet]}>{SUBTITLE}</Text>
           </Animated.View>
         </View>
 
@@ -151,17 +253,8 @@ export default function LandingScreen() {
         </Animated.View>
 
         <Animated.View style={[styles.inner, styles.ctaSection, { maxWidth: maxContentWidth }, ctaReveal]}>
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => {
-              haptics.confirm();
-              router.push('/register');
-            }}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.primaryBtnText}>
-              {PRELAUNCH_MODE ? 'Déposer mon annonce' : 'Commencer gratuitement'}
-            </Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={startRegister} activeOpacity={0.85}>
+            <Text style={styles.primaryBtnText}>{PRIMARY_LABEL}</Text>
             <View style={styles.primaryBtnArrow}>
               <Ionicons name="arrow-forward" size={16} color={Colors.primaryDark} />
             </View>
@@ -172,14 +265,7 @@ export default function LandingScreen() {
             <Text style={styles.loginLink}> Se connecter</Text>
           </TouchableOpacity>
 
-          <View style={styles.trustRow}>
-            {TRUST.map((t) => (
-              <View key={t.label} style={styles.trustPill}>
-                <View style={[styles.trustDot, { backgroundColor: t.dot }]} />
-                <Text style={styles.trustText}>{t.label}</Text>
-              </View>
-            ))}
-          </View>
+          <TrustPills justify="center" />
 
           <TouchableOpacity onPress={() => router.push('/legal')} activeOpacity={0.7}>
             <Text style={styles.legal}>Mentions légales · CGU · Confidentialité</Text>
@@ -236,6 +322,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderWidth: 1,
     borderColor: '#E7E3D5',
+    marginBottom: 12,
   },
   badgeDot: {
     width: 7,
@@ -256,8 +343,9 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: 'center',
   },
-  titleAccent: {
-    color: Colors.primaryDark,
+  titleTablet: {
+    fontSize: 40,
+    lineHeight: 46,
   },
   subWrap: {
     marginTop: 12,
@@ -270,6 +358,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     maxWidth: 340,
+  },
+  subTablet: {
+    fontSize: 17,
+    lineHeight: 25,
+    maxWidth: 440,
   },
   ribbonWrap: {
     width: '100%',
@@ -329,7 +422,6 @@ const styles = StyleSheet.create({
   trustRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
     gap: 8,
     marginTop: 2,
   },
@@ -360,5 +452,116 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     marginTop: 4,
+  },
+});
+
+const desk = StyleSheet.create({
+  page: {
+    width: '100%',
+    maxWidth: 1160,
+    paddingHorizontal: 56,
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logo: {
+    width: 168,
+    height: 44,
+  },
+  topLogin: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: '#E7E3D5',
+  },
+  topLoginText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: Colors.primaryDark,
+  },
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 56,
+    marginTop: 48,
+    marginBottom: 40,
+  },
+  heroText: {
+    flex: 1.15,
+    gap: 22,
+  },
+  title: {
+    fontSize: 54,
+    lineHeight: 60,
+    letterSpacing: -1.6,
+    textAlign: 'left',
+  },
+  sub: {
+    fontSize: 18,
+    lineHeight: 28,
+    textAlign: 'left',
+    maxWidth: 480,
+  },
+  ctaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 14,
+    marginTop: 4,
+  },
+  primaryBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    backgroundColor: Colors.primaryDark,
+    borderRadius: 999,
+    paddingVertical: 14,
+    paddingLeft: 30,
+    paddingRight: 8,
+    ...Platform.select({
+      web: { boxShadow: '0 8px 16px rgba(78,107,56,0.22)' },
+      default: {},
+    }),
+  },
+  primaryBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 17,
+    color: Colors.white,
+  },
+  ctaHint: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: Colors.textMuted,
+  },
+  heroVisual: {
+    flex: 0.85,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroCard: {
+    padding: 44,
+    borderRadius: 40,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: '#E7E3D5',
+    ...Platform.select({
+      web: { boxShadow: '0 24px 48px rgba(44,44,44,0.08)' },
+      default: {},
+    }),
+  },
+  ribbon: {
+    width: '100%',
+    marginTop: 8,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 26,
   },
 });

@@ -188,8 +188,7 @@ function RootNavigator() {
 
     // La page de première ouverture (« / », segment undefined) se comporte comme
     // un écran de connexion : session + onboarding terminé → accueil direct.
-    // Natif uniquement : sur le web, « / » reste la page vitrine publique.
-    const isLandingRoute = seg === undefined && Platform.OS !== 'web';
+    const isLandingRoute = seg === undefined;
     if (profile?.onboarding_completed && (isAuthRoute || isLandingRoute)) {
       if (PRELAUNCH_MODE && profile?.role !== 'admin') {
         // Deep links to blocked routes are dropped during prelaunch;
