@@ -7,12 +7,14 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "louetonbien",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.louetonbien.app",
-      "associatedDomains": ["applinks:app.louetonbien.fr"],
+      "associatedDomains": [
+        "applinks:app.louetonbien.fr"
+      ],
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -53,7 +55,6 @@
       [
         "@stripe/stripe-react-native",
         {
-          "merchantIdentifier": "merchant.com.louetonbien",
           "enableGooglePay": false
         }
       ],
@@ -84,6 +85,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#F5F2E3",
+          "image": "./assets/images/logoLTBwhitoutbaground.png",
+          "imageWidth": 200,
           "resizeMode": "contain"
         }
       ]

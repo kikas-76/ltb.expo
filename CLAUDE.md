@@ -23,6 +23,14 @@ npm run lint
 
 # Unit tests (Vitest, pure helpers only)
 npm test
+
+# Local iOS test build (ad-hoc profile, no Apple login): drop the Universal Links
+# entitlement the current profile lacks, then install over USB
+LTB_SKIP_ASSOCIATED_DOMAINS=1 npx eas-cli build --platform ios --profile preview --local --output build.ipa
+ideviceinstaller -u <UDID> install build.ipa
+
+# Submission build (interactive: Apple login syncs capabilities + App Store profile)
+eas build --platform ios --profile production && eas submit --platform ios
 ```
 
 Tests cover pure helpers (`lib/pricing.ts`) only. There is no E2E or integration test suite — feature correctness on UI flows must be verified manually.
