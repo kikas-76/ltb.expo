@@ -36,6 +36,8 @@ import { AdaptiveImage } from '@/components/AdaptiveImage';
 import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { haptics } from '@/lib/haptics';
+import OptionsSheet from '@/components/OptionsSheet';
+import { getBlockStatus, blockUser, unblockUser, NO_BLOCK, type BlockStatus } from '@/lib/blocks';
 import ReviewModal from '@/components/reviews/ReviewModal';
 import RatingStars from '@/components/reviews/RatingStars';
 import { useAuth } from '@/contexts/AuthContext';
@@ -121,6 +123,10 @@ export default function ChatScreen() {
 
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [meta, setMeta] = useState<ConvMeta | null>(null);
+  useEffect(() => {
+    if (!meta?.otherUserId) return;
+    getBlockStatus(meta.otherUserId).then(setBlock).catch(() => {});
+  }, [meta?.otherUserId]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -151,6 +157,10 @@ export default function ChatScreen() {
   // pre-fill the modal for inline editing during the 7-day window.
   const [myReview, setMyReview] = useState<{ rating: number; comment: string | null; created_at: string } | null>(null);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  // Blocage entre les deux participants (guideline App Review 1.2).
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [block, setBlock] = useState<BlockStatus>(NO_BLOCK);
+  const isBlocked = block.blockedByMe || block.blockedByThem;
 
   const fetchData = useCallback(async () => {
     if (!id || !user) return;
@@ -452,6 +462,7 @@ export default function ChatScreen() {
   const sendMessage = async () => {
     const trimmed = text.trim();
     if (!trimmed || !user || !id || sending) return;
+    if (isBlocked) return;
 
     haptics.tap();
     const tempId = `temp-${Date.now()}`;
@@ -1145,19 +1156,10 @@ export default function ChatScreen() {
           <TouchableOpacity
             style={styles.backBtn}
             activeOpacity={0.75}
-            onPress={() =>
-              meta &&
-              router.push({
-                pathname: '/report',
-                params: {
-                  type: 'conversation',
-                  targetId: id,
-                  targetLabel: meta.otherUsername,
-                },
-              } as any)
-            }
+            onPress={() => meta && setMenuOpen(true)}
+            accessibilityLabel="Options de la conversation"
           >
-            <Ionicons name="flag-outline" size={18} color={Colors.textMuted} />
+            <Ionicons name="ellipsis-horizontal" size={20} color={Colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -1617,7 +1619,30 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Input */}
+      {/* Input (remplacée par un bandeau quand l'un des deux a bloqué l'autre) */}
+      {isBlocked ? (
+        <View style={[styles.blockedBar, { paddingBottom: isDesktop ? 16 : insets.bottom + 12 }]}>
+          <Ionicons name="ban-outline" size={18} color={Colors.textSecondary} />
+          <Text style={styles.blockedText}>
+            {block.blockedByMe
+              ? 'Vous avez bloqué cet utilisateur.'
+              : 'Vous ne pouvez plus échanger avec cet utilisateur.'}
+          </Text>
+          {block.blockedByMe && (
+            <TouchableOpacity
+              onPress={async () => {
+                if (!user || !meta) return;
+                haptics.tap();
+                const err = await unblockUser(user.id, meta.otherUserId);
+                if (!err) setBlock((b) => ({ ...b, blockedByMe: false }));
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.blockedLink}>Débloquer</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
       <Animated.View
         style={[
           styles.inputBar,
@@ -1656,6 +1681,60 @@ export default function ChatScreen() {
           }
         </TouchableOpacity>
       </Animated.View>
+      )}
+
+      <OptionsSheet
+        visible={menuOpen}
+        title={meta?.otherUsername ? `@${meta.otherUsername}` : undefined}
+        onClose={() => setMenuOpen(false)}
+        options={[
+          {
+            key: 'report-conversation',
+            label: 'Signaler la conversation',
+            icon: 'flag-outline',
+            onPress: () =>
+              meta &&
+              router.push({
+                pathname: '/report',
+                params: { type: 'conversation', targetId: id, targetLabel: meta.otherUsername },
+              } as any),
+          },
+          {
+            key: 'report-user',
+            label: 'Signaler cet utilisateur',
+            icon: 'person-remove-outline',
+            onPress: () =>
+              meta &&
+              router.push({
+                pathname: '/report',
+                params: { type: 'user', targetId: meta.otherUserId, targetLabel: `@${meta.otherUsername}` },
+              } as any),
+          },
+          block.blockedByMe
+            ? {
+                key: 'unblock',
+                label: 'Débloquer cet utilisateur',
+                icon: 'checkmark-circle-outline',
+                onPress: async () => {
+                  if (!user || !meta) return;
+                  const err = await unblockUser(user.id, meta.otherUserId);
+                  if (!err) setBlock((b) => ({ ...b, blockedByMe: false }));
+                },
+              }
+            : {
+                key: 'block',
+                label: 'Bloquer cet utilisateur',
+                icon: 'ban-outline',
+                destructive: true,
+                onPress: async () => {
+                  if (!user || !meta) return;
+                  haptics.tap();
+                  const err = await blockUser(user.id, meta.otherUserId);
+                  if (!err) setBlock((b) => ({ ...b, blockedByMe: true }));
+                },
+              },
+        ]}
+      />
 
       {/* Owner validation modal: shown when bookingStatus === 'pending_owner_validation' and user is owner */}
       <Modal
@@ -1739,6 +1818,13 @@ const chatDesktopStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  blockedBar: {
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+    paddingHorizontal: 16, paddingTop: 12, backgroundColor: Colors.white,
+    borderTopWidth: 1, borderTopColor: Colors.borderLight,
+  },
+  blockedText: { flex: 1, fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textSecondary },
+  blockedLink: { fontFamily: 'Inter-SemiBold', fontSize: 13, color: Colors.primaryDark },
   root: { flex: 1, backgroundColor: Colors.background },
   centered: { alignItems: 'center', justifyContent: 'center' },
 

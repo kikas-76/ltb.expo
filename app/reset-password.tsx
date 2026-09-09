@@ -15,6 +15,7 @@ import LoadingBlock from '@/components/LoadingBlock';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { waitForSession } from '@/lib/waitForSession';
 import { Colors } from '@/constants/colors';
 
 export default function ResetPasswordScreen() {
@@ -67,8 +68,9 @@ export default function ResetPasswordScreen() {
           }
         }
       } else {
-        // Native: session should already be set via deep link handler
-        const { data: { session } } = await supabase.auth.getSession();
+        // Natif : la session du lien est posée par le layout racine après le
+        // montage de cet écran → on attend l'événement d'auth (8 s max).
+        const session = await waitForSession(8000);
         if (session) {
           setSessionReady(true);
         } else {

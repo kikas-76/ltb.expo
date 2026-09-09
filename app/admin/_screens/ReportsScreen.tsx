@@ -166,7 +166,7 @@ export default function AdminReports() {
                     <Text style={styles.categoryText}>{CATEGORY_LABELS[r.category] ?? r.category}</Text>
                   </View>
                   <Text style={styles.targetType}>
-                  {r.target_type === 'listing' ? 'Annonce' : 'Conversation'}
+                  {r.target_type === 'listing' ? 'Annonce' : r.target_type === 'user' ? 'Utilisateur' : 'Conversation'}
                 </Text>
                 </View>
                 <Text style={styles.cardMeta}>
@@ -196,6 +196,16 @@ export default function AdminReports() {
               >
                 <Ionicons name="open-outline" size={13} color={Colors.info} />
                 <Text style={styles.linkText}>Voir la conversation signalée</Text>
+              </TouchableOpacity>
+            )}
+            {r.target_type === 'user' && (
+              <TouchableOpacity
+                style={styles.linkRow}
+                onPress={() => router.push(`/admin/user/${r.target_id}` as any)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="open-outline" size={13} color={Colors.info} />
+                <Text style={styles.linkText}>Voir l'utilisateur signalé</Text>
               </TouchableOpacity>
             )}
 

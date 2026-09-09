@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { prepareImageForUpload } from '@/lib/prepareImageForUpload';
+import { unblockUser } from '@/lib/blocks';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,7 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type Section = 'menu' | 'photo' | 'username' | 'bio' | 'email' | 'phone' | 'password' | 'delete' | 'notifications';
+type Section = 'menu' | 'photo' | 'username' | 'bio' | 'email' | 'phone' | 'password' | 'delete' | 'notifications' | 'blocked';
 
 function SuccessBanner({ message }: { message: string }) {
   return (
@@ -60,6 +61,21 @@ export default function AccountSettingsScreen() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1024;
   const [section, setSection] = useState<Section>('menu');
+  const [blockedUsers, setBlockedUsers] = useState<{ id: string; username: string | null; blocked_at: string }[]>([]);
+  const [blockedLoading, setBlockedLoading] = useState(false);
+  useEffect(() => {
+    if (section !== 'blocked') return;
+    setBlockedLoading(true);
+    supabase.rpc('get_blocked_users').then(({ data }) => {
+      setBlockedUsers((data as any[]) ?? []);
+      setBlockedLoading(false);
+    });
+  }, [section]);
+  const handleUnblock = async (otherId: string) => {
+    if (!user) return;
+    const err = await unblockUser(user.id, otherId);
+    if (!err) setBlockedUsers((list) => list.filter((b) => b.id !== otherId));
+  };
 
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoSuccess, setPhotoSuccess] = useState(false);
@@ -412,6 +428,13 @@ export default function AccountSettingsScreen() {
       onPress: () => openSection('notifications'),
     },
     {
+      icon: <Ionicons name="ban-outline" size={18} color={Colors.primaryDark} />,
+      label: 'Utilisateurs bloqués',
+      value: 'Gérer les personnes bloquées',
+      preview: undefined as string | undefined,
+      onPress: () => openSection('blocked'),
+    },
+    {
       icon: <Ionicons name="lock-closed-outline" size={18} color={Colors.primaryDark} />,
       label: 'Mot de passe',
       value: '••••••••',
@@ -554,6 +577,38 @@ export default function AccountSettingsScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+    );
+  }
+
+  if (section === 'blocked') {
+    return (
+      <View style={styles.root}>
+        <View style={{ paddingTop: insets.top }}>
+          <SectionHeader onBack={() => setSection('menu')} title="Utilisateurs bloqués" />
+        </View>
+        <ScrollView contentContainerStyle={[styles.sectionBody, isDesktop && deskStyles.centeredBody]} showsVerticalScrollIndicator={false}>
+          <Text style={styles.fieldDescription}>
+            Une personne bloquée ne peut plus vous écrire ni réserver vos objets, et vous ne voyez plus ses annonces.
+          </Text>
+          {blockedLoading ? (
+            <ActivityIndicator color={Colors.primary} />
+          ) : blockedUsers.length === 0 ? (
+            <Text style={prefStyles.hint}>Vous n'avez bloqué personne.</Text>
+          ) : (
+            blockedUsers.map((b) => (
+              <View key={b.id} style={prefStyles.row}>
+                <View style={{ flex: 1 }}>
+                  <Text style={prefStyles.label}>@{b.username ?? 'utilisateur'}</Text>
+                  <Text style={prefStyles.hint}>Bloqué le {new Date(b.blocked_at).toLocaleDateString('fr-FR')}</Text>
+                </View>
+                <TouchableOpacity onPress={() => handleUnblock(b.id)} activeOpacity={0.7}>
+                  <Text style={{ fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.primaryDark }}>Débloquer</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </View>
     );
   }
 

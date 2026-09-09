@@ -21,6 +21,9 @@ import { supabase } from '@/lib/supabase';
 import ProBadge from '@/components/ProBadge';
 import { SkeletonProfileHeader, SkeletonGrid } from '@/components/Skeleton';
 import RatingStars from '@/components/reviews/RatingStars';
+import OptionsSheet from '@/components/OptionsSheet';
+import { getBlockStatus, blockUser, unblockUser, NO_BLOCK, type BlockStatus } from '@/lib/blocks';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DESKTOP_BREAKPOINT = 900;
 
@@ -133,6 +136,14 @@ function ListingMiniCard({
 
 export default function OwnerProfilePage() {
   const { id, start: startParam, end: endParam } = useLocalSearchParams<{ id: string; start?: string; end?: string }>();
+  const { user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [block, setBlock] = useState<BlockStatus>(NO_BLOCK);
+  const canAct = !!user && !!id && id !== user.id;
+  useEffect(() => {
+    if (!canAct) return;
+    getBlockStatus(id).then(setBlock).catch(() => {});
+  }, [id, canAct]);
   const insets = useSafeAreaInsets();
   const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
@@ -199,6 +210,41 @@ export default function OwnerProfilePage() {
 
   const photo = owner?.avatar_url ?? owner?.photo_url;
   const name = owner?.username ? `@${owner.username}` : 'Utilisateur';
+
+  const toggleBlock = async () => {
+    if (!user || !id) return;
+    const err = block.blockedByMe ? await unblockUser(user.id, id) : await blockUser(user.id, id);
+    if (!err) setBlock((b) => ({ ...b, blockedByMe: !b.blockedByMe }));
+  };
+
+  const blockBanner = block.blockedByMe ? (
+    <View style={ownerActionStyles.banner}>
+      <Ionicons name="ban-outline" size={18} color={Colors.textSecondary} />
+      <Text style={ownerActionStyles.bannerText}>Vous avez bloqué {name}. Ses annonces sont masquées et vous ne pouvez plus échanger.</Text>
+      <TouchableOpacity onPress={toggleBlock} activeOpacity={0.7}>
+        <Text style={ownerActionStyles.bannerLink}>Débloquer</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
+
+  const actionsSheet = canAct ? (
+    <OptionsSheet
+      visible={menuOpen}
+      title={name}
+      onClose={() => setMenuOpen(false)}
+      options={[
+        {
+          key: 'report-user',
+          label: 'Signaler cet utilisateur',
+          icon: 'flag-outline',
+          onPress: () => router.push({ pathname: '/report', params: { type: 'user', targetId: id, targetLabel: name } } as any),
+        },
+        block.blockedByMe
+          ? { key: 'unblock', label: 'Débloquer cet utilisateur', icon: 'checkmark-circle-outline', onPress: toggleBlock }
+          : { key: 'block', label: 'Bloquer cet utilisateur', icon: 'ban-outline', destructive: true, onPress: toggleBlock },
+      ]}
+    />
+  ) : null;
   const initials = name.slice(0, 2).toUpperCase();
 
   const profilePanel = (
@@ -434,7 +480,7 @@ export default function OwnerProfilePage() {
           contentContainerStyle={[styles.desktopScroll, { paddingBottom: insets.bottom + 48 }]}
         >
           <View style={[styles.desktopTopBar, { paddingTop: insets.top + 16 }]}>
-            <View style={styles.desktopInner}>
+            <View style={[styles.desktopInner, ownerActionStyles.desktopRow]}>
               <TouchableOpacity
                 onPress={() => router.back()}
                 style={styles.backBtnDesktop}
@@ -443,12 +489,18 @@ export default function OwnerProfilePage() {
                 <Ionicons name="arrow-back-outline" size={18} color={Colors.text} />
                 <Text style={styles.backBtnDesktopText}>Retour</Text>
               </TouchableOpacity>
+              {canAct && (
+                <TouchableOpacity onPress={() => setMenuOpen(true)} style={ownerActionStyles.desktopBtn} activeOpacity={0.7} accessibilityLabel="Options du profil">
+                  <Ionicons name="ellipsis-horizontal" size={18} color={Colors.text} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
           <View style={styles.desktopInner}>
             <View style={styles.desktopLayout}>
               <View style={styles.desktopLeft}>
+                {blockBanner}
                 {profilePanel}
               </View>
               <View style={styles.desktopRight}>
@@ -458,6 +510,7 @@ export default function OwnerProfilePage() {
             </View>
           </View>
         </ScrollView>
+        {actionsSheet}
       </View>
     );
   }
@@ -477,16 +530,46 @@ export default function OwnerProfilePage() {
           >
             <Ionicons name="arrow-back-outline" size={18} color={Colors.text} />
           </TouchableOpacity>
+          {canAct && (
+            <TouchableOpacity
+              onPress={() => setMenuOpen(true)}
+              style={[ownerActionStyles.mobileBtn, { top: insets.top + 8 }]}
+              activeOpacity={0.7}
+              accessibilityLabel="Options du profil"
+            >
+              <Ionicons name="ellipsis-horizontal" size={18} color={Colors.text} />
+            </TouchableOpacity>
+          )}
 
+          {blockBanner}
           {profilePanel}
         </View>
 
         {reviewsPanel}
         {listingsPanel}
       </ScrollView>
+      {actionsSheet}
     </View>
   );
 }
+
+const ownerActionStyles = StyleSheet.create({
+  desktopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  desktopBtn: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.borderLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  mobileBtn: {
+    position: 'absolute', right: 20, width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.75)',
+    alignItems: 'center', justifyContent: 'center', zIndex: 2,
+  },
+  banner: {
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginHorizontal: 20, marginTop: 56, marginBottom: 4,
+    padding: 12, borderRadius: 12, backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  bannerText: { flex: 1, fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textSecondary },
+  bannerLink: { fontFamily: 'Inter-SemiBold', fontSize: 13, color: Colors.primaryDark },
+});
 
 const styles = StyleSheet.create({
   root: {

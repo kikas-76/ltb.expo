@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
+import { waitForSession } from '@/lib/waitForSession';
 
 export default function EmailConfirmedScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -48,8 +49,11 @@ export default function EmailConfirmedScreen() {
       // landed here from another tab). Only enable the button if a real
       // session is present; otherwise the global guard would just bounce
       // them back to the landing page.
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+      // Natif : la session du lien louetonbien://email-confirmed est posée par
+      // le layout racine après le montage → attendre l'événement d'auth
+      // plutôt que d'afficher « Lien expiré » à tort.
+      const session = await waitForSession(Platform.OS === 'web' ? 2500 : 8000);
+      if (session) {
         setSessionReady(true);
       } else {
         setRestoreFailed(true);

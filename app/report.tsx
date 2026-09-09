@@ -115,14 +115,52 @@ const CONVERSATION_CATEGORIES: ReportCategory[] = [
   },
 ];
 
+const USER_CATEGORIES: ReportCategory[] = [
+  {
+    key: 'harassment',
+    label: 'Harcèlement',
+    description: 'Comportement insistant, intimidant ou menaçant',
+    icon: <Ionicons name="warning-outline" size={20} color="#C25450" />,
+    color: '#C25450',
+  },
+  {
+    key: 'fraud',
+    label: 'Arnaque / Usurpation',
+    description: "Escroquerie, faux profil ou usurpation d'identité",
+    icon: <Ionicons name="shield-outline" size={20} color="#D97706" />,
+    color: '#D97706',
+  },
+  {
+    key: 'inappropriate_content',
+    label: 'Profil inapproprié',
+    description: 'Photo, pseudo ou bio offensants ou illégaux',
+    icon: <Ionicons name="close-circle-outline" size={20} color="#7C3AED" />,
+    color: '#7C3AED',
+  },
+  {
+    key: 'spam',
+    label: 'Spam',
+    description: 'Sollicitations répétées ou publicité',
+    icon: <Ionicons name="refresh-outline" size={20} color="#B45309" />,
+    color: '#B45309',
+  },
+  {
+    key: 'other',
+    label: 'Autre raison',
+    description: 'Tout autre problème non listé ci-dessus',
+    icon: <Ionicons name="chatbubble-outline" size={20} color="#6B7280" />,
+    color: '#6B7280',
+  },
+];
+
 export default function ReportScreen() {
   const headerTop = useHeaderTop();
   const params = useLocalSearchParams<{ type: string; targetId: string; targetLabel?: string }>();
-  const type = params.type as 'listing' | 'conversation';
+  const type = params.type as 'listing' | 'conversation' | 'user';
   const targetId = params.targetId;
   const targetLabel = params.targetLabel ?? '';
 
-  const categories = type === 'conversation' ? CONVERSATION_CATEGORIES : LISTING_CATEGORIES;
+  const categories = type === 'conversation' ? CONVERSATION_CATEGORIES : type === 'user' ? USER_CATEGORIES : LISTING_CATEGORIES;
 
   const [step, setStep] = useState<'category' | 'details' | 'done'>('category');
   const [selectedCategory, setSelectedCategory] = useState<ReportCategory | null>(null);
@@ -165,8 +203,7 @@ export default function ReportScreen() {
     setStep('done');
   };
 
-  const isListing = type !== 'conversation';
-  const typeLabel = isListing ? 'l\'annonce' : 'la conversation';
+  const typeLabel = type === 'conversation' ? 'la conversation' : type === 'user' ? 'cet utilisateur' : "l'annonce";
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

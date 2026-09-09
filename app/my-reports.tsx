@@ -22,7 +22,7 @@ interface MyReport {
   status: 'pending' | 'seen' | 'rejected' | 'resolved';
   category: string;
   description: string | null;
-  target_type: 'listing' | 'conversation';
+  target_type: 'listing' | 'conversation' | 'user';
   target_id: string;
   created_at: string;
 }
@@ -116,7 +116,7 @@ export default function MyReportsScreen() {
           ) : (
             reports.map((r) => {
               const status = STATUS_LABELS[r.status];
-              const targetLabel = r.target_type === 'listing' ? 'Annonce' : 'Conversation';
+              const targetLabel = r.target_type === 'listing' ? 'Annonce' : r.target_type === 'user' ? 'Utilisateur' : 'Conversation';
               return (
                 <View key={r.id} style={styles.card}>
                   <View style={styles.cardHeader}>
