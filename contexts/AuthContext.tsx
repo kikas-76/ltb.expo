@@ -209,11 +209,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // require dynamique : le module natif n'existe pas sur web/Android
       const AppleAuthentication = require('expo-apple-authentication');
+      const Crypto = require('expo-crypto');
+      // Nonce anti-rejeu : Apple signe le SHA-256, Supabase vérifie avec la valeur brute.
+      const rawNonce: string = Crypto.randomUUID();
+      const hashedNonce: string = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
+        nonce: hashedNonce,
       });
 
       if (!credential.identityToken) {
@@ -223,8 +228,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
+        nonce: rawNonce,
       });
       if (error) return { error: error.message };
+
+      // Apple ne transmet le nom qu'à la première autorisation : on le garde
+      // dans les métadonnées pour pré-remplir l'onboarding.
+      const given = credential.fullName?.givenName ?? '';
+      const family = credential.fullName?.familyName ?? '';
+      if (given || family) {
+        supabase.auth
+          .updateUser({ data: { full_name: `${given} ${family}`.trim(), given_name: given || undefined, family_name: family || undefined } })
+          .catch(() => {});
+      }
+
+      // Le refresh token Apple est conservé chiffré côté serveur pour être
+      // révoqué à la suppression du compte (exigence App Store). Best effort.
+      if (credential.authorizationCode) {
+        supabase.functions
+          .invoke('apple-token-exchange', { body: { code: credential.authorizationCode } })
+          .catch(() => {});
+      }
 
       return { error: null };
     } catch (e: any) {

@@ -74,13 +74,16 @@ export default function OnboardingProfileScreen() {
     const meta = user.user_metadata ?? {};
     const providers = (user.app_metadata?.providers ?? []) as string[];
     const isGoogleUser = providers.includes('google') || user.app_metadata?.provider === 'google';
+    const isAppleUser = providers.includes('apple') || user.app_metadata?.provider === 'apple';
 
-    if (isGoogleUser) {
-      const fullName: string = meta.full_name ?? meta.name ?? '';
+    if (isGoogleUser || isAppleUser) {
+      const fullName: string = meta.full_name ?? meta.name ?? meta.given_name ?? '';
       if (fullName) {
         const suggested = fullName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_.-]/g, '');
         if (suggested.length >= 3) setUsername(suggested);
       }
+    }
+    if (isGoogleUser) {
       const avatarUrl: string = meta.avatar_url ?? meta.picture ?? '';
       if (avatarUrl) setGoogleAvatarUrl(avatarUrl);
     }

@@ -25,6 +25,7 @@ Supabase admin clients even spin up.
 - `get-account-details` — wallet dashboard data
 - `delete-user-account` — RGPD right to erasure
 - `chat-notify` — booking accepted / refused / dispute_opened email triggers
+- `apple-token-exchange` — stores the Sign in with Apple refresh token (Vault) for revocation at account deletion
 - `post-system-message` — server-authored chat messages
 - `send-admin-email` — admin-action wrapper around `send-email`
 - `admin-action` — admin moderation (suspend / ban / unban / flag)

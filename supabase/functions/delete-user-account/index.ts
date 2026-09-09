@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { isAppleSignInConfigured, revokeAppleRefreshToken } from "../_shared/apple.ts";
 
 // RGPD article 17 "right to erasure" implementation.
 //
@@ -161,6 +162,18 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(corsHeaders, { error: "Anonymisation du profil échouée. Contacte le support." }, 500);
     }
 
+    // ── 9b. Sign in with Apple : révocation du jeton (exigence App Store) ──
+    let appleRevoked: boolean | null = null;
+    try {
+      const { data: appleToken } = await supabase.rpc("pop_apple_refresh_token", { p_user: userId });
+      if (typeof appleToken === "string" && appleToken) {
+        appleRevoked = isAppleSignInConfigured() ? await revokeAppleRefreshToken(appleToken) : false;
+        if (!appleRevoked) console.error(`Apple token revocation failed for ${userId}`);
+      }
+    } catch (e) {
+      console.error("Apple token revocation error:", e);
+    }
+
     // ── 10. Delete auth.users so login is impossible and email is freed ──
     const { error: authDelError } = await supabase.auth.admin.deleteUser(userId);
     if (authDelError) {
@@ -171,6 +184,7 @@ Deno.serve(async (req: Request) => {
       success: true,
       tombstone_username: tombstoneUsername,
       auth_deleted: !authDelError,
+      apple_revoked: appleRevoked,
     });
   } catch (err) {
     console.error("delete-user-account error:", err);
