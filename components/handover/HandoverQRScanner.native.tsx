@@ -10,6 +10,8 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import HandoverSuccessAnimation from './HandoverSuccessAnimation';
 import { supabase } from '@/lib/supabase';
@@ -91,6 +93,7 @@ export default function HandoverQRScanner({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <StatusBar style="light" />
       <View style={styles.root}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
@@ -192,7 +195,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#0F172A',
-    paddingTop: Platform.OS === 'ios' ? 60 : 30,
+    paddingTop: (initialWindowMetrics?.insets.top ?? 44) + 12,
   },
   header: {
     flexDirection: 'row',

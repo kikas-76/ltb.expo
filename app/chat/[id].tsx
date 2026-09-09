@@ -698,7 +698,7 @@ export default function ChatScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.85,
       allowsEditing: false,
       allowsMultipleSelection: true,
@@ -716,7 +716,7 @@ export default function ChatScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.85,
       allowsEditing: false,
     });
@@ -1143,7 +1143,11 @@ export default function ChatScreen() {
       <View style={[styles.topBar, { paddingTop: isDesktop ? 20 : insets.top + 10 }]}>
         {/* Row 1 : back · [avatar + username centré] · spacer */}
         <View style={styles.topBarRow1}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/reservations' as any)} style={styles.backBtn} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/reservations' as any))}
+            style={styles.backBtn}
+            activeOpacity={0.8}
+          >
             <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
           </TouchableOpacity>
           <TouchableOpacity

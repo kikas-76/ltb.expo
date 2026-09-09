@@ -15,6 +15,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { translatePaymentError } from '@/lib/paymentErrors';
 import { Colors } from '@/constants/colors';
 
@@ -197,7 +198,7 @@ export default function PaymentScreen() {
   const feePercent = (booking.listing?.renter_fee_percent ?? 7) / 100;
   const serviceFee = Math.round(booking.total_price * feePercent * 100) / 100;
   const totalNow = Math.round((booking.total_price + serviceFee) * 100) / 100;
-  const thumb = booking.listing?.photos_url?.[0] ?? null;
+  const thumb = getOptimizedImageUrl(booking.listing?.photos_url?.[0] ?? null, { width: 160, height: 160, resize: 'cover' });
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>

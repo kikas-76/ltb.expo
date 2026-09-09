@@ -21,6 +21,7 @@ import { useUnread } from '@/contexts/UnreadContext';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
+import LoadError from '@/components/LoadError';
 import { useAuth } from '@/contexts/AuthContext';
 import { router, useFocusEffect } from 'expo-router';
 import { SkeletonConversationRow } from '@/components/Skeleton';
@@ -440,6 +441,7 @@ export default function MessagesScreen() {
   const { refresh: refreshUnread } = useUnread();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   // stripeReady removed: now computed per-item as ownerStripeReady in buildConversationItem
   const insets = useSafeAreaInsets();
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
@@ -628,7 +630,8 @@ export default function MessagesScreen() {
       `)
       .or(`requester_id.eq.${user.id},owner_id.eq.${user.id}`);
 
-    if (error || !data) { setLoading(false); return; }
+    if (error || !data) { setLoadError(!!error); setLoading(false); return; }
+    setLoadError(false);
 
     const ownerIdsToCheck = Array.from(new Set(
       data
@@ -777,6 +780,8 @@ export default function MessagesScreen() {
         <View>
           {Array.from({ length: 5 }).map((_, i) => <SkeletonConversationRow key={i} />)}
         </View>
+      ) : loadError && conversations.length === 0 ? (
+        <LoadError onRetry={fetchConversations} />
       ) : conversations.length === 0 ? (
         <View style={styles.emptyState}>
           <EmptyIllustration name="chat" size={128} />

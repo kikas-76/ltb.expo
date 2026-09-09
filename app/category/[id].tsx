@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
   Animated,
@@ -12,12 +11,14 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { categoryTheme } from '@/constants/categories';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import ListingCard from '@/components/explore/ListingCard';
 import SkeletonCard from '@/components/explore/SkeletonCard';
 import CategoryEmptyState from '@/components/explore/CategoryEmptyState';
@@ -57,6 +58,7 @@ const SORT_LABEL: Record<SortKey, string> = {
 export default function CategoryScreen() {
   const router = useRouter();
   const { id, name, value } = useLocalSearchParams<{ id: string; name: string; value?: string }>();
+  const { profile } = useAuth();
   const catTheme = categoryTheme(value);
   const { isDesktop, isTablet } = useResponsive();
   const numColumns = isDesktop ? 4 : isTablet ? 3 : 2;
@@ -89,14 +91,13 @@ export default function CategoryScreen() {
     ]).start();
   }, []);
 
+  // Position du profil (déjà connue) plutôt que la géolocalisation navigateur,
+  // inexistante en React Native : les distances s'affichent aussi sur iPhone.
   useEffect(() => {
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {}
-      );
-    }
-  }, []);
+    const lat = profile?.location_data?.lat;
+    const lng = profile?.location_data?.lng;
+    if (typeof lat === 'number' && typeof lng === 'number') setUserCoords({ lat, lng });
+  }, [profile?.location_data?.lat, profile?.location_data?.lng]);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);

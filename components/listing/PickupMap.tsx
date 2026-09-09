@@ -1,4 +1,4 @@
-import { Platform, View, StyleSheet } from 'react-native';
+import { Platform, View, StyleSheet, Text } from 'react-native';
 import { Colors } from '@/constants/colors';
 
 const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY as string;
@@ -52,6 +52,11 @@ export default function PickupMap({ lat, lng }: PickupMapProps) {
         pointerEvents="none"
         source={{ html: getMapHtml(lat, lng), baseUrl: 'https://app.louetonbien.fr/' }}
         originWhitelist={['*']}
+        renderError={() => (
+          <View style={[styles.webview, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#EEE' }]}>
+            <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: '#8C8C84' }}>Carte indisponible</Text>
+          </View>
+        )}
       />
     </View>
   );

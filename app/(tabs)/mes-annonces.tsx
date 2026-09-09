@@ -20,6 +20,7 @@ import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import LoadError from '@/components/LoadError';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -248,6 +249,7 @@ type TabKey = 'active' | 'inactive';
 export default function MesAnnoncesScreen() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null);
@@ -288,17 +290,19 @@ export default function MesAnnoncesScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('listings')
       .select('id, name, price, photos_url, category_name, is_active, created_at, views_count, saves_count')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
 
     if (!data) {
+      setLoadError(!!error);
       setLoading(false);
       setRefreshing(false);
       return;
     }
+    setLoadError(false);
 
     setListings(
       data.map((l: any) => ({
@@ -528,7 +532,8 @@ export default function MesAnnoncesScreen() {
           </View>
         )}
 
-        {listings.length === 0 && (
+        {loadError && listings.length === 0 && <LoadError onRetry={fetchListings} />}
+        {!loadError && listings.length === 0 && (
           <View style={styles.emptyState}>
             <EmptyIllustration name="box" size={128} />
             <Text style={styles.emptyTitle}>Votre première annonce vous attend</Text>

@@ -21,6 +21,9 @@ import {
   connectStatusLabel,
   connectStatusColors,
 } from '@/lib/stripeConnectStatus';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
+// Marge sous l'encoche / Dynamic Island (56 px fixes mordaient sur les iPhone récents).
+const HEADER_TOP = Platform.OS === 'web' ? 24 : (initialWindowMetrics?.insets.top ?? 47) + 8;
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
@@ -707,7 +710,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'web' ? 24 : 56,
+    paddingTop: HEADER_TOP,
     paddingBottom: 16,
     backgroundColor: Colors.background,
     gap: 12,

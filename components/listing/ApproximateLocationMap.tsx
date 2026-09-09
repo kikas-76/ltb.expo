@@ -116,6 +116,7 @@ function NativeWebView({ uri, width, height }: { uri: string; width: number; hei
       scrollEnabled={false}
       javaScriptEnabled={true}
       pointerEvents="none"
+      renderError={() => <FallbackMap city={null} />}
     />
   );
 }

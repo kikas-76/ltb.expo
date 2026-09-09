@@ -5,6 +5,15 @@ import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import LoadingBlock from '@/components/LoadingBlock';
 import SuspendedScreen from '@/components/SuspendedScreen';
 import ConnectionErrorScreen from '@/components/ConnectionErrorScreen';
+
+// Production : pas de journaux verbeux (thread JS, aucune donnée dans les logs
+// de l'appareil). console.error reste actif pour le diagnostic.
+if (!__DEV__) {
+  console.log = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+  console.warn = () => {};
+}
 import { useFonts } from 'expo-font';
 import {
   PlusJakartaSans_400Regular,
@@ -294,7 +303,7 @@ function RootNavigator() {
         <Stack.Screen name="listing/[id]" />
         <Stack.Screen name="owner/[id]" />
         <Stack.Screen name="edit-address" />
-        <Stack.Screen name="chat/[id]" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="chat/[id]" />
         <Stack.Screen name="favorites" />
         <Stack.Screen name="account-settings" />
         <Stack.Screen name="deals" />

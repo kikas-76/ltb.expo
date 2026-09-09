@@ -13,6 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import StatusBadge from '@/components/admin/StatusBadge';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
+// Marge sous l'encoche / Dynamic Island (56 px fixes mordaient sur les iPhone récents).
+const HEADER_TOP = Platform.OS === 'web' ? 24 : (initialWindowMetrics?.insets.top ?? 47) + 8;
 
 interface AdminBooking {
   id: string;
@@ -178,7 +181,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'web' ? 24 : 56,
+    paddingTop: HEADER_TOP,
     paddingBottom: 16,
     backgroundColor: Colors.background,
   },

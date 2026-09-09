@@ -67,10 +67,11 @@ export default function InfinityLoader({
         duration: drawDuration,
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: false,
+        isInteraction: false,
       }).start();
     }
     const loop = Animated.loop(
-      Animated.timing(comet, { toValue: 1, duration: 2200, easing: Easing.linear, useNativeDriver: false }),
+      Animated.timing(comet, { toValue: 1, duration: 2200, easing: Easing.linear, useNativeDriver: false, isInteraction: false }),
     );
     loop.start();
     return () => loop.stop();
