@@ -101,6 +101,16 @@ export default function AdminReports() {
     setLoading(false);
   };
 
+  const deactivateListing = async (report: { id: string; target_id: string }) => {
+    setActionLoading(report.id + '_deactivate');
+    const { error } = await supabase.rpc('admin_deactivate_listing', { p_listing_id: report.target_id });
+    if (!error) {
+      await supabase.rpc('admin_update_report_status', { p_report_id: report.id, p_new_status: 'resolved' });
+    }
+    await loadReports();
+    setActionLoading(null);
+  };
+
   const updateStatus = async (id: string, status: string) => {
     setActionLoading(id + '_' + status);
     // Audited RPC: writes the change + an admin_audit_logs entry.
@@ -166,7 +176,7 @@ export default function AdminReports() {
                     <Text style={styles.categoryText}>{CATEGORY_LABELS[r.category] ?? r.category}</Text>
                   </View>
                   <Text style={styles.targetType}>
-                  {r.target_type === 'listing' ? 'Annonce' : r.target_type === 'user' ? 'Utilisateur' : 'Conversation'}
+                  {r.target_type === 'listing' ? 'Annonce' : r.target_type === 'user' ? 'Utilisateur' : r.target_type === 'review' ? 'Avis' : 'Conversation'}
                 </Text>
                 </View>
                 <Text style={styles.cardMeta}>
@@ -235,6 +245,34 @@ export default function AdminReports() {
                     <ActivityIndicator size="small" color={Colors.textSecondary} />
                   ) : (
                     <Text style={[styles.actionBtnText, { color: Colors.textSecondary }]}>Rejeter</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              {r.status !== 'resolved' && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: Colors.successGreenLight, borderColor: Colors.successGreen }]}
+                  onPress={() => updateStatus(r.id, 'resolved')}
+                  disabled={!!actionLoading}
+                  activeOpacity={0.7}
+                >
+                  {actionLoading === r.id + '_resolved' ? (
+                    <ActivityIndicator size="small" color={Colors.successGreen} />
+                  ) : (
+                    <Text style={[styles.actionBtnText, { color: Colors.successGreen }]}>Résoudre</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              {r.target_type === 'listing' && r.status !== 'resolved' && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: Colors.errorLight, borderColor: Colors.error }]}
+                  onPress={() => deactivateListing(r)}
+                  disabled={!!actionLoading}
+                  activeOpacity={0.7}
+                >
+                  {actionLoading === r.id + '_deactivate' ? (
+                    <ActivityIndicator size="small" color={Colors.error} />
+                  ) : (
+                    <Text style={[styles.actionBtnText, { color: Colors.error }]}>Désactiver l'annonce</Text>
                   )}
                 </TouchableOpacity>
               )}

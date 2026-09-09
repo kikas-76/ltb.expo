@@ -161,6 +161,7 @@ export default function ChatScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [block, setBlock] = useState<BlockStatus>(NO_BLOCK);
   const isBlocked = block.blockedByMe || block.blockedByThem;
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!id || !user) return;
@@ -486,12 +487,22 @@ export default function ChatScreen() {
       Animated.timing(inputScale, { toValue: 1, duration: 60, useNativeDriver: true }),
     ]).start();
 
-    const { data } = await supabase.from('chat_messages').insert({
+    const { data, error: sendErr } = await supabase.from('chat_messages').insert({
       conversation_id: id,
       sender_id: user.id,
       content: trimmed,
       is_system: false,
     }).select('id, created_at').maybeSingle();
+
+    if (sendErr) {
+      // Refus par la base (termes interdits, compte suspendu, utilisateur bloqué…) :
+      // on retire le message optimiste, on rend le texte et on explique.
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setText(trimmed);
+      const known = /termes interdits|suspendu|bloqu|échanger avec/i.test(sendErr.message);
+      setSendError(known ? sendErr.message : "Message non envoyé. Vérifiez votre connexion et réessayez.");
+      return;
+    }
 
     setMessages((prev) =>
       prev.map((m) =>
@@ -1619,6 +1630,16 @@ export default function ChatScreen() {
         </View>
       )}
 
+      {sendError && (
+        <View style={styles.sendErrorBar}>
+          <Ionicons name="alert-circle-outline" size={16} color={Colors.error} />
+          <Text style={styles.sendErrorText}>{sendError}</Text>
+          <TouchableOpacity onPress={() => setSendError(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close" size={16} color={Colors.error} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Input (remplacée par un bandeau quand l'un des deux a bloqué l'autre) */}
       {isBlocked ? (
         <View style={[styles.blockedBar, { paddingBottom: isDesktop ? 16 : insets.bottom + 12 }]}>
@@ -1818,6 +1839,11 @@ const chatDesktopStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  sendErrorBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 12, marginBottom: 6,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: Colors.errorLight,
+  },
+  sendErrorText: { flex: 1, fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.error },
   blockedBar: {
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8,
     paddingHorizontal: 16, paddingTop: 12, backgroundColor: Colors.white,

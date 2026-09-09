@@ -658,6 +658,13 @@ export default function CreateListingScreen() {
                   Un titre précis et une bonne description multiplient vos chances de location.
                 </Text>
               </View>
+              <View style={styles.tipsBox}>
+                <Ionicons name="alert-circle-outline" size={14} color={Colors.primaryDark} />
+                <Text style={styles.tipsText}>
+                  Objets interdits : armes, produits réglementés ou dangereux, contrefaçons, véhicules immatriculés, animaux.{' '}
+                  <Text style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/legal')}>Voir les CGU</Text>
+                </Text>
+              </View>
             </View>
           )}
 

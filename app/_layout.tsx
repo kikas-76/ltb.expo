@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import LoadingBlock from '@/components/LoadingBlock';
+import SuspendedScreen from '@/components/SuspendedScreen';
 import { useFonts } from 'expo-font';
 import {
   PlusJakartaSans_400Regular,
@@ -34,7 +35,7 @@ import { supabase } from '@/lib/supabase';
 SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
-  const { session, loading, profile, profileLoading } = useAuth();
+  const { session, loading, profile, profileLoading, signOut } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const { setPendingListingId, pendingListingId } = useDeepLink();
@@ -229,6 +230,24 @@ function RootNavigator() {
       <View style={styles.loading}>
         <LoadingBlock fill={false} />
       </View>
+    );
+  }
+
+  // Compte suspendu ou banni (admin-action) : plus aucun accès à l'app, seulement
+  // le support et la déconnexion. La base refuse de toute façon les écritures.
+  const suspended =
+    !!profile &&
+    (profile.account_status === 'banned' ||
+      (profile.account_status === 'suspended' &&
+        (!profile.banned_until || new Date(profile.banned_until).getTime() > Date.now())));
+  if (suspended) {
+    return (
+      <SuspendedScreen
+        status={profile!.account_status!}
+        reason={profile!.ban_reason}
+        until={profile!.banned_until}
+        onSignOut={signOut}
+      />
     );
   }
 

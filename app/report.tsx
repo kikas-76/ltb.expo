@@ -153,14 +153,49 @@ const USER_CATEGORIES: ReportCategory[] = [
   },
 ];
 
+const REVIEW_CATEGORIES: ReportCategory[] = [
+  {
+    key: 'harassment',
+    label: 'Avis insultant',
+    description: 'Propos offensants, menaçants ou discriminatoires',
+    icon: <Ionicons name="warning-outline" size={20} color="#C25450" />,
+    color: '#C25450',
+  },
+  {
+    key: 'fraud',
+    label: 'Faux avis',
+    description: "Avis mensonger, sans location réelle ou de mauvaise foi",
+    icon: <Ionicons name="shield-outline" size={20} color="#D97706" />,
+    color: '#D97706',
+  },
+  {
+    key: 'inappropriate_content',
+    label: 'Contenu inapproprié',
+    description: 'Informations personnelles, contenu choquant ou illégal',
+    icon: <Ionicons name="close-circle-outline" size={20} color="#7C3AED" />,
+    color: '#7C3AED',
+  },
+  {
+    key: 'other',
+    label: 'Autre raison',
+    description: 'Tout autre problème non listé ci-dessus',
+    icon: <Ionicons name="chatbubble-outline" size={20} color="#6B7280" />,
+    color: '#6B7280',
+  },
+];
+
 export default function ReportScreen() {
   const headerTop = useHeaderTop();
   const params = useLocalSearchParams<{ type: string; targetId: string; targetLabel?: string }>();
-  const type = params.type as 'listing' | 'conversation' | 'user';
+  const type = params.type as 'listing' | 'conversation' | 'user' | 'review';
   const targetId = params.targetId;
   const targetLabel = params.targetLabel ?? '';
 
-  const categories = type === 'conversation' ? CONVERSATION_CATEGORIES : type === 'user' ? USER_CATEGORIES : LISTING_CATEGORIES;
+  const categories =
+    type === 'conversation' ? CONVERSATION_CATEGORIES
+    : type === 'user' ? USER_CATEGORIES
+    : type === 'review' ? REVIEW_CATEGORIES
+    : LISTING_CATEGORIES;
 
   const [step, setStep] = useState<'category' | 'details' | 'done'>('category');
   const [selectedCategory, setSelectedCategory] = useState<ReportCategory | null>(null);
@@ -203,7 +238,11 @@ export default function ReportScreen() {
     setStep('done');
   };
 
-  const typeLabel = type === 'conversation' ? 'la conversation' : type === 'user' ? 'cet utilisateur' : "l'annonce";
+  const typeLabel =
+    type === 'conversation' ? 'la conversation'
+    : type === 'user' ? 'cet utilisateur'
+    : type === 'review' ? 'cet avis'
+    : "l'annonce";
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

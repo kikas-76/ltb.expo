@@ -19,6 +19,9 @@ interface Profile {
   role: string | null;
   onboarding_completed: boolean;
   created_at?: string;
+  account_status?: string | null;
+  banned_until?: string | null;
+  ban_reason?: string | null;
 }
 
 interface AuthContextType {

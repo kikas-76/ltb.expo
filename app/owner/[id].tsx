@@ -393,6 +393,15 @@ export default function OwnerProfilePage() {
                   </Text>
                 </View>
               </View>
+              {!!user && (
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/report', params: { type: 'review', targetId: r.id, targetLabel: `Avis de @${r.reviewer_username ?? 'utilisateur'}` } } as any)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Signaler cet avis"
+                >
+                  <Ionicons name="flag-outline" size={15} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
             </View>
             {r.comment ? (
               <Text style={styles.reviewComment}>{r.comment}</Text>
