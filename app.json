@@ -59,20 +59,24 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "L'app a besoin d'accéder à la caméra pour scanner les QR codes de remise et photographier vos objets."
+          "cameraPermission": "L'app a besoin d'accéder à la caméra pour scanner les QR codes de remise et photographier vos objets.",
+          "microphonePermission": false
         }
       ],
       [
         "expo-image-picker",
         {
           "photosPermission": "L'app a besoin d'accéder à votre galerie pour ajouter des photos à vos annonces et à votre profil.",
-          "cameraPermission": "L'app a besoin d'accéder à la caméra pour prendre des photos pour vos annonces et conversations."
+          "cameraPermission": "L'app a besoin d'accéder à la caméra pour prendre des photos pour vos annonces et conversations.",
+          "microphonePermission": false
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "L'app utilise votre position pour définir votre adresse et afficher les annonces autour de vous."
+          "locationWhenInUsePermission": "L'app utilise votre position pour définir votre adresse et afficher les annonces autour de vous.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false
         }
       ],
       [

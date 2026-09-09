@@ -176,6 +176,12 @@ export default function OnboardingAddressScreen() {
     }
   };
 
+  // Adresse facultative (App Review 5.1.1(ii)) : sans adresse, l'accueil masque
+  // simplement le rail « autour de vous » ; modifiable ensuite dans Paramètres.
+  const handleSkip = () => {
+    router.replace(isPro ? '/onboarding/business-hours' : '/onboarding/welcome');
+  };
+
   const handleSave = async () => {
     setError(null);
     if (!address.trim()) {
@@ -348,6 +354,11 @@ export default function OnboardingAddressScreen() {
           >
             {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>Enregistrer</Text>}
           </TouchableOpacity>
+          {!isPro && (
+            <TouchableOpacity onPress={handleSkip} style={styles.skipLink} activeOpacity={0.7} disabled={submitting}>
+              <Text style={styles.skipText}>Passer cette étape, je l'indiquerai plus tard</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -368,6 +379,8 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 15, fontFamily: 'Inter-Regular', color: Colors.textSecondary, marginTop: -4, lineHeight: 22 },
   errorBox: { backgroundColor: '#FDECEA', borderRadius: 12, padding: 12 },
   errorText: { color: Colors.error, fontSize: 13, fontFamily: 'Inter-Regular', textAlign: 'center' },
+  skipLink: { alignItems: 'center', paddingVertical: 10 },
+  skipText: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.textSecondary, textDecorationLine: 'underline' },
   mapContainer: {
     height: 190,
     borderRadius: 20,

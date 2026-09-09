@@ -229,7 +229,7 @@ export default function OnboardingWelcomeScreen() {
               if (user) {
                 await supabase
                   .from('profiles')
-                  .update({ onboarding_completed: true })
+                  .update({ onboarding_completed: true, terms_accepted_at: new Date().toISOString() })
                   .eq('id', user.id);
                 await refreshProfile();
               }

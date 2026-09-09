@@ -219,6 +219,13 @@ export default function RegisterScreen() {
             }
           </TouchableOpacity>
 
+          <Text style={styles.consent}>
+            En créant un compte (e-mail, Apple ou Google), vous confirmez avoir 18 ans et acceptez les{' '}
+            <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Conditions d'utilisation</Text>
+            {' '}et la{' '}
+            <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Politique de confidentialité</Text>.
+          </Text>
+
           <TouchableOpacity onPress={() => router.push('/login')} style={styles.loginLink}>
             <Text style={styles.loginLinkText}>
               Déjà un compte ?{' '}
@@ -232,6 +239,20 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  consent: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#8C8C84',
+    textAlign: 'center',
+    marginTop: 14,
+    paddingHorizontal: 8,
+  },
+  consentLink: {
+    fontFamily: 'Inter-SemiBold',
+    color: '#4E6B38',
+    textDecorationLine: 'underline',
+  },
   flex: {
     flex: 1,
     backgroundColor: Colors.background,

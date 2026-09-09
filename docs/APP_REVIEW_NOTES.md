@@ -19,5 +19,7 @@ Suggested test flow:
 5. Chat with the owner from the Messages tab. From the "…" menu you can report the conversation, report the user, or block the user (blocked users can no longer message or book each other).
 6. Account deletion is available in Profile → Account settings → Delete my account.
 
+An account is required to use the app because every feature is person-to-person (renting, paying, messaging, reviews) and payments go through Stripe Connect between identified users. Entering a postal address during onboarding is optional and can be skipped.
+
 Payments only concern the rental of physical goods between users (Stripe Connect); no digital content or feature is sold in the app.
 Report content, block users and moderation: reports are reviewed by our team within 24 hours (admin@louetonbien.fr).
