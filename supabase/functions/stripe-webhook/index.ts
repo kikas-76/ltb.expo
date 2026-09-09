@@ -210,15 +210,23 @@ Deno.serve(async (req: Request) => {
         }
 
         if (type === "rental") {
-          const { error } = await supabase
+          const { data: activated, error } = await supabase
             .from("bookings")
             .update({ status: "active", stripe_rental_payment_intent_id: data.id })
             .eq("id", bookingId)
-            .eq("status", "pending_payment");
+            .eq("status", "pending_payment")
+            .select("id");
 
           if (error) {
             console.error(`Erreur update booking ${bookingId}:`, error.message);
             throw error; // transient — Stripe retry
+          }
+
+          if (!activated || activated.length === 0) {
+            // finalize-booking-payment a déjà activé la réservation et envoyé
+            // emails + notifications : ne pas les envoyer une seconde fois.
+            console.log(`Booking ${bookingId} déjà actif (finalize), notifications ignorées`);
+            break;
           }
 
           console.log(`Booking ${bookingId} → active`);
