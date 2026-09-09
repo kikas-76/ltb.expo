@@ -20,6 +20,11 @@ export default function WalletSuccessScreen() {
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('native') === '1') {
+      // Retour du parcours Stripe hébergé ouvert depuis l'app : on renvoie vers l'app.
+      window.location.replace('louetonbien://wallet/success');
+      return;
+    }
     Animated.spring(scaleAnim, {
       toValue: 1,
       tension: 60,

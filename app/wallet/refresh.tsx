@@ -23,8 +23,14 @@ export default function WalletRefreshScreen() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const isWeb = Platform.OS === 'web';
 
   useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('native') === '1') {
+      // Retour du parcours Stripe hébergé ouvert depuis l'app : on renvoie vers l'app.
+      window.location.replace('louetonbien://wallet/refresh');
+      return;
+    }
     const verifyFirst = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -72,6 +78,7 @@ export default function WalletRefreshScreen() {
               'Content-Type': 'application/json',
               'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
               'Authorization': `Bearer ${accessToken}`,
+              ...(isWeb ? {} : { 'x-platform': 'native' }),
             },
             body: JSON.stringify({ access_token: accessToken }),
           }

@@ -30,6 +30,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   profileLoading: boolean;
+  profileError: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null; emailConflict?: string }>;
   signInWithApple: () => Promise<{ error: string | null }>;
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     setProfileLoading(true);
@@ -59,11 +61,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (email, phone_number, role, onboarding_completed are revoked). The
     // SECURITY DEFINER RPC reads auth.uid() server-side and returns the
     // caller's full row. The RPC keys on the JWT, not on the param.
-    const { data, error } = await supabase.rpc('get_my_profile');
+    let { data, error } = await supabase.rpc('get_my_profile');
     if (error) {
-      // Erreur réseau : on garde le profil connu plutôt que de vider l'UI.
-      if (!cached) setProfile(null);
+      // Seconde chance après un court délai (instance froide, réseau mobile).
+      await new Promise((r) => setTimeout(r, 1500));
+      ({ data, error } = await supabase.rpc('get_my_profile'));
+    }
+    if (error) {
+      // Profil « non chargé » ≠ profil « inconnu » : sans cache, on le signale pour
+      // que le guard n'envoie pas un membre existant dans l'onboarding.
+      if (!cached) {
+        setProfile(null);
+        setProfileError(true);
+      }
     } else {
+      setProfileError(false);
       const row = Array.isArray(data) ? data[0] : data;
       setProfile(row ?? null);
       if (row) writeCache(`profile:${userId}`, row);
@@ -122,10 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    if (user?.id) {
+    // Demande de permission différée : après l'onboarding, sur l'accueil, et non
+    // sur l'écran de création de compte (App Review 4.5.4 / 5.1.1).
+    if (user?.id && profile?.onboarding_completed) {
       registerForPushNotifications();
     }
-  }, [user?.id]);
+  }, [user?.id, profile?.onboarding_completed]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -270,7 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, profileLoading, signIn, signInWithGoogle, signInWithApple, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, profileLoading, profileError, signIn, signInWithGoogle, signInWithApple, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

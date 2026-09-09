@@ -12,6 +12,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.louetonbien.app",
+      "associatedDomains": ["applinks:app.louetonbien.fr"],
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

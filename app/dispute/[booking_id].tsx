@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -205,6 +206,7 @@ export default function DisputePage() {
         <View style={{ width: 36 }} />
       </View>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}
@@ -285,6 +287,7 @@ export default function DisputePage() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

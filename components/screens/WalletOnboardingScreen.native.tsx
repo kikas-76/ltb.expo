@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -180,6 +180,7 @@ function WalletOnboardingContent() {
       </View>
 
       {step === 'pre-onboarding' && userId && (
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.reassureCard}>
             <Text style={styles.reassureTitle}>Tu ne crées pas une entreprise</Text>
@@ -200,6 +201,7 @@ function WalletOnboardingContent() {
             onComplete={startStripe}
           />
         </ScrollView>
+        </KeyboardAvoidingView>
       )}
 
       {step === 'stripe' && connectInstance && (

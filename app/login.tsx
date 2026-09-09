@@ -26,7 +26,7 @@ import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 
 export default function LoginScreen() {
   const headerTop = useHeaderTop();
-  const { signIn, signInWithGoogle, signInWithApple, profile, profileLoading, session } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple, profile, profileLoading, session, profileError } = useAuth();
   const { pendingListingId, setPendingListingId } = useDeepLink();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -90,7 +90,11 @@ export default function LoginScreen() {
     setSubmitting(false);
 
     if (!profile) {
-      setError("Aucun compte n'existe avec cette adresse email.");
+      setError(
+        profileError
+          ? 'Connexion impossible pour le moment. Vérifiez votre connexion et réessayez.'
+          : "Aucun compte n'existe avec cette adresse email.",
+      );
       return;
     }
 

@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUnread } from '@/contexts/UnreadContext';
 import { supabase } from '@/lib/supabase';
 import { readCache, writeCache } from '@/lib/queryCache';
+import LoadError from '@/components/LoadError';
 import HomeHeader from '@/components/explore/HomeHeader';
 import SearchBar from '@/components/explore/SearchBar';
 import CategoryStrip from '@/components/explore/CategoryStrip';
@@ -94,6 +95,7 @@ export default function ExploreScreen() {
   const [deals, setDeals] = useState<Listing[]>([]);
   const [favorites, setFavorites] = useState<Listing[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   // Intro animée : uniquement quand aucune donnée n'est en cache (premier lancement).
   const [introVisible, setIntroVisible] = useState(true);
   const introStartedAt = useRef(Date.now());
@@ -137,8 +139,10 @@ export default function ExploreScreen() {
       });
       if (feedError) {
         console.error('get_home_feed failed:', feedError);
+        setLoadError(true);
         return;
       }
+      setLoadError(false);
       const feed = (feedData ?? {}) as HomeFeed;
       const catRes = { data: feed.categories ?? [] };
       const listingsRes = { data: feed.recent ?? [] };
@@ -326,6 +330,16 @@ export default function ExploreScreen() {
         <View style={innerStyle}>
           <CategoryStrip categories={categories} />
           <LocationBanner address={address} />
+          {loadError && (
+            <LoadError
+              compact
+              onRetry={() => {
+                setLoadError(false);
+                setLoadingData(true);
+                fetchData();
+              }}
+            />
+          )}
 
           <RecentlyViewedSection userLat={userLat} userLng={userLng} userId={session?.user.id} />
           <FavoritesSection userId={session?.user.id} userLat={userLat} userLng={userLng} listings={favorites} loading={loadingData} />

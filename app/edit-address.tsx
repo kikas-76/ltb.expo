@@ -17,12 +17,7 @@ import { WebView } from 'react-native-webview';
 import { supabase } from '@/lib/supabase';
 import { getCurrentPosition, geoErrorMessage } from '@/lib/geolocation';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  fetchPlaceSuggestions,
-  fetchPlaceDetails,
-  reverseGeocode,
-  PlaceSuggestion,
-} from '@/lib/googleMaps';
+import { fetchPlaceSuggestions, fetchPlaceDetails, reverseGeocode, PlaceSuggestion, getGoogleMapsEmbedHtml, GOOGLE_MAPS_WEBVIEW_BASE_URL } from '@/lib/googleMaps';
 import { Colors } from '@/constants/colors';
 
 const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY as string;
@@ -50,19 +45,27 @@ function DynamicMap({ lat, lng }: { lat: number | null; lng: number | null }) {
     `&zoom=15` +
     `&maptype=roadmap`;
 
-  const mapHtml = `<!DOCTYPE html><html><head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>* { margin:0; padding:0; } html,body,iframe { width:100%; height:100%; border:none; }</style>
-    </head><body>
-    <iframe src="${embedUrl}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
-    </body></html>`;
+  // Même HTML et même baseUrl que les autres cartes : la clé Maps est restreinte
+  // par referrer, une WebView sans origine se fait refuser par Google.
+  const mapHtml = getGoogleMapsEmbedHtml(embedUrl);
 
   return (
     <View style={styles.mapContainer}>
       {Platform.OS === 'web' ? (
         <iframe src={embedUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="map" />
       ) : (
-        <WebView source={{ html: mapHtml }} style={styles.webview} scrollEnabled={false} pointerEvents="none" />
+        <WebView
+          source={{ html: mapHtml, baseUrl: GOOGLE_MAPS_WEBVIEW_BASE_URL }}
+          originWhitelist={['*']}
+          style={styles.webview}
+          scrollEnabled={false}
+          pointerEvents="none"
+          renderError={() => (
+            <View style={[styles.webview, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#EEE' }]}>
+              <Text style={{ fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textMuted }}>Carte indisponible</Text>
+            </View>
+          )}
+        />
       )}
       <View style={styles.mapConfirmBadge}>
         <Ionicons name="location-outline" size={13} color={Colors.primary} />

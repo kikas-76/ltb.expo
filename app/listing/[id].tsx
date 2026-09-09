@@ -41,6 +41,7 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 import { categoryTheme } from '@/constants/categories';
 import { haptics } from '@/lib/haptics';
 import LoadingBlock from '@/components/LoadingBlock';
+import LoadError from '@/components/LoadError';
 
 const RECENTLY_VIEWED_KEY = 'ltb_recently_viewed';
 const MAX_RECENTLY_VIEWED = 5;
@@ -154,6 +155,7 @@ export default function ListingDetailScreen() {
   const { isFavorite, toggle: toggleFavorite } = useFavorite(id ?? '', userId, listing?.name ?? undefined);
   const initialFavoriteRef = useRef<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -496,6 +498,7 @@ export default function ListingDetailScreen() {
       }
     } catch (err) {
       console.error('fetchListing error:', err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -541,9 +544,10 @@ export default function ListingDetailScreen() {
           showSnackbar("Lien copié, vous pouvez partager l'annonce !", 'share');
         }
       } else {
-        const deepLink = `louetonbien://listing/${id}`;
-        const message = `${text}\n${deepLink}`;
-        await Share.share({ message, url: deepLink, title });
+        // Lien https : cliquable pour tout le monde, et ouvre l'app quand elle est
+        // installée (Universal Links, apple-app-site-association).
+        const shareUrl = `https://app.louetonbien.fr/listing/${id}`;
+        await Share.share({ message: `${text}\n${shareUrl}`, url: shareUrl, title });
       }
     } catch {}
   };
@@ -687,6 +691,20 @@ export default function ListingDetailScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.background }}>
         <LoadingBlock label="Chargement de l'annonce…" />
+      </View>
+    );
+  }
+
+  if (!listing && loadError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background, justifyContent: 'center' }}>
+        <LoadError
+          onRetry={() => {
+            setLoadError(false);
+            setLoading(true);
+            fetchListing();
+          }}
+        />
       </View>
     );
   }

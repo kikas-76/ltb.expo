@@ -141,11 +141,15 @@ Deno.serve(async (req: Request) => {
     }
 
     const origin = req.headers.get("origin") ?? APP_BASE_URL;
+    // App native : Stripe exige des URL https pour les Account Links ; les pages
+    // web /wallet/success et /wallet/refresh renvoient alors vers louetonbien://.
+    const native = req.headers.get("x-platform") === "native";
+    const suffix = native ? "?native=1" : "";
 
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: `${origin}/wallet/refresh`,
-      return_url: `${origin}/wallet/success`,
+      refresh_url: `${origin}/wallet/refresh${suffix}`,
+      return_url: `${origin}/wallet/success${suffix}`,
       type: "account_onboarding",
     });
 

@@ -6,6 +6,27 @@ export interface PreparedImage {
   mimeType: string;
 }
 
+async function reencodeWebImage(uri: string, maxSize: number, quality: number): Promise<PreparedImage | null> {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return null;
+  const img = new (window as any).Image() as HTMLImageElement;
+  img.crossOrigin = 'anonymous';
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error('decode failed'));
+    img.src = uri;
+  });
+  const scale = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', quality));
+  if (!blob) return null;
+  return { uri: URL.createObjectURL(blob), mimeType: 'image/jpeg' };
+}
+
 function localImageSize(uri: string): Promise<{ width: number; height: number } | null> {
   return new Promise((resolve) => {
     Image.getSize(uri, (width, height) => resolve({ width, height }), () => resolve(null));
@@ -25,7 +46,15 @@ export async function prepareImageForUpload(
   uri: string,
   opts: { maxSize?: number; quality?: number } = {},
 ): Promise<PreparedImage> {
-  if (Platform.OS === 'web') return { uri, mimeType: inferMimeFromName(uri) };
+  if (Platform.OS === 'web') {
+    // Ré-encodage via canvas : supprime les métadonnées EXIF (dont la position
+    // GPS exacte) avant l'envoi dans un bucket public, et borne la taille.
+    try {
+      const reencoded = await reencodeWebImage(uri, opts.maxSize ?? 1600, opts.quality ?? 0.85);
+      if (reencoded) return reencoded;
+    } catch {}
+    return { uri, mimeType: inferMimeFromName(uri) };
+  }
 
   const maxSize = opts.maxSize ?? 1600;
   try {

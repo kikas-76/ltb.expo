@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import LoadingBlock from '@/components/LoadingBlock';
 import SuspendedScreen from '@/components/SuspendedScreen';
+import ConnectionErrorScreen from '@/components/ConnectionErrorScreen';
 import { useFonts } from 'expo-font';
 import {
   PlusJakartaSans_400Regular,
@@ -35,7 +36,9 @@ import { supabase } from '@/lib/supabase';
 SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
-  const { session, loading, profile, profileLoading, signOut } = useAuth();
+  const { session, loading, profile, profileLoading, profileError, signOut, refreshProfile } = useAuth();
+  // URL d'une notification touchée avant que la navigation soit prête (app tuée).
+  const [pendingNotificationUrl, setPendingNotificationUrl] = useState<string | null>(null);
   const segments = useSegments();
   const router = useRouter();
   const { setPendingListingId, pendingListingId } = useDeepLink();
@@ -59,21 +62,15 @@ function RootNavigator() {
         const path = parsed.path ?? '';
         const match = path.match(/^listing\/([^/]+)$/) || path.match(/^\/listing\/([^/?#]+)/);
         if (match) {
-          const listingId = match[1];
-          setPendingListingId(listingId);
-          if (session) {
-            router.push(`/listing/${listingId}` as any);
-          }
+          // Connecté : expo-router ouvre lui-même la fiche (schéma louetonbien://
+          // et Universal Links). Déconnecté : on retient l'annonce pour après.
+          if (!session) setPendingListingId(match[1]);
           return;
         }
 
         const webMatch = url.match(/\/listing\/([^/?#]+)/);
-        if (webMatch) {
-          const listingId = webMatch[1];
-          setPendingListingId(listingId);
-          if (session) {
-            router.push(`/listing/${listingId}` as any);
-          }
+        if (webMatch && !session) {
+          setPendingListingId(webMatch[1]);
         }
       } catch {}
     };
@@ -107,8 +104,10 @@ function RootNavigator() {
 
     const routeFromNotification = (response: any) => {
       const url = response?.notification?.request?.content?.data?.url;
-      if (typeof url === 'string' && url.startsWith('/')) {
-        router.push(url as any);
+      if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//')) {
+        // Consommée plus bas, une fois la session et le profil chargés : au
+        // lancement depuis une notification, la navigation n'est pas encore montée.
+        setPendingNotificationUrl(url);
       }
     };
 
@@ -123,7 +122,28 @@ function RootNavigator() {
   }, []);
 
   useEffect(() => {
+    if (!pendingNotificationUrl || loading || profileLoading) return;
+    if (!session) {
+      setPendingNotificationUrl(null);
+      return;
+    }
+    if (!profile?.onboarding_completed) return;
+    const url = pendingNotificationUrl;
+    setPendingNotificationUrl(null);
+    const go = (attempt: number) => {
+      try {
+        router.push(url as any);
+      } catch {
+        if (attempt < 3) setTimeout(() => go(attempt + 1), 350);
+      }
+    };
+    setTimeout(() => go(0), 50);
+  }, [pendingNotificationUrl, loading, profileLoading, session, profile?.onboarding_completed]);
+
+  useEffect(() => {
     if (loading || profileLoading) return;
+    // Profil non lisible (réseau) : on n'envoie pas l'utilisateur dans l'onboarding.
+    if (session && !profile && profileError) return;
 
     const seg = segments[0];
 
@@ -240,6 +260,10 @@ function RootNavigator() {
     (profile.account_status === 'banned' ||
       (profile.account_status === 'suspended' &&
         (!profile.banned_until || new Date(profile.banned_until).getTime() > Date.now())));
+  if (session && !profile && profileError) {
+    return <ConnectionErrorScreen onRetry={refreshProfile} onSignOut={signOut} />;
+  }
+
   if (suspended) {
     return (
       <SuspendedScreen

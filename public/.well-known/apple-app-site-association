@@ -1,0 +1,21 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "9BH4837DNF.fr.louetonbien.app"
+        ],
+        "components": [
+          {
+            "/": "/listing/*",
+            "comment": "Fiche annonce"
+          },
+          {
+            "/": "/book/*",
+            "comment": "Lien de réservation"
+          }
+        ]
+      }
+    ]
+  }
+}
