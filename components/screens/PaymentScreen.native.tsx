@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import LoadingBlock from '@/components/LoadingBlock';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { translatePaymentError } from '@/lib/paymentErrors';
 import { Colors } from '@/constants/colors';
+import { haptics } from '@/lib/haptics';
 
 
 interface BookingData {
@@ -75,6 +76,7 @@ export default function PaymentScreen() {
   const [loadingBooking, setLoadingBooking] = useState(true);
   const [cardComplete, setCardComplete] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!booking_id) return;
@@ -101,6 +103,12 @@ export default function PaymentScreen() {
 
   const handlePayment = async () => {
     if (loading) return;
+    if (Platform.OS !== 'web' && !cardComplete) {
+      setError('Renseignez votre carte bancaire pour continuer.');
+      haptics.error();
+      return;
+    }
+    setError(null);
     setLoading(true);
 
     try {
@@ -152,21 +160,37 @@ export default function PaymentScreen() {
           }),
         }
       );
-      const finalizeJson = await finalizeRes.json();
+      let finalizeJson = await finalizeRes.json().catch(() => ({}));
       if (!finalizeRes.ok || finalizeJson.success !== true) {
-        throw new Error(
-          finalizeJson.error ??
-          'Le paiement a été traité mais la réservation n\'a pas pu être finalisée. Contacte le support.'
-        );
+        // Le paiement est encaissé : le webhook Stripe activera la réservation
+        // même si cet appel échoue (réseau). On retente une fois, puis on
+        // continue vers l'écran de confirmation.
+        await new Promise((r) => setTimeout(r, 1500));
+        const retry = await fetch(
+          `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/finalize-booking-payment`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+              'Authorization': `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ booking_id, rental_payment_intent_id: data.rental_payment_intent_id ?? null }),
+          },
+        ).catch(() => null);
+        finalizeJson = retry ? await retry.json().catch(() => ({})) : {};
+        if (finalizeJson.success !== true) console.error('finalize-booking-payment failed after payment:', finalizeJson.error);
       }
 
+      haptics.success();
       router.replace({
         pathname: '/payment-success',
         params: { booking_id: booking_id },
       } as any);
 
     } catch (err) {
-      Alert.alert('Erreur paiement', translatePaymentError(err));
+      haptics.error();
+      setError(translatePaymentError(err));
     } finally {
       setLoading(false);
     }
@@ -200,8 +224,10 @@ export default function PaymentScreen() {
   const totalNow = Math.round((booking.total_price + serviceFee) * 100) / 100;
   const thumb = getOptimizedImageUrl(booking.listing?.photos_url?.[0] ?? null, { width: 160, height: 160, resize: 'cover' });
 
+  const canPay = Platform.OS === 'web' || cardComplete;
+
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <KeyboardAvoidingView style={[styles.root, { paddingTop: insets.top }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
@@ -220,7 +246,7 @@ export default function PaymentScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -265,7 +291,7 @@ export default function PaymentScreen() {
 
             <View style={styles.priceRow}>
               <View style={styles.depositLabelRow}>
-                <Text style={styles.priceLabelOrange}>Caution (bloquée ⏳)</Text>
+                <Text style={styles.priceLabelOrange}>Caution, non débitée</Text>
               </View>
               <Text style={styles.priceValueOrange}>{booking.deposit_amount} €</Text>
             </View>
@@ -278,7 +304,7 @@ export default function PaymentScreen() {
             </View>
 
             <Text style={styles.depositNote}>
-              La caution de {booking.deposit_amount} € est bloquée mais non débitée, libérée après le retour
+              La caution de {booking.deposit_amount} € n'est pas débitée : elle est réservée sur votre carte deux jours avant la fin de la location, puis libérée après le retour.
             </Text>
           </View>
         </View>
@@ -287,18 +313,26 @@ export default function PaymentScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Carte bancaire</Text>
             <View style={styles.card}>
+              <Text style={styles.cardCaption}>Visa, Mastercard, American Express</Text>
               {CardField ? (
                 <CardField
                   postalCodeEnabled={false}
-                  style={{ height: 56, marginVertical: 8 }}
+                  placeholders={{ number: 'Numéro de carte', expiration: 'MM/AA', cvc: 'CVC' }}
+                  style={{ height: 54, marginVertical: 4 }}
                   cardStyle={{
                     backgroundColor: '#FFFFFF',
-                    textColor: Colors.primaryDark,
+                    textColor: Colors.text,
+                    placeholderColor: '#9B9B9B',
+                    textErrorColor: Colors.error,
+                    fontSize: 16,
                     borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: '#E5E7EB',
+                    borderWidth: 1.5,
+                    borderColor: cardComplete ? Colors.primary : Colors.border,
                   }}
-                  onCardChange={(details: any) => setCardComplete(details.complete)}
+                  onCardChange={(details: any) => {
+                    setCardComplete(details.complete);
+                    if (details.complete) setError(null);
+                  }}
                 />
               ) : null}
               <View style={styles.securityRow}>
@@ -325,12 +359,21 @@ export default function PaymentScreen() {
         )}
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+        {error && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle-outline" size={16} color={Colors.error} />
+            <Text style={styles.errorBannerText}>{error}</Text>
+          </View>
+        )}
+        {!canPay && !error && (
+          <Text style={styles.payHint}>Renseignez votre carte pour activer le paiement.</Text>
+        )}
         <TouchableOpacity
-          style={[styles.payBtn, loading && styles.payBtnDisabled]}
+          style={[styles.payBtn, (loading || !canPay) && styles.payBtnDisabled]}
           onPress={handlePayment}
           activeOpacity={0.88}
-          disabled={loading}
+          disabled={loading || !canPay}
         >
           {loading ? (
             <ActivityIndicator color="#fff" size="small" />
@@ -345,11 +388,39 @@ export default function PaymentScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  cardCaption: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.errorLight,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: Colors.error,
+  },
+  payHint: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
   root: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -406,6 +477,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
     gap: 20,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
   },
   section: {
     gap: 10,
@@ -580,6 +654,9 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   footer: {
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
     paddingHorizontal: 16,
     paddingTop: 12,
     backgroundColor: Colors.background,
