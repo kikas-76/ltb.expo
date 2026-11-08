@@ -116,7 +116,7 @@ All functions are Deno-based and use `SUPABASE_SERVICE_ROLE_KEY` server-side:
 | `send-admin-email` | Forwards to `send-email`. |
 | `chat-notify` | Sends email notifications on booking accept/reject/dispute. |
 | `auto-validate-bookings` | Cron: completes bookings 24h after return confirmation. Releases deposit. Updates audit trail. |
-| `expire-stale-pending-payments` | Cron: cancels bookings stuck in `pending_payment` for 30min. |
+| `expire-stale-pending-payments` | Cron: cancels bookings stuck in `pending_payment` for 2h. |
 | `maps-proxy` | Proxies Google Maps API requests to keep the key server-side. |
 | `post-system-message` | Inserts system messages in conversations. |
 | `admin-action` | Admin moderation (suspend, ban, unban, flag). |

@@ -196,6 +196,13 @@ export default function LoginScreen() {
           <AppleButton onPress={handleAppleLogin} />
           <GoogleButton onPress={handleGoogleLogin} loading={googleLoading} />
 
+          <Text style={styles.consent}>
+            En créant un compte avec Apple ou Google, vous confirmez avoir 18 ans et acceptez les{' '}
+            <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Conditions d'utilisation</Text>
+            {' '}et la{' '}
+            <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Politique de confidentialité</Text>.
+          </Text>
+
           <View style={styles.separator}>
             <View style={styles.separatorLine} />
             <Text style={styles.separatorText}>ou</Text>
@@ -266,6 +273,20 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  consent: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#8C8C84',
+    textAlign: 'center',
+    marginTop: 14,
+    paddingHorizontal: 8,
+  },
+  consentLink: {
+    fontFamily: 'Inter-SemiBold',
+    color: '#4E6B38',
+    textDecorationLine: 'underline',
+  },
   flex: {
     flex: 1,
     backgroundColor: Colors.background,

@@ -71,7 +71,7 @@ const helpData: HelpCategory[] = [
         id: 'l2',
         question: 'Comment fonctionne le paiement ?',
         answer:
-          "Le paiement est sécurisé par Stripe. Quand ta demande est acceptée, tu as 30 minutes pour payer par carte bancaire dans l'app ; passé ce délai, la réservation expire et tu peux refaire une demande. Seul le prix de la location (frais inclus) est débité à ce moment-là. La caution n'est pas prélevée : elle est réservée sur ta carte deux jours avant la fin de la location (ou immédiatement pour les locations de moins de deux jours).",
+          "Le paiement est sécurisé par Stripe. Quand ta demande est acceptée, tu as 2 heures pour payer par carte bancaire dans l'app ; passé ce délai, la réservation expire et tu peux refaire une demande. Seul le prix de la location (frais inclus) est débité à ce moment-là. La caution n'est pas prélevée : elle est réservée sur ta carte deux jours avant la fin de la location (ou immédiatement pour les locations de moins de deux jours).",
       },
       {
         id: 'l3',
@@ -133,7 +133,7 @@ const helpData: HelpCategory[] = [
         id: 'p4',
         question: 'Comment accepter ou refuser une demande ?',
         answer:
-          "Chaque demande te parvient par notification et dans l'onglet Réservations. Tu peux lire le message du locataire, consulter son profil et ses avis, et lui poser des questions dans la conversation avant de décider. Appuie sur Accepter ou Refuser. Si tu acceptes, le locataire a 30 minutes pour payer ; la réservation devient définitive une fois le paiement confirmé.",
+          "Chaque demande te parvient par notification et dans l'onglet Réservations. Tu peux lire le message du locataire, consulter son profil et ses avis, et lui poser des questions dans la conversation avant de décider. Appuie sur Accepter ou Refuser. Si tu acceptes, le locataire a 2 heures pour payer ; la réservation devient définitive une fois le paiement confirmé.",
       },
       {
         id: 'p5',
