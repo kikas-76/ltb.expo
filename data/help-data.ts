@@ -51,7 +51,7 @@ const helpData: HelpCategory[] = [
         id: 'd5',
         question: 'Comment ajouter ma photo de profil ?',
         answer:
-          "Va dans l'onglet Profil, puis Paramètres du compte → Photo de profil. Tu peux choisir une photo dans ta galerie ou en prendre une. Une photo claire augmente nettement la confiance des autres membres et le taux d'acceptation de tes demandes.",
+          "Va dans l'onglet Mon Compte, puis Paramètres du compte → Photo de profil. Tu peux choisir une photo dans ta galerie ou en prendre une. Une photo claire augmente nettement la confiance des autres membres et le taux d'acceptation de tes demandes.",
       },
     ],
   },
@@ -65,7 +65,7 @@ const helpData: HelpCategory[] = [
         id: 'l1',
         question: 'Comment faire une demande de location ?',
         answer:
-          "Ouvre l'annonce qui t'intéresse, choisis tes dates, puis appuie sur « Faire une demande ». Le récapitulatif affiche le prix de la location, les frais de service et le montant de la caution. Une conversation s'ouvre avec le propriétaire : présente-toi et décris ton usage. Il reçoit une notification et accepte ou refuse la demande. Tant qu'il n'a pas répondu, tu peux annuler ta demande depuis l'onglet Réservations.",
+          "Ouvre l'annonce qui t'intéresse, choisis tes dates, puis appuie sur « Faire une demande ». Le récapitulatif affiche le prix de la location, les frais de service et le montant de la caution. Une conversation s'ouvre avec le propriétaire : présente-toi et décris ton usage. Il reçoit une notification et accepte ou refuse la demande. Tant qu'il n'a pas répondu, tu peux annuler ta demande depuis l'onglet Messages.",
       },
       {
         id: 'l2',
@@ -83,13 +83,13 @@ const helpData: HelpCategory[] = [
         id: 'l4',
         question: 'Que faire si le propriétaire ne répond pas ?',
         answer:
-          "Le propriétaire est notifié par e-mail et sur son téléphone à chaque demande. S'il ne répond pas, tu peux le relancer dans la conversation, annuler ta demande depuis l'onglet Réservations et chercher un objet similaire. Aucun paiement n'est effectué tant que la demande n'est pas acceptée. Si un membre te semble injoignable ou suspect, tu peux le signaler depuis le menu « … » de son profil ou de la conversation.",
+          "Le propriétaire est notifié par e-mail et sur son téléphone à chaque demande. S'il ne répond pas, tu peux le relancer dans la conversation, annuler ta demande depuis l'onglet Messages et chercher un objet similaire. Aucun paiement n'est effectué tant que la demande n'est pas acceptée. Si un membre te semble injoignable ou suspect, tu peux le signaler depuis le menu « … » de son profil ou de la conversation.",
       },
       {
         id: 'l5',
         question: 'Comment annuler une réservation ?',
         answer:
-          "Avant le paiement : tu peux annuler librement, sans frais, depuis l'onglet Réservations ou depuis la conversation. Après le paiement, l'annulation n'est pas automatique : écris-nous à admin@louetonbien.fr en indiquant la réservation concernée. Nous étudions chaque demande avec le propriétaire et pouvons rembourser tout ou partie de la location selon la situation (délai avant le début, motif, accord du propriétaire).",
+          "Avant le paiement : tu peux annuler librement, sans frais, depuis l'onglet Messages ou depuis la conversation. Après le paiement, l'annulation n'est pas automatique : écris-nous à admin@louetonbien.fr en indiquant la réservation concernée. Nous étudions chaque demande avec le propriétaire et pouvons rembourser tout ou partie de la location selon la situation (délai avant le début, motif, accord du propriétaire).",
       },
       {
         id: 'l6',
@@ -127,13 +127,13 @@ const helpData: HelpCategory[] = [
         id: 'p3',
         question: "Comment activer les paiements pour recevoir de l'argent ?",
         answer:
-          "Va dans Profil → Mon portefeuille → Activer mon compte. Notre partenaire Stripe te demande, directement dans l'app, tes informations personnelles, une pièce d'identité et ton IBAN. Compte 5 à 10 minutes. Une fois ton compte validé par Stripe, tu peux accepter des demandes payantes. Sans cette activation, tu peux publier des annonces mais tes demandes ne pourront pas être payées.",
+          "Va dans Mon Compte → Mon portefeuille → Activer mon compte. Notre partenaire Stripe te demande, directement dans l'app, tes informations personnelles, une pièce d'identité et ton IBAN. Compte 5 à 10 minutes. Une fois ton compte validé par Stripe, tu peux accepter des demandes payantes. Sans cette activation, tu peux publier des annonces mais tes demandes ne pourront pas être payées.",
       },
       {
         id: 'p4',
         question: 'Comment accepter ou refuser une demande ?',
         answer:
-          "Chaque demande te parvient par notification et dans l'onglet Réservations. Tu peux lire le message du locataire, consulter son profil et ses avis, et lui poser des questions dans la conversation avant de décider. Appuie sur Accepter ou Refuser. Si tu acceptes, le locataire a 2 heures pour payer ; la réservation devient définitive une fois le paiement confirmé.",
+          "Chaque demande te parvient par notification et dans l'onglet Messages. Tu peux lire le message du locataire, consulter son profil et ses avis, et lui poser des questions dans la conversation avant de décider. Appuie sur Accepter ou Refuser. Si tu acceptes, le locataire a 2 heures pour payer ; la réservation devient définitive une fois le paiement confirmé.",
       },
       {
         id: 'p5',
@@ -151,7 +151,7 @@ const helpData: HelpCategory[] = [
         id: 'p7',
         question: 'Comment masquer temporairement une annonce ?',
         answer:
-          "Va dans Profil → Mes annonces, ouvre l'annonce concernée et désactive-la. Une annonce inactive n'apparaît plus dans l'accueil ni dans la recherche et ne reçoit plus de demandes. Les réservations déjà acceptées restent valables. Tu peux la réactiver à tout moment.",
+          "Va dans Mon Compte → Mes annonces, ouvre l'annonce concernée et désactive-la. Une annonce inactive n'apparaît plus dans l'accueil ni dans la recherche et ne reçoit plus de demandes. Les réservations déjà acceptées restent valables. Tu peux la réactiver à tout moment.",
       },
     ],
   },
@@ -207,7 +207,7 @@ const helpData: HelpCategory[] = [
         id: 'pay8',
         question: 'Où voir mes gains en tant que propriétaire ?',
         answer:
-          "Dans Profil → Mon portefeuille : total du mois, historique et détail de chaque transaction. Pour les virements, les relevés et les documents fiscaux, ouvre ton tableau de bord Stripe depuis « Gérer mon compte Stripe ». Stripe conserve l'ensemble de tes données financières.",
+          "Dans Mon Compte → Mon portefeuille : total du mois, historique et détail de chaque transaction. Pour les virements, les relevés et les documents fiscaux, ouvre ton tableau de bord Stripe depuis « Gérer mon compte Stripe ». Stripe conserve l'ensemble de tes données financières.",
       },
     ],
   },
