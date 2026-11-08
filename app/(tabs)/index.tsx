@@ -290,8 +290,9 @@ export default function ExploreScreen() {
     ? { maxWidth: maxW, width: '100%' as const, alignSelf: 'center' as const }
     : undefined;
 
+  // Pas de bord bas : la barre d'onglets réserve déjà la zone de sécurité.
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <HomeIntro visible={introVisible} />
       {/* Le bonjour défile avec le contenu ; la barre de recherche reste collée en haut
           (stickyHeaderIndices) : aucun saut de mise en page, tout est géré nativement. */}
