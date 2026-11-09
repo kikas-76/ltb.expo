@@ -18,7 +18,7 @@ Suggested test flow:
 1. Sign in with the demo account (or with Sign in with Apple / Google — both are supported and equally prominent).
 2. Explore listings on the "Rechercher" tab, open a listing, view the owner's public profile.
 3. Search "Airpods" and open the listing "Airpods" (2 € per day, owner: david, the founder's account). Pick dates and send a rental request. The owner accepts within minutes during business hours (Paris time), which unlocks payment from the conversation.
-4. Payment uses Stripe in live mode: a real card is charged 2 € per day plus a 7 % service fee, and refunded by us right after the review.
+4. Payment uses Stripe in live mode, with Apple Pay or a card: 2 € per day plus a 7 % service fee are charged, and refunded by us right after the review.
 5. Chat with the owner from the Messages tab. From the "…" menu you can report the conversation, report the user, or block the user (blocked users can no longer message or book each other).
 6. Account deletion is available in the app, under these French labels: Mon Compte → Paramètres du compte → Supprimer mon compte.
 

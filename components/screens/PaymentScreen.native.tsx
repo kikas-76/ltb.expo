@@ -19,6 +19,13 @@ import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { translatePaymentError } from '@/lib/paymentErrors';
 import { Colors } from '@/constants/colors';
 import { haptics } from '@/lib/haptics';
+import {
+  CardForm,
+  PlatformPay,
+  PlatformPayButton,
+  usePlatformPay,
+  useStripe,
+} from '@stripe/stripe-react-native';
 
 
 interface BookingData {
@@ -45,38 +52,33 @@ function formatDate(iso: string): string {
   });
 }
 
-let CardField: any = null;
-let useStripe: (() => any) | null = null;
-
-if (Platform.OS !== 'web') {
-  try {
-    const stripe = require('@stripe/stripe-react-native');
-    CardField = stripe.CardField;
-    useStripe = stripe.useStripe;
-  } catch {}
-}
-
-function useStripeHook() {
-  // The conditional is platform-driven (set once at module load) and never
-  // changes between renders, so React's hook ordering is preserved per
-  // platform. The .web.tsx variant of this file uses Stripe Elements
-  // instead, so on web this code path is dead.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  if (useStripe) return useStripe();
-  return { confirmPayment: async () => ({ error: { message: 'Stripe non disponible sur web' } }) };
-}
+// Doit rester constant : en nouvelle architecture, tout changement de prop recrée
+// le formulaire natif et efface la carte déjà saisie.
+const CARD_FORM_STYLE = {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 12,
+  borderColor: Colors.border,
+  cursorColor: Colors.primaryDark,
+};
 
 export default function PaymentScreen() {
   const { booking_id } = useLocalSearchParams<{ booking_id: string }>();
   const insets = useSafeAreaInsets();
-  const stripeHook = useStripeHook();
-  const confirmPayment = stripeHook?.confirmPayment;
+  const { confirmPayment } = useStripe();
+  const { isPlatformPaySupported, confirmPlatformPayPayment } = usePlatformPay();
 
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
   const [cardComplete, setCardComplete] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [applePayReady, setApplePayReady] = useState(false);
+
+  useEffect(() => {
+    isPlatformPaySupported()
+      .then((supported) => setApplePayReady(supported))
+      .catch(() => setApplePayReady(false));
+  }, [isPlatformPaySupported]);
 
   useEffect(() => {
     if (!booking_id) return;
@@ -101,13 +103,11 @@ export default function PaymentScreen() {
     })();
   }, [booking_id]);
 
-  const handlePayment = async () => {
+  // Création du paiement et finalisation, communes à la carte et à Apple Pay.
+  const pay = async (
+    confirm: (clientSecret: string) => Promise<{ error?: { code?: string; message?: string } }>,
+  ) => {
     if (loading) return;
-    if (Platform.OS !== 'web' && !cardComplete) {
-      setError('Renseignez votre carte bancaire pour continuer.');
-      haptics.error();
-      return;
-    }
     setError(null);
     setLoading(true);
 
@@ -137,9 +137,9 @@ export default function PaymentScreen() {
         throw new Error('Client secret manquant');
       }
 
-      const { error: rentalError } = await confirmPayment(data.rental_client_secret, {
-        paymentMethodType: 'Card',
-      });
+      const { error: rentalError } = await confirm(data.rental_client_secret);
+      // Fermer la fenêtre Apple Pay ou 3D Secure n'est pas une erreur à afficher.
+      if (rentalError?.code === 'Canceled') return;
       if (rentalError) throw new Error(rentalError.message);
 
       // Deposit is NOT charged at payment time. It will be held automatically
@@ -196,6 +196,15 @@ export default function PaymentScreen() {
     }
   };
 
+  const handleCardPayment = () => {
+    if (!cardComplete) {
+      setError('Renseignez votre carte bancaire pour continuer.');
+      haptics.error();
+      return;
+    }
+    pay((clientSecret) => confirmPayment(clientSecret, { paymentMethodType: 'Card' }));
+  };
+
   if (loadingBooking) {
     return (
       <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -225,6 +234,35 @@ export default function PaymentScreen() {
   const thumb = getOptimizedImageUrl(booking.listing?.photos_url?.[0] ?? null, { width: 160, height: 160, resize: 'cover' });
 
   const canPay = Platform.OS === 'web' || cardComplete;
+  const depositAmount = booking.deposit_amount ?? 0;
+
+  const handleApplePay = () => {
+    // La caution est réservée 2 jours avant la fin (tout de suite si la location
+    // est courte) : elle figure dans la fenêtre Apple Pay comme montant différé.
+    const depositDate = Math.max(new Date(booking.end_date).getTime() - 2 * 86400000, Date.now() + 3600000);
+    const immediate = PlatformPay.PaymentType.Immediate as const;
+    pay((clientSecret) =>
+      confirmPlatformPayPayment(clientSecret, {
+        applePay: {
+          merchantCountryCode: 'FR',
+          currencyCode: 'EUR',
+          cartItems: [
+            { paymentType: immediate, label: 'Location', amount: booking.total_price.toFixed(2) },
+            { paymentType: immediate, label: 'Frais de service', amount: serviceFee.toFixed(2) },
+            ...(depositAmount > 0
+              ? [{
+                  paymentType: PlatformPay.PaymentType.Deferred as const,
+                  label: 'Caution (réservée, non débitée)',
+                  amount: depositAmount.toFixed(2),
+                  deferredDate: Math.floor(depositDate / 1000),
+                }]
+              : []),
+            { paymentType: immediate, label: 'LoueTonBien', amount: totalNow.toFixed(2) },
+          ],
+        },
+      }),
+    );
+  };
 
   return (
     <KeyboardAvoidingView style={[styles.root, { paddingTop: insets.top }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -289,12 +327,14 @@ export default function PaymentScreen() {
               <Text style={styles.priceValueMuted}>{serviceFee} €</Text>
             </View>
 
-            <View style={styles.priceRow}>
-              <View style={styles.depositLabelRow}>
-                <Text style={styles.priceLabelOrange}>Caution, non débitée</Text>
+            {depositAmount > 0 && (
+              <View style={styles.priceRow}>
+                <View style={styles.depositLabelRow}>
+                  <Text style={styles.priceLabelOrange}>Caution, non débitée</Text>
+                </View>
+                <Text style={styles.priceValueOrange}>{depositAmount} €</Text>
               </View>
-              <Text style={styles.priceValueOrange}>{booking.deposit_amount} €</Text>
-            </View>
+            )}
 
             <View style={styles.separator} />
 
@@ -303,38 +343,49 @@ export default function PaymentScreen() {
               <Text style={styles.totalValue}>{totalNow} €</Text>
             </View>
 
-            <Text style={styles.depositNote}>
-              La caution de {booking.deposit_amount} € n'est pas débitée : elle est réservée sur votre carte deux jours avant la fin de la location, puis libérée après le retour.
-            </Text>
+            {depositAmount > 0 && (
+              <Text style={styles.depositNote}>
+                La caution de {depositAmount} € n'est pas débitée : elle est réservée sur votre moyen de paiement deux jours avant la fin de la location, puis libérée après le retour.
+              </Text>
+            )}
           </View>
         </View>
 
         {Platform.OS !== 'web' && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Carte bancaire</Text>
+            <Text style={styles.sectionLabel}>Moyen de paiement</Text>
             <View style={styles.card}>
+              {applePayReady && (
+                <>
+                  <PlatformPayButton
+                    type={PlatformPay.ButtonType.Pay}
+                    appearance={PlatformPay.ButtonStyle.Black}
+                    borderRadius={14}
+                    onPress={handleApplePay}
+                    disabled={loading}
+                    style={styles.applePayBtn}
+                  />
+                  <View style={styles.orRow}>
+                    <View style={styles.orLine} />
+                    <Text style={styles.orText}>ou par carte</Text>
+                    <View style={styles.orLine} />
+                  </View>
+                </>
+              )}
               <Text style={styles.cardCaption}>Visa, Mastercard, American Express</Text>
-              {CardField ? (
-                <CardField
-                  postalCodeEnabled={false}
-                  placeholders={{ number: 'Numéro de carte', expiration: 'MM/AA', cvc: 'CVC' }}
-                  style={{ height: 54, marginVertical: 4 }}
-                  cardStyle={{
-                    backgroundColor: '#FFFFFF',
-                    textColor: Colors.text,
-                    placeholderColor: '#9B9B9B',
-                    textErrorColor: Colors.error,
-                    fontSize: 16,
-                    borderRadius: 12,
-                    borderWidth: 1.5,
-                    borderColor: cardComplete ? Colors.primary : Colors.border,
-                  }}
-                  onCardChange={(details: any) => {
-                    setCardComplete(details.complete);
-                    if (details.complete) setError(null);
-                  }}
-                />
-              ) : null}
+              <CardForm
+                style={styles.cardForm}
+                cardStyle={CARD_FORM_STYLE}
+                onFormComplete={(details) => {
+                  setCardComplete(details.complete);
+                  if (details.complete) setError(null);
+                }}
+              />
+              {depositAmount > 0 && (
+                <Text style={styles.consentText}>
+                  En payant, vous autorisez LoueTonBien à réserver la caution de {depositAmount} € sur ce moyen de paiement, sans nouvelle validation de votre part.
+                </Text>
+              )}
               <View style={styles.securityRow}>
                 <Ionicons name="shield-checkmark-outline" size={13} color={Colors.primaryDark} />
                 <Text style={styles.securityText}>
@@ -367,11 +418,13 @@ export default function PaymentScreen() {
           </View>
         )}
         {!canPay && !error && (
-          <Text style={styles.payHint}>Renseignez votre carte pour activer le paiement.</Text>
+          <Text style={styles.payHint}>
+            {applePayReady ? 'Payez avec Apple Pay, ou renseignez votre carte.' : 'Renseignez votre carte pour activer le paiement.'}
+          </Text>
         )}
         <TouchableOpacity
           style={[styles.payBtn, (loading || !canPay) && styles.payBtnDisabled]}
-          onPress={handlePayment}
+          onPress={handleCardPayment}
           activeOpacity={0.88}
           disabled={loading || !canPay}
         >
@@ -381,7 +434,7 @@ export default function PaymentScreen() {
             <>
               <Ionicons name="lock-closed-outline" size={16} color="#fff" />
               <Text style={styles.payBtnText}>
-                {Platform.OS === 'web' ? 'Payer maintenant' : 'Confirmer le paiement'}
+                {applePayReady ? 'Payer par carte' : 'Confirmer le paiement'}
               </Text>
               <Text style={styles.payBtnAmount}>{totalNow} €</Text>
             </>
@@ -397,6 +450,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  cardForm: {
+    height: 270,
+  },
+  applePayBtn: {
+    height: 54,
+  },
+  orRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 2,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.borderLight,
+  },
+  orText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  consentText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.textSecondary,
   },
   errorBanner: {
     flexDirection: 'row',

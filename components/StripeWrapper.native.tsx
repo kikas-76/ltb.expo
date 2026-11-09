@@ -8,6 +8,7 @@ export default function StripeWrapper({ children }: { children: React.ReactNode 
     <StripeProvider
       publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
       urlScheme="louetonbien"
+      merchantIdentifier="merchant.fr.louetonbien.app"
     >
       {children as ReactElement}
     </StripeProvider>
