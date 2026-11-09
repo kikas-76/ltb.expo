@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
 import { Colors } from '@/constants/colors';
 import InfinityLoader from '@/components/InfinityLoader';
 
@@ -49,7 +49,8 @@ export default function AnimatedSplash({ visible, quick = false, onHidden }: Pro
   return (
     <Animated.View style={[styles.root, { opacity: rootOpacity }]} pointerEvents="none">
       <View style={styles.center}>
-        <InfinityLoader size={230} drawDuration={quick ? 500 : undefined} />
+        {/* Web : le symbole est déjà tracé dans le HTML initial (public/index.html). */}
+        <InfinityLoader size={230} drawDuration={Platform.OS === 'web' ? 0 : quick ? 500 : undefined} />
         <Animated.Image
           source={require('@/assets/images/logoLTBwhitoutbaground.png')}
           style={[styles.logo, { opacity: logoFade, transform: [{ translateY: logoRise }] }]}

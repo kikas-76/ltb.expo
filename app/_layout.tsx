@@ -14,16 +14,12 @@ if (!__DEV__) {
   console.debug = () => {};
   console.warn = () => {};
 }
-import { useFonts } from 'expo-font';
+import { FontDisplay, useFonts } from 'expo-font';
 import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import {
-  Outfit_400Regular,
-  Outfit_500Medium,
   Outfit_600SemiBold,
   Outfit_700Bold,
 } from '@expo-google-fonts/outfit';
@@ -49,6 +45,11 @@ SplashScreen.preventAutoHideAsync();
 const SPLASH_MIN_FIRST_LAUNCH_MS = 1700;
 const SPLASH_MIN_RETURNING_MS = 700;
 const SPLASH_SEEN_KEY = 'boot:splash-seen';
+
+// Web : le texte s'affiche tout de suite avec une police de secours, puis la
+// vraie police la remplace dès qu'elle est téléchargée.
+const font = (source: number) =>
+  Platform.OS === 'web' ? { uri: source, display: FontDisplay.SWAP } : source;
 
 function RootNavigator() {
   const { session, loading, profile, profileLoading, profileError, signOut, refreshProfile } = useAuth();
@@ -353,10 +354,9 @@ function BootSplash({ firstLaunch }: { firstLaunch: boolean }) {
   const [minElapsed, setMinElapsed] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(
-      () => setMinElapsed(true),
-      firstLaunch ? SPLASH_MIN_FIRST_LAUNCH_MS : SPLASH_MIN_RETURNING_MS,
-    );
+    // Web : la page est prête derrière, aucune durée minimale à imposer.
+    const minMs = Platform.OS === 'web' ? 0 : firstLaunch ? SPLASH_MIN_FIRST_LAUNCH_MS : SPLASH_MIN_RETURNING_MS;
+    const t = setTimeout(() => setMinElapsed(true), minMs);
     return () => clearTimeout(t);
   }, [firstLaunch]);
 
@@ -369,9 +369,10 @@ export default function RootLayout() {
 
   // Lu avant de masquer le splash natif : l'écran animé démarre d'emblée dans
   // la bonne version.
-  const [firstLaunch, setFirstLaunch] = useState<boolean | null>(null);
+  const [firstLaunch, setFirstLaunch] = useState<boolean | null>(Platform.OS === 'web' ? false : null);
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     readCache<boolean>(SPLASH_SEEN_KEY).then((seen) => {
       setFirstLaunch(!seen);
       if (!seen) writeCache(SPLASH_SEEN_KEY, true);
@@ -423,21 +424,14 @@ export default function RootLayout() {
   }, []);
 
   const [fontsLoaded, fontError] = useFonts({
-    'Inter-Regular': PlusJakartaSans_400Regular,
-    'Inter-Medium': PlusJakartaSans_500Medium,
-    'Inter-SemiBold': Outfit_600SemiBold,
-    'Inter-Bold': Outfit_700Bold,
-    'PlusJakartaSans-Regular': PlusJakartaSans_400Regular,
-    'PlusJakartaSans-Medium': PlusJakartaSans_500Medium,
-    'PlusJakartaSans-SemiBold': PlusJakartaSans_600SemiBold,
-    'PlusJakartaSans-Bold': PlusJakartaSans_700Bold,
-    'Outfit-Regular': Outfit_400Regular,
-    'Outfit-Medium': Outfit_500Medium,
-    'Outfit-SemiBold': Outfit_600SemiBold,
-    'Outfit-Bold': Outfit_700Bold,
+    'Inter-Regular': font(PlusJakartaSans_400Regular),
+    'Inter-Medium': font(PlusJakartaSans_500Medium),
+    'Inter-SemiBold': font(Outfit_600SemiBold),
+    'Inter-Bold': font(Outfit_700Bold),
   });
 
-  const fontsReady = fontsLoaded || !!fontError;
+  // Web : ne pas retenir la page entière le temps de télécharger les polices.
+  const fontsReady = Platform.OS === 'web' || fontsLoaded || !!fontError;
 
   useEffect(() => {
     if (fontsReady && firstLaunch !== null) {
