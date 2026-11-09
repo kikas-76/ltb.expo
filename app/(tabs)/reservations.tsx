@@ -78,7 +78,6 @@ type ConvDisplayStatus = 'pending' | 'accepted' | 'refused' | 'pending_payment' 
 // disputed) MUST stay in the user's list. The DB trigger
 // `guard_conversation_delete` mirrors this exact rule server-side, so a
 // curl bypass of the UI gets a 42501 with a readable message.
-const TERMINAL_DISPLAY_STATUSES: ConvDisplayStatus[] = ['completed', 'cancelled', 'refused'];
 const TERMINAL_CONV_STATUSES = ['refused', 'cancelled', 'expired'] as const;
 
 // Single source of truth for "can this row be wiped from my list?"
@@ -99,7 +98,6 @@ function canDeleteConversation(item: {
 }): boolean {
   if (item.listingUnavailable) return true;
   if ((TERMINAL_CONV_STATUSES as readonly string[]).includes(item.status)) return true;
-  if (TERMINAL_DISPLAY_STATUSES.includes(item.displayStatus)) return true;
   if (item.status === 'pending' && item.isRequester) return true;
   return false;
 }
@@ -286,7 +284,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
       <TouchableOpacity
-        style={[styles.card, item.isIncomingRequest && styles.cardIncoming, item.listingUnavailable && styles.cardUnavailable]}
+        style={[styles.card, item.isIncomingRequest && styles.cardIncoming, item.listingUnavailable && styles.cardUnavailable, item.displayStatus === 'completed' && styles.cardCompleted]}
         activeOpacity={0.78}
         onPress={() => !item.listingUnavailable && onPress(item.id)}
         onLongPress={isDeletable ? () => onDeleteRequest(item.id) : undefined}
@@ -945,6 +943,7 @@ export default function MessagesScreen() {
                     desktopStyles.convRow,
                     selectedConvId === item.id && desktopStyles.convRowSelected,
                     item.isIncomingRequest && desktopStyles.convRowIncoming,
+                    item.displayStatus === 'completed' && desktopStyles.convRowCompleted,
                   ]}
                   activeOpacity={0.78}
                   onPress={() => !item.listingUnavailable && handleConvPress(item.id)}
@@ -1231,6 +1230,11 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
       web: { boxShadow: '0 2px 10px rgba(200,145,58,0.14)' },
     }),
+  },
+  cardCompleted: {
+    opacity: 0.72,
+    backgroundColor: '#F2F0E8',
+    borderColor: '#D0CCC0',
   },
   cardUnavailable: {
     opacity: 0.6,
@@ -1907,6 +1911,10 @@ const desktopStyles = StyleSheet.create({
   convRowSelected: {
     backgroundColor: '#eef2df',
     borderBottomColor: '#d8e0c4',
+  },
+  convRowCompleted: {
+    opacity: 0.72,
+    backgroundColor: '#F2F0E8',
   },
   convRowIncoming: {
     backgroundColor: '#FFFBF3',
