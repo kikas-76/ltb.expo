@@ -18,6 +18,15 @@ interface TransformOpts {
   resize?: 'cover' | 'contain' | 'fill';
 }
 
+// Miniatures de conversation (64 points au plus, écrans 3x). Même URL partout :
+// la vignette déjà chargée dans Messages ressert dans l'en-tête du chat.
+export const CONVERSATION_THUMB_TRANSFORM: TransformOpts = {
+  width: 200,
+  height: 200,
+  resize: 'cover',
+  quality: 70,
+};
+
 export function getOptimizedImageUrl(
   url: string | null | undefined,
   opts: TransformOpts = {},

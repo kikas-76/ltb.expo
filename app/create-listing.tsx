@@ -441,7 +441,8 @@ export default function CreateListingScreen() {
 
         const { data, error: upErr } = await supabase.storage
           .from('listing-photos')
-          .upload(path, body, { contentType });
+          // Nom unique à chaque envoi : la photo ne change jamais, cache d'un an.
+          .upload(path, body, { contentType, cacheControl: '31536000' });
 
         if (upErr) throw upErr;
 

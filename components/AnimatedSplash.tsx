@@ -6,6 +6,8 @@ import InfinityLoader from '@/components/InfinityLoader';
 interface Props {
   /** Tant que vrai, l'écran reste affiché ; à false il se fond puis se démonte. */
   visible: boolean;
+  /** Version courte pour les utilisateurs qui reviennent : tracé et logo accélérés. */
+  quick?: boolean;
   onHidden?: () => void;
 }
 
@@ -14,16 +16,18 @@ interface Props {
  * pendant que l'app finit de charger, le logo apparaît dessous. Même fond que
  * le splash natif (Colors.background) pour une transition sans à-coup.
  */
-export default function AnimatedSplash({ visible, onHidden }: Props) {
+export default function AnimatedSplash({ visible, quick = false, onHidden }: Props) {
   const [mounted, setMounted] = useState(true);
   const rootOpacity = useRef(new Animated.Value(1)).current;
   const logoFade = useRef(new Animated.Value(0)).current;
   const logoRise = useRef(new Animated.Value(10)).current;
 
   useEffect(() => {
+    const delay = quick ? 100 : 700;
+    const duration = quick ? 300 : 600;
     Animated.parallel([
-      Animated.timing(logoFade, { toValue: 1, duration: 600, delay: 700, useNativeDriver: true }),
-      Animated.timing(logoRise, { toValue: 0, duration: 600, delay: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(logoFade, { toValue: 1, duration, delay, useNativeDriver: true }),
+      Animated.timing(logoRise, { toValue: 0, duration, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -45,7 +49,7 @@ export default function AnimatedSplash({ visible, onHidden }: Props) {
   return (
     <Animated.View style={[styles.root, { opacity: rootOpacity }]} pointerEvents="none">
       <View style={styles.center}>
-        <InfinityLoader size={230} />
+        <InfinityLoader size={230} drawDuration={quick ? 500 : undefined} />
         <Animated.Image
           source={require('@/assets/images/logoLTBwhitoutbaground.png')}
           style={[styles.logo, { opacity: logoFade, transform: [{ translateY: logoRise }] }]}

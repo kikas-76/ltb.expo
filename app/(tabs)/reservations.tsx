@@ -5,15 +5,15 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Animated,
   Platform,
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { EmptyIllustration } from '@/components/EmptyIllustration';
 import { AdaptiveImage } from '@/components/AdaptiveImage';
-import { getOptimizedImageUrl } from '@/lib/imageUrl';
+import { CONVERSATION_THUMB_TRANSFORM, getOptimizedImageUrl } from '@/lib/imageUrl';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Ionicons } from '@expo/vector-icons';
 import BookingBadge from '@/components/BookingBadge';
@@ -294,7 +294,13 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
       >
         <View style={styles.imageWrap}>
           {item.listingThumb ? (
-            <Image source={{ uri: item.listingThumb }} style={styles.listingImage} />
+            <ExpoImage
+              source={{ uri: getOptimizedImageUrl(item.listingThumb, CONVERSATION_THUMB_TRANSFORM) ?? item.listingThumb }}
+              style={styles.listingImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              recyclingKey={item.id}
+            />
           ) : (
             <View style={styles.listingImageFallback}>
               <Ionicons name="chatbubble-outline" size={22} color={Colors.primary} />
@@ -947,7 +953,13 @@ export default function MessagesScreen() {
                 >
                   <View style={desktopStyles.convRowImg}>
                     {item.listingThumb ? (
-                      <Image source={{ uri: item.listingThumb }} style={desktopStyles.convRowImage} />
+                      <ExpoImage
+                        source={{ uri: getOptimizedImageUrl(item.listingThumb, CONVERSATION_THUMB_TRANSFORM) ?? item.listingThumb }}
+                        style={desktopStyles.convRowImage}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        recyclingKey={item.id}
+                      />
                     ) : (
                       <View style={desktopStyles.convRowImageFallback}>
                         <Ionicons name="cube-outline" size={20} color={Colors.primary} />

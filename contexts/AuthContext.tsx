@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Platform, AppState } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -39,6 +39,9 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Fenêtre pendant laquelle un même profil n'est pas redemandé sur événement d'auth.
+const PROFILE_DEDUPE_MS = 5000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -83,6 +86,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileLoading(false);
   };
 
+  // Au démarrage, supabase-js signale la même session plusieurs fois (SIGNED_IN,
+  // INITIAL_SESSION) : un seul chargement suffit. refreshProfile passe outre.
+  const lastProfileLoad = useRef<{ userId: string; at: number } | null>(null);
+
+  const loadProfileOnce = (userId: string) => {
+    const last = lastProfileLoad.current;
+    if (last && last.userId === userId && Date.now() - last.at < PROFILE_DEDUPE_MS) return;
+    lastProfileLoad.current = { userId, at: Date.now() };
+    fetchProfile(userId);
+  };
+
   const refreshProfile = async () => {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (currentUser) {
@@ -111,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        fetchProfile(s.user.id);
+        loadProfileOnce(s.user.id);
       }
       setLoading(false);
     };
@@ -121,10 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        (async () => {
-          await fetchProfile(s.user.id);
-        })();
+        loadProfileOnce(s.user.id);
       } else {
+        lastProfileLoad.current = null;
         setProfile(null);
       }
     });

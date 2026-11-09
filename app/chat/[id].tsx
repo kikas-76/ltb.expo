@@ -33,7 +33,7 @@ import { privateUriFor, resolveAttachmentUrl } from '@/lib/signedUrl';
 import { Skeleton } from '@/components/Skeleton';
 import { Image as ExpoImage } from 'expo-image';
 import { AdaptiveImage } from '@/components/AdaptiveImage';
-import { getOptimizedImageUrl } from '@/lib/imageUrl';
+import { CONVERSATION_THUMB_TRANSFORM, getOptimizedImageUrl } from '@/lib/imageUrl';
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { haptics } from '@/lib/haptics';
 import OptionsSheet from '@/components/OptionsSheet';
@@ -1186,7 +1186,12 @@ export default function ChatScreen() {
             onPress={() => meta.listingId && router.push(`/listing/${meta.listingId}` as any)}
           >
             {meta.listingThumb ? (
-              <Image source={{ uri: meta.listingThumb }} style={styles.topBarListingImg} />
+              <ExpoImage
+                source={{ uri: getOptimizedImageUrl(meta.listingThumb, CONVERSATION_THUMB_TRANSFORM) ?? meta.listingThumb }}
+                style={styles.topBarListingImg}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
             ) : (
               <View style={styles.topBarListingImgFallback} />
             )}

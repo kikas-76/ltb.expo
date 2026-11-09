@@ -41,8 +41,14 @@ import StripeWrapper from '@/components/StripeWrapper';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import AnimatedSplash from '@/components/AnimatedSplash';
 import { supabase } from '@/lib/supabase';
+import { readCache, writeCache } from '@/lib/queryCache';
 
 SplashScreen.preventAutoHideAsync();
+
+// Écran animé : complet au tout premier lancement sur l'appareil, court ensuite.
+const SPLASH_MIN_FIRST_LAUNCH_MS = 1700;
+const SPLASH_MIN_RETURNING_MS = 700;
+const SPLASH_SEEN_KEY = 'boot:splash-seen';
 
 function RootNavigator() {
   const { session, loading, profile, profileLoading, profileError, signOut, refreshProfile } = useAuth();
@@ -342,21 +348,35 @@ function RootNavigator() {
  * la session et le profil soient connus, avec une durée minimale pour que
  * l'animation soit vue même quand le cache local répond instantanément.
  */
-function BootSplash() {
+function BootSplash({ firstLaunch }: { firstLaunch: boolean }) {
   const { loading, profileLoading, session } = useAuth();
   const [minElapsed, setMinElapsed] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setMinElapsed(true), 1700);
+    const t = setTimeout(
+      () => setMinElapsed(true),
+      firstLaunch ? SPLASH_MIN_FIRST_LAUNCH_MS : SPLASH_MIN_RETURNING_MS,
+    );
     return () => clearTimeout(t);
-  }, []);
+  }, [firstLaunch]);
 
   const ready = !loading && (!session || !profileLoading);
-  return <AnimatedSplash visible={!(ready && minElapsed)} />;
+  return <AnimatedSplash visible={!(ready && minElapsed)} quick={!firstLaunch} />;
 }
 
 export default function RootLayout() {
   useFrameworkReady();
+
+  // Lu avant de masquer le splash natif : l'écran animé démarre d'emblée dans
+  // la bonne version.
+  const [firstLaunch, setFirstLaunch] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    readCache<boolean>(SPLASH_SEEN_KEY).then((seen) => {
+      setFirstLaunch(!seen);
+      if (!seen) writeCache(SPLASH_SEEN_KEY, true);
+    });
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -417,13 +437,15 @@ export default function RootLayout() {
     'Outfit-Bold': Outfit_700Bold,
   });
 
+  const fontsReady = fontsLoaded || !!fontError;
+
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if (fontsReady && firstLaunch !== null) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsReady, firstLaunch]);
 
-  if (!fontsLoaded && !fontError) {
+  if (!fontsReady || firstLaunch === null) {
     return null;
   }
 
@@ -436,7 +458,7 @@ export default function RootLayout() {
             <UnreadProvider>
               <FavoritesProvider>
                 <RootNavigator />
-                <BootSplash />
+                <BootSplash firstLaunch={firstLaunch} />
               </FavoritesProvider>
             </UnreadProvider>
             </NotificationsProvider>
