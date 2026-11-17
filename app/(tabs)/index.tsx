@@ -101,12 +101,6 @@ export default function ExploreScreen() {
   const introStartedAt = useRef(Date.now());
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && !session) {
-      router.replace('/login');
-    }
-  }, [session, authLoading]);
-
   // Affichage immédiat depuis le cache local, puis rafraîchissement réseau.
   const gotFreshHome = useRef(false);
   useEffect(() => {
@@ -318,6 +312,7 @@ export default function ExploreScreen() {
             username={profile?.username ?? null}
             photoUrl={profile?.photo_url ?? null}
             notificationCount={incomingRequestCount}
+            isGuest={!session}
           />
         </View>
         <View style={[styles.stickyBar, innerStyle]}>
@@ -330,7 +325,8 @@ export default function ExploreScreen() {
         </View>
         <View style={innerStyle}>
           <CategoryStrip categories={categories} />
-          <LocationBanner address={address} />
+          {/* Adresse du compte : sans objet pour un visiteur. */}
+          {session && <LocationBanner address={address} />}
           {loadError && (
             <LoadError
               compact
@@ -343,7 +339,9 @@ export default function ExploreScreen() {
           )}
 
           <RecentlyViewedSection userLat={userLat} userLng={userLng} userId={session?.user.id} />
-          <FavoritesSection userId={session?.user.id} userLat={userLat} userLng={userLng} listings={favorites} loading={loadingData} />
+          {session && (
+            <FavoritesSection userId={session.user.id} userLat={userLat} userLng={userLng} listings={favorites} loading={loadingData} />
+          )}
           <PopularSection userLat={userLat} userLng={userLng} userId={session?.user.id} listings={popular} loading={loadingData} />
           <DealsSection userLat={userLat} userLng={userLng} userId={session?.user.id} listings={deals} loading={loadingData} />
 

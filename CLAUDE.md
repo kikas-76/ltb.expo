@@ -52,17 +52,24 @@ EXPO_PUBLIC_GOOGLE_MAPS_KEY=
 
 All screens live in `app/`. The routing structure:
 - `app/_layout.tsx` — root layout; wraps the whole tree in `StripeWrapper`, `DeepLinkProvider`, `AuthProvider`, `UnreadProvider`, `FavoritesProvider`. Contains the auth guard logic (`RootNavigator`).
-- `app/(tabs)/` — authenticated main navigation (Explorer, Louer, Messages/Reservations, Profil)
+- `app/(tabs)/` — main navigation (Explorer, Louer, Messages/Reservations, Profil); Explorer is public, the other tabs show `GuestGate` to guests
 - `app/onboarding/` — required flow after first sign-up (profile -> address -> welcome)
 - `app/admin/` — admin-only section, gated by `profile.role === 'admin'`
 - Dynamic routes: `app/listing/[id].tsx`, `app/chat/[id].tsx`, `app/book/[id].tsx`, etc.
 
+**Guest browsing (App Store guideline 5.1.1(v))**: the marketplace is usable without an account. Guests can open `(tabs)`, `listing`, `owner`, `search`, `category`, `deals`, `nearby`, `popular`, `recent`, `help-center`, `help` (plus the public routes below). The native app opens directly on `/(tabs)`; the web keeps its landing at `/` (its primary CTA leads to the listings, and `lib/guestBrowsing.ts` skips it on refresh once a guest has browsed). The Louer / Messages / Mon Compte tabs render `components/GuestGate.tsx` for guests (`withGuestGate`), and the 4th tab is labelled « Se connecter » and opens `/login`. Account-only actions call `useRequireAuth()` (`hooks/useRequireAuth.ts`), which remembers the current screen (`lib/authReturn.ts`) and opens `/login`; after sign-in (or onboarding for a new account) `navigateAfterAuth` returns there with `router.dismissTo`.
+
 **Auth guard flow** (in `app/_layout.tsx`):
-1. No session -> redirect to landing (`/`)
+1. No session + private route -> remember the path, redirect to `/login` (right after a sign-out -> `/(tabs)` instead)
 2. Session + `onboarding_completed === false` -> redirect to `/onboarding/profile`
 3. Admin route + `role !== 'admin'` -> redirect to `/(tabs)`
+4. Onboarded session on an auth route or the landing -> `navigateAfterAuth` (remembered path, else `/(tabs)`)
 
-**Public routes** (accessible without login): landing, login, register, verify-email, email-confirmed, auth-callback, forgot-password, reset-password, legal, book, link-google-account.
+In prelaunch mode (`EXPO_PUBLIC_PRELAUNCH_MODE=true`) guests only get the public routes, as before.
+
+**Public routes** (accessible without login, even in prelaunch): landing, login, register, verify-email, email-confirmed, auth-callback, forgot-password, reset-password, legal, book, link-google-account.
+
+Anon column grants on `profiles` exclude `business_address`, `siren_number`, `location_data`…: queries run by guests must only select granted columns (see `OWNER_COLUMNS_PUBLIC` in `app/listing/[id].tsx`).
 
 ### Platform-specific files
 

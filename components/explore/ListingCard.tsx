@@ -40,7 +40,7 @@ interface ListingCardProps {
   userId?: string | null;
 }
 
-function FavoriteButton({ listingId, userId, listingName }: { listingId: string; userId: string; listingName: string }) {
+function FavoriteButton({ listingId, userId, listingName }: { listingId: string; userId: string | null | undefined; listingName: string }) {
   const { isFavorite, toggle } = useFavorite(listingId, userId, listingName);
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -58,7 +58,8 @@ function FavoriteButton({ listingId, userId, listingName }: { listingId: string;
       onPress={(e) => {
         e.stopPropagation?.();
         haptics.tap();
-        bounce();
+        // Visiteur : toggle ouvre la connexion, pas d'animation de « j'aime ».
+        if (userId) bounce();
         toggle();
       }}
       activeOpacity={0.8}
@@ -113,7 +114,8 @@ function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: Li
     null;
 
   const isOwnListing = userId && listing.owner?.id && userId === listing.owner.id;
-  const canFavorite = userId && !isOwnListing;
+  // Visiteur compris : le cœur ouvre la connexion, puis le « j'aime » s'enregistre.
+  const canFavorite = !isOwnListing;
 
   return (
     <TouchableOpacity
@@ -164,7 +166,7 @@ function ListingCard({ listing, variant = 'grid', userLat, userLng, userId }: Li
           </View>
         )}
         {canFavorite && (
-          <FavoriteButton listingId={listing.id} userId={userId!} listingName={listing.name} />
+          <FavoriteButton listingId={listing.id} userId={userId} listingName={listing.name} />
         )}
       </View>
 

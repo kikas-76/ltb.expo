@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import { withGuestGate } from '@/components/GuestGate';
 import { Image as ExpoImage } from 'expo-image';
 import { EmptyIllustration } from '@/components/EmptyIllustration';
 import { AdaptiveImage } from '@/components/AdaptiveImage';
@@ -440,7 +441,7 @@ function ConversationRow({ item, index, onPress, onUserPress, onDeleteRequest }:
   );
 }
 
-export default function MessagesScreen() {
+function MessagesScreen() {
   const { user } = useAuth();
   const { refresh: refreshUnread } = useUnread();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
@@ -2150,3 +2151,6 @@ const desktopStyles = StyleSheet.create({
     lineHeight: 21,
   },
 });
+
+// Visiteur sans compte : écran d'invitation à se connecter (App Store 5.1.1(v)).
+export default withGuestGate(MessagesScreen, 'messages');

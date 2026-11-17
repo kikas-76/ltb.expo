@@ -38,7 +38,9 @@ async function listSavedCards(customerId: string, key: string): Promise<Array<{ 
   });
   const json = await res.json().catch(() => null);
   if (!json || json.error || !Array.isArray(json.data)) return [];
-  return json.data.map((pm: any) => ({
+  // Apple interdit de réutiliser un moyen Apple Pay enregistré quand le client
+  // est présent : il sert seulement à la caution, jamais au paiement en 1 clic.
+  return json.data.filter((pm: any) => !pm.card?.wallet).map((pm: any) => ({
     id: pm.id,
     brand: pm.card?.brand ?? "card",
     last4: pm.card?.last4 ?? "****",

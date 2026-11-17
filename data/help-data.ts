@@ -71,7 +71,7 @@ const helpData: HelpCategory[] = [
         id: 'l2',
         question: 'Comment fonctionne le paiement ?',
         answer:
-          "Le paiement est sécurisé par Stripe. Quand ta demande est acceptée, tu as 2 heures pour payer par carte bancaire dans l'app ; passé ce délai, la réservation expire et tu peux refaire une demande. Seul le prix de la location (frais inclus) est débité à ce moment-là. La caution n'est pas prélevée : elle est réservée sur ta carte deux jours avant la fin de la location (ou immédiatement pour les locations de moins de deux jours).",
+          "Le paiement est sécurisé par Stripe. Quand ta demande est acceptée, tu as 2 heures pour payer dans l'app, par carte bancaire ou avec Apple Pay sur iPhone ; passé ce délai, la réservation expire et tu peux refaire une demande. Seul le prix de la location (frais inclus) est débité à ce moment-là. La caution n'est pas prélevée : elle est réservée sur le moyen de paiement utilisé deux jours avant la fin de la location (ou immédiatement pour les locations de moins de deux jours).",
       },
       {
         id: 'l3',

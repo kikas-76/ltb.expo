@@ -23,6 +23,7 @@ import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/contexts/AuthContext';
 import { useResponsive } from '@/hooks/useResponsive';
+import { hasExplored } from '@/lib/guestBrowsing';
 
 /**
  * Page publique (web) et première ouverture (app) : la page reprend le langage
@@ -81,7 +82,7 @@ const SUBTITLE = PRELAUNCH_MODE
   ? "Crée ton compte et publie ton annonce dès maintenant. La marketplace ouvre au public très bientôt."
   : 'Louez, prêtez et partagez des objets avec vos voisins, en toute confiance.';
 
-const PRIMARY_LABEL = PRELAUNCH_MODE ? 'Déposer mon annonce' : 'Commencer gratuitement';
+const PRIMARY_LABEL = PRELAUNCH_MODE ? 'Déposer mon annonce' : 'Découvrir les annonces';
 
 function PrelaunchBadge({ align }: { align: 'center' | 'flex-start' }) {
   if (!PRELAUNCH_MODE) return null;
@@ -133,9 +134,24 @@ export default function LandingScreen() {
     router.push('/register');
   };
 
-  // Session en cours de lecture, ou utilisateur déjà connecté : on n'affiche pas la
-  // page (le guard du layout redirige vers l'accueil).
-  if (authLoading || session) {
+  // Action principale : les annonces se parcourent sans compte (hors avant-première).
+  const startPrimary = () => {
+    if (PRELAUNCH_MODE) {
+      startRegister();
+      return;
+    }
+    haptics.confirm();
+    router.push('/(tabs)');
+  };
+
+  const returningExplorer = Platform.OS === 'web' && !PRELAUNCH_MODE && !session && hasExplored();
+  useEffect(() => {
+    if (!authLoading && returningExplorer) router.replace('/(tabs)');
+  }, [authLoading, returningExplorer]);
+
+  // Session en cours de lecture, utilisateur connecté, ou app native (qui ouvre
+  // directement les annonces) : rien à afficher, le guard du layout redirige.
+  if (authLoading || session || returningExplorer || (Platform.OS !== 'web' && !PRELAUNCH_MODE)) {
     return <View style={styles.root} />;
   }
 
@@ -171,13 +187,19 @@ export default function LandingScreen() {
                   <Text style={[styles.sub, desk.sub]}>{SUBTITLE}</Text>
                 </Animated.View>
                 <Animated.View style={[desk.ctaRow, ctaReveal]}>
-                  <TouchableOpacity style={desk.primaryBtn} onPress={startRegister} activeOpacity={0.85}>
+                  <TouchableOpacity style={desk.primaryBtn} onPress={startPrimary} activeOpacity={0.85}>
                     <Text style={desk.primaryBtnText}>{PRIMARY_LABEL}</Text>
                     <View style={styles.primaryBtnArrow}>
                       <Ionicons name="arrow-forward" size={16} color={Colors.primaryDark} />
                     </View>
                   </TouchableOpacity>
-                  <Text style={desk.ctaHint}>Gratuit, sans engagement.</Text>
+                  {PRELAUNCH_MODE ? (
+                    <Text style={desk.ctaHint}>Gratuit, sans engagement.</Text>
+                  ) : (
+                    <TouchableOpacity onPress={startRegister} activeOpacity={0.7}>
+                      <Text style={desk.secondaryLink}>Créer un compte gratuit</Text>
+                    </TouchableOpacity>
+                  )}
                 </Animated.View>
                 <Animated.View style={ctaReveal}>
                   <TrustPills justify="flex-start" />
@@ -253,12 +275,18 @@ export default function LandingScreen() {
         </Animated.View>
 
         <Animated.View style={[styles.inner, styles.ctaSection, { maxWidth: maxContentWidth }, ctaReveal]}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={startRegister} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={startPrimary} activeOpacity={0.85}>
             <Text style={styles.primaryBtnText}>{PRIMARY_LABEL}</Text>
             <View style={styles.primaryBtnArrow}>
               <Ionicons name="arrow-forward" size={16} color={Colors.primaryDark} />
             </View>
           </TouchableOpacity>
+
+          {!PRELAUNCH_MODE && (
+            <TouchableOpacity onPress={startRegister} activeOpacity={0.7} style={styles.loginRow}>
+              <Text style={styles.loginLink}>Créer un compte gratuit</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity onPress={() => router.push('/login')} activeOpacity={0.7} style={styles.loginRow}>
             <Text style={styles.loginText}>Déjà un compte ?</Text>
@@ -534,6 +562,12 @@ const desk = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 17,
     color: Colors.white,
+  },
+  secondaryLink: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
+    color: Colors.primaryDark,
+    textDecorationLine: 'underline',
   },
   ctaHint: {
     fontFamily: 'Inter-Regular',

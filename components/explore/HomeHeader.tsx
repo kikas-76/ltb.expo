@@ -4,18 +4,21 @@ import { Colors } from '@/constants/colors';
 import { TabIcon } from '@/components/TabIcon';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { haptics } from '@/lib/haptics';
+import { clearAuthReturnPath, clearPendingFavorite } from '@/lib/authReturn';
 
 interface HomeHeaderProps {
   username: string | null;
   photoUrl: string | null;
   notificationCount?: number;
+  /** Visiteur sans compte : bouton « Se connecter » à la place de la cloche. */
+  isGuest?: boolean;
 }
 
 /**
  * En-tête de l'accueil : un bonjour discret, la question qui introduit la
  * barre de recherche, et la cloche du centre de notifications avec sa pastille.
  */
-export default function HomeHeader({ username }: HomeHeaderProps) {
+export default function HomeHeader({ username, isGuest }: HomeHeaderProps) {
   const router = useRouter();
   const { unread } = useNotifications();
 
@@ -29,6 +32,20 @@ export default function HomeHeader({ username }: HomeHeaderProps) {
           Que voulez-vous <Text style={styles.titleAccent}>louer</Text> aujourd'hui ?
         </Text>
       </View>
+      {isGuest ? (
+        <TouchableOpacity
+          style={styles.loginBtn}
+          activeOpacity={0.8}
+          onPress={() => {
+            haptics.selection();
+            clearAuthReturnPath();
+            clearPendingFavorite();
+            router.push('/login');
+          }}
+        >
+          <Text style={styles.loginText}>Se connecter</Text>
+        </TouchableOpacity>
+      ) : (
       <TouchableOpacity
         style={styles.bell}
         activeOpacity={0.8}
@@ -45,6 +62,7 @@ export default function HomeHeader({ username }: HomeHeaderProps) {
           </View>
         )}
       </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -63,6 +81,11 @@ const styles = StyleSheet.create({
   greeting: { fontFamily: 'Inter-Regular', fontSize: 13, color: Colors.textMuted },
   title: { fontFamily: 'Inter-Bold', fontSize: 24, lineHeight: 30, letterSpacing: -0.5, color: Colors.text },
   titleAccent: { color: Colors.primaryDark },
+  loginBtn: {
+    height: 40, paddingHorizontal: 16, borderRadius: 20, backgroundColor: Colors.primaryDark,
+    alignItems: 'center', justifyContent: 'center', marginTop: 6,
+  },
+  loginText: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.white },
   bell: {
     width: 46, height: 46, borderRadius: 23, backgroundColor: Colors.white,
     alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E7E3D5', marginTop: 4,

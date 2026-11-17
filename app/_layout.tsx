@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import LoadingBlock from '@/components/LoadingBlock';
@@ -38,6 +38,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import AnimatedSplash from '@/components/AnimatedSplash';
 import { supabase } from '@/lib/supabase';
 import { readCache, writeCache } from '@/lib/queryCache';
+import { clearAuthReturnPath, clearPendingFavorite, navigateAfterAuth, setAuthReturnPath } from '@/lib/authReturn';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -56,8 +57,12 @@ function RootNavigator() {
   // URL d'une notification touchée avant que la navigation soit prête (app tuée).
   const [pendingNotificationUrl, setPendingNotificationUrl] = useState<string | null>(null);
   const segments = useSegments();
+  const pathname = usePathname();
   const router = useRouter();
   const { setPendingListingId, pendingListingId } = useDeepLink();
+  // Session présente au passage précédent du garde : distingue une déconnexion
+  // d'un visiteur qui arrive sur une page privée.
+  const hadSession = useRef(false);
 
   useEffect(() => {
     const handleUrl = async (url: string) => {
@@ -77,15 +82,16 @@ function RootNavigator() {
         const parsed = Linking.parse(url);
         const path = parsed.path ?? '';
         const match = path.match(/^listing\/([^/]+)$/) || path.match(/^\/listing\/([^/?#]+)/);
+        // expo-router ouvre lui-même la fiche (schéma louetonbien:// et Universal
+        // Links), connecté ou non : les annonces se consultent sans compte. Seule
+        // l'avant-première (annonces fermées aux visiteurs) la retient pour après.
         if (match) {
-          // Connecté : expo-router ouvre lui-même la fiche (schéma louetonbien://
-          // et Universal Links). Déconnecté : on retient l'annonce pour après.
-          if (!session) setPendingListingId(match[1]);
+          if (!session && PRELAUNCH_MODE) setPendingListingId(match[1]);
           return;
         }
 
         const webMatch = url.match(/\/listing\/([^/?#]+)/);
-        if (webMatch && !session) {
+        if (webMatch && !session && PRELAUNCH_MODE) {
           setPendingListingId(webMatch[1]);
         }
       } catch {}
@@ -163,6 +169,7 @@ function RootNavigator() {
 
     const seg = segments[0];
 
+    // Pages accessibles sans compte, même en avant-première.
     const PUBLIC_ROUTES = new Set([
       undefined,
       '+not-found',
@@ -187,18 +194,66 @@ function RootNavigator() {
       'link-google-account',
     ]);
 
+    // Navigation libre sans compte (App Store 5.1.1(v)) : parcourir, chercher et
+    // consulter annonces et profils. Réserver, payer, écrire, mettre en favori
+    // ou publier demandent un compte (écrans privés, ou useRequireAuth).
+    // Les onglets Louer, Messages et Mon Compte affichent eux-mêmes un écran
+    // d'invitation à se connecter (GuestGate) pour un visiteur.
+    const GUEST_ROUTES = new Set([
+      '(tabs)',
+      'listing',
+      'owner',
+      'search',
+      'category',
+      'deals',
+      'nearby',
+      'popular',
+      'recent',
+      'help-center',
+      'help',
+    ]);
+
     const isPublicRoute = PUBLIC_ROUTES.has(seg);
     const isAuthRoute = AUTH_ROUTES.has(seg);
     const isAdminRoute = seg === 'admin';
     const isOnboardingRoute = seg === 'onboarding';
-    const isPrivateRoute = !isPublicRoute;
+    const guestAllowed = isPublicRoute || (!PRELAUNCH_MODE && GUEST_ROUTES.has(seg));
 
     if (!session) {
-      if (isPrivateRoute) {
-        router.replace('/');
+      const justSignedOut = hadSession.current;
+      hadSession.current = false;
+
+      if (PRELAUNCH_MODE) {
+        if (!isPublicRoute) router.replace('/');
+        return;
+      }
+
+      // Déconnexion ou suppression du compte : retour sur l'accueil, sans
+      // proposer de se reconnecter.
+      if (justSignedOut) {
+        clearAuthReturnPath();
+        clearPendingFavorite();
+        if (!guestAllowed || seg === undefined) router.replace('/(tabs)');
+        return;
+      }
+
+      // App : pas de page d'accueil marketing, on ouvre directement l'accueil
+      // des annonces. Le web garde sa landing (« / »), qui y mène aussi.
+      if (seg === undefined && Platform.OS !== 'web') {
+        router.replace('/(tabs)');
+        return;
+      }
+
+      // Écran réservé aux comptes (lien profond, notification…) : connexion,
+      // puis retour sur cet écran.
+      if (!guestAllowed) {
+        setAuthReturnPath(pathname);
+        router.replace('/login');
       }
       return;
     }
+
+    hadSession.current = true;
 
     if (isAdminRoute && profile?.role !== 'admin') {
       router.replace('/(tabs)');
@@ -232,32 +287,19 @@ function RootNavigator() {
         // otherwise the router would push /listing/... and the guard
         // above would immediately bounce it back, creating a flash.
         if (pendingListingId) setPendingListingId(null);
-        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
-          window.sessionStorage.removeItem('pending_book_url');
-        }
+        clearAuthReturnPath();
         router.replace('/(tabs)/mes-annonces' as any);
         return;
       }
-      if (pendingListingId) {
-        const id = pendingListingId;
-        setPendingListingId(null);
-        router.replace(`/listing/${id}` as any);
-      } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
-        const pendingUrl = window.sessionStorage.getItem('pending_book_url');
-        if (pendingUrl) {
-          window.sessionStorage.removeItem('pending_book_url');
-          // Only honor in-app paths; reject anything that could be parsed as an
-          // absolute URL (open-redirect guard).
-          const isSafeRelative = pendingUrl.startsWith('/') && !pendingUrl.startsWith('//');
-          if (isSafeRelative) {
-            router.replace(pendingUrl as any);
-            return;
-          }
-        }
-        router.replace('/(tabs)');
-      } else {
-        router.replace('/(tabs)');
-      }
+      // Retour sur l'écran d'où la connexion a été demandée (annonce, onglet…),
+      // sinon l'annonce d'un lien profond, sinon l'accueil.
+      const fallback = pendingListingId ? `/listing/${pendingListingId}` : '/(tabs)';
+      if (pendingListingId) setPendingListingId(null);
+      navigateAfterAuth(router, fallback);
+    } else if (profile?.onboarding_completed && !isOnboardingRoute) {
+      // Connexion faite ailleurs (bouton Apple / Google d'un onglet) : l'écran
+      // courant affiche déjà le contenu, plus rien à reprendre.
+      clearAuthReturnPath();
     }
   }, [session, loading, profileLoading, segments, profile]);
 

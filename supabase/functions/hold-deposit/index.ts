@@ -98,6 +98,7 @@ Deno.serve(async (req: Request) => {
       .from("bookings")
       .select(`
         id, renter_id, owner_id, deposit_amount, end_date, conversation_id, deposit_hold_failed,
+        stripe_rental_payment_intent_id,
         listing:listings(name),
         renter:profiles!bookings_renter_id_fkey(stripe_customer_id, email, username),
         owner:profiles!bookings_owner_id_fkey(email, username)
@@ -180,21 +181,36 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Get the renter's saved payment methods
-      const paymentMethods = await stripeGet(
-        `/customers/${customerId}/payment_methods?type=card&limit=1`,
-        stripeKey
-      );
-
-      if (paymentMethods.error || !paymentMethods.data?.length) {
-        console.error(`Booking ${booking.id}: no saved payment method`);
-        await notifyHoldFailureOnce(booking);
-        await supabase.from("bookings").update({ deposit_hold_failed: true }).eq("id", booking.id);
-        results.push({ id: booking.id, status: "failed", reason: "no_payment_method" });
-        continue;
+      // La caution se réserve sur le moyen de paiement utilisé pour cette
+      // location (carte ou Apple Pay), pas sur la dernière carte du client.
+      let pmId: string | null = null;
+      if (booking.stripe_rental_payment_intent_id) {
+        const rentalPI = await stripeGet(
+          `/payment_intents/${booking.stripe_rental_payment_intent_id}`,
+          stripeKey
+        );
+        if (!rentalPI.error && typeof rentalPI.payment_method === "string") {
+          pmId = rentalPI.payment_method;
+        }
       }
 
-      const pmId = paymentMethods.data[0].id;
+      if (!pmId) {
+        const paymentMethods = await stripeGet(
+          `/customers/${customerId}/payment_methods?type=card&limit=1`,
+          stripeKey
+        );
+
+        if (paymentMethods.error || !paymentMethods.data?.length) {
+          console.error(`Booking ${booking.id}: no saved payment method`);
+          await notifyHoldFailureOnce(booking);
+          await supabase.from("bookings").update({ deposit_hold_failed: true }).eq("id", booking.id);
+          results.push({ id: booking.id, status: "failed", reason: "no_payment_method" });
+          continue;
+        }
+
+        pmId = paymentMethods.data[0].id as string;
+      }
+
       const depositCents = Math.round(booking.deposit_amount * 100);
 
       // Create off-session manual-capture PaymentIntent

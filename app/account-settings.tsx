@@ -365,7 +365,7 @@ export default function AccountSettingsScreen() {
       }
 
       await supabase.auth.signOut();
-      router.replace('/');
+      router.replace('/(tabs)');
     } catch {
       setDeleteError('Une erreur est survenue. Contactez le support.');
       setDeleteLoading(false);

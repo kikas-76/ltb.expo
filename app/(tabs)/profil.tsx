@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
+import { withGuestGate } from '@/components/GuestGate';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,7 +52,7 @@ function MenuSection({ rows, isDesktop }: { rows: MenuRow[]; isDesktop?: boolean
   );
 }
 
-export default function ProfilScreen() {
+function ProfilScreen() {
   const { profile, user, refreshProfile, signOut } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const insets = useSafeAreaInsets();
@@ -204,7 +205,8 @@ export default function ProfilScreen() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.replace('/');
+    // L'app reste utilisable sans compte : retour sur l'accueil des annonces.
+    router.replace('/(tabs)');
   };
 
   if (isDesktop && Platform.OS === 'web') {
@@ -790,3 +792,6 @@ const desktopStyles = StyleSheet.create({
     marginLeft: 4,
   },
 });
+
+// Visiteur sans compte : écran d'invitation à se connecter (App Store 5.1.1(v)).
+export default withGuestGate(ProfilScreen, 'account');

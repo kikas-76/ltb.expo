@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
+import { clearAuthReturnPath, navigateAfterAuth } from '@/lib/authReturn';
 
 const { width } = Dimensions.get('window');
 
@@ -237,13 +238,13 @@ export default function OnboardingWelcomeScreen() {
                 // Drop any deferred deep link during prelaunch: target
                 // routes are blocked and would bounce to mes-annonces anyway.
                 if (pendingListingId) setPendingListingId(null);
+                clearAuthReturnPath();
                 router.replace('/(tabs)/mes-annonces' as any);
-              } else if (pendingListingId) {
-                const id = pendingListingId;
-                setPendingListingId(null);
-                router.replace(`/listing/${id}` as any);
               } else {
-                router.replace('/(tabs)');
+                // Retour sur l'écran d'où l'inscription a été demandée (annonce…).
+                const fallback = pendingListingId ? `/listing/${pendingListingId}` : '/(tabs)';
+                if (pendingListingId) setPendingListingId(null);
+                navigateAfterAuth(router, fallback);
               }
             }}
             activeOpacity={0.82}

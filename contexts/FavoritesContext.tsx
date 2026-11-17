@@ -11,6 +11,7 @@ import {
 import Snackbar from '@/components/Snackbar';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { takePendingFavorite } from '@/lib/authReturn';
 
 interface SnackbarState {
   visible: boolean;
@@ -32,8 +33,9 @@ interface FavoritesContextType {
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const userId = session?.user?.id ?? null;
+  const onboarded = !!profile?.onboarding_completed;
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [snackbar, setSnackbar] = useState<SnackbarState>({
@@ -84,6 +86,28 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [userId, refreshKey]);
+
+  // « J'aime » touché avant la connexion : enregistré dès que le compte est prêt
+  // (après l'onboarding pour un compte neuf).
+  useEffect(() => {
+    if (!userId || !onboarded) return;
+    const pending = takePendingFavorite();
+    if (!pending) return;
+    (async () => {
+      const { error } = await supabase
+        .from('saved_listings')
+        .insert({ user_id: userId, listing_id: pending.listingId });
+      // 23505 : déjà en favori sur ce compte.
+      if (error && error.code !== '23505') return;
+      setFavoriteIds((prev) => new Set(prev).add(pending.listingId));
+      setSnackbar({
+        visible: true,
+        message: pending.listingName ? `"${pending.listingName}" ajouté aux favoris` : 'Ajouté aux favoris',
+        type: 'favorite',
+      });
+      setRefreshKey((k) => k + 1);
+    })();
+  }, [userId, onboarded]);
 
   const isFavorite = useCallback(
     (listingId: string) => favoriteIds.has(listingId),
