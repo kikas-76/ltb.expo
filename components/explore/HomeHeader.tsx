@@ -4,7 +4,7 @@ import { Colors } from '@/constants/colors';
 import { TabIcon } from '@/components/TabIcon';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { haptics } from '@/lib/haptics';
-import { clearAuthReturnPath } from '@/lib/authReturn';
+import { clearAuthReturnPath, clearPendingFavorite } from '@/lib/authReturn';
 
 interface HomeHeaderProps {
   username: string | null;
@@ -39,6 +39,7 @@ export default function HomeHeader({ username, isGuest }: HomeHeaderProps) {
           onPress={() => {
             haptics.selection();
             clearAuthReturnPath();
+            clearPendingFavorite();
             router.push('/login');
           }}
           accessibilityRole="button"

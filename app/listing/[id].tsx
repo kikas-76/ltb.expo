@@ -143,6 +143,11 @@ function isSameDay(a: Date, b: Date) {
     a.getDate() === b.getDate();
 }
 
+/** Date locale au format AAAA-MM-JJ (paramètres ?start / ?end de la fiche). */
+function toYmd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // Colonnes du propriétaire lisibles par un visiteur sans compte (droits « anon »
 // de la table profiles) ; l'adresse et le SIREN d'un pro demandent un compte.
 const OWNER_COLUMNS_PUBLIC =
@@ -576,8 +581,8 @@ export default function ListingDetailScreen() {
     haptics.confirm();
     if (!selectedDays || !selectedStart || !selectedEnd) return;
     // Visiteur : connexion (ou inscription) puis retour sur cette annonce, dates
-    // conservées (l'écran reste dans la pile).
-    if (!requireAuth()) return;
+    // conservées (dans l'URL : une connexion Google web recharge la page).
+    if (!requireAuth(`/listing/${id}?start=${toYmd(selectedStart)}&end=${toYmd(selectedEnd)}`)) return;
     setMessageModalVisible(true);
   };
 
@@ -773,7 +778,7 @@ export default function ListingDetailScreen() {
           <Text style={desktopStyles.topBarTitle} numberOfLines={1}>{listing.name}</Text>
           <View style={styles.navBtnGroup}>
             {listing?.owner?.id && userId !== listing.owner.id && (
-              <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85}>
+              <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
                 <Ionicons
                   name={isFavorite ? 'heart' : 'heart-outline'}
                   size={18}
@@ -1241,7 +1246,7 @@ export default function ListingDetailScreen() {
         </TouchableOpacity>
         <View style={styles.navBtnGroup}>
           {listing?.owner?.id && userId !== listing.owner.id && (
-            <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85}>
+            <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
               <Ionicons
                 name={isFavorite ? 'heart' : 'heart-outline'}
                 size={18}

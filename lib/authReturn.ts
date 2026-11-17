@@ -32,6 +32,11 @@ const EXCLUDED_PREFIXES = [
 
 let memory: string | null = null;
 
+// « J'aime » touché par un visiteur : appliqué automatiquement une fois connecté
+// (FavoritesContext). Mémoire seule : une connexion Google web recharge la page
+// et l'oublie, sans gravité.
+let pendingFavorite: { listingId: string; listingName?: string } | null = null;
+
 function webStorage(): Storage | null {
   try {
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
@@ -55,6 +60,8 @@ function sanitize(path: string | null | undefined): string | null {
 
 export function setAuthReturnPath(path: string | null) {
   memory = sanitize(path);
+  // Nouvelle intention : l'éventuel « j'aime » en attente ne la concerne plus.
+  pendingFavorite = null;
   const s = webStorage();
   try {
     if (s) {
@@ -80,7 +87,28 @@ export function takeAuthReturnPath(): string | null {
 }
 
 export function clearAuthReturnPath() {
-  setAuthReturnPath(null);
+  memory = null;
+  const s = webStorage();
+  try {
+    if (s) {
+      s.removeItem(KEY);
+      s.removeItem(LEGACY_KEY);
+    }
+  } catch {}
+}
+
+export function setPendingFavorite(listingId: string, listingName?: string) {
+  pendingFavorite = { listingId, listingName };
+}
+
+export function takePendingFavorite() {
+  const f = pendingFavorite;
+  pendingFavorite = null;
+  return f;
+}
+
+export function clearPendingFavorite() {
+  pendingFavorite = null;
 }
 
 /**

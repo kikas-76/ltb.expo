@@ -42,7 +42,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import AnimatedSplash from '@/components/AnimatedSplash';
 import { supabase } from '@/lib/supabase';
 import { readCache, writeCache } from '@/lib/queryCache';
-import { clearAuthReturnPath, navigateAfterAuth, setAuthReturnPath } from '@/lib/authReturn';
+import { clearAuthReturnPath, clearPendingFavorite, navigateAfterAuth, setAuthReturnPath } from '@/lib/authReturn';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -231,6 +231,7 @@ function RootNavigator() {
       // proposer de se reconnecter.
       if (justSignedOut) {
         clearAuthReturnPath();
+        clearPendingFavorite();
         if (!guestAllowed || seg === undefined) router.replace('/(tabs)');
         return;
       }

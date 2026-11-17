@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useFavoritesContext } from '@/contexts/FavoritesContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { setPendingFavorite } from '@/lib/authReturn';
 
 // Reads from the FavoritesContext cache (one batch SELECT per session)
 // instead of doing a per-card SELECT — see P2-3 in the audit.
@@ -18,9 +19,11 @@ export function useFavorite(
   const requireAuth = useRequireAuth();
 
   const toggle = useCallback(async () => {
-    // Visiteur : connexion puis retour sur l'écran (les favoris sont liés au compte).
+    // Visiteur : connexion puis retour sur l'écran ; le « j'aime » est enregistré
+    // automatiquement une fois connecté (FavoritesContext).
     if (!userId) {
       requireAuth();
+      setPendingFavorite(listingId, listingName);
       return;
     }
     if (loading) return;

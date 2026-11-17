@@ -21,7 +21,7 @@ import { Colors } from '@/constants/colors';
 import GoogleButton from '@/components/GoogleButton';
 import AppleButton from '@/components/AppleButton';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
-import { clearAuthReturnPath } from '@/lib/authReturn';
+import { clearAuthReturnPath, clearPendingFavorite } from '@/lib/authReturn';
 
 
 export default function LoginScreen() {
@@ -102,6 +102,7 @@ export default function LoginScreen() {
   // Fermer sans se connecter : l'app se parcourt sans compte.
   const handleClose = () => {
     clearAuthReturnPath();
+    clearPendingFavorite();
     if (router.canGoBack()) router.back();
     else router.replace('/(tabs)');
   };

@@ -75,9 +75,9 @@ export default function PaymentScreen() {
   const [error, setError] = useState<string | null>(null);
   const [applePayReady, setApplePayReady] = useState(false);
 
-  // Vrai seulement si Wallet contient une carte compatible. Sinon (iOS), on
-  // affiche le bouton Apple « Configurer Apple Pay » ; on revérifie au retour
-  // dans l'app, après l'ajout d'une carte dans Wallet.
+  // Vrai seulement si Wallet contient une carte compatible (Stripe n'ouvre pas la
+  // fenêtre Apple Pay sinon). Revérifié au retour dans l'app, après l'ajout
+  // d'une carte dans Wallet.
   useEffect(() => {
     const check = () =>
       isPlatformPaySupported()
@@ -90,8 +90,9 @@ export default function PaymentScreen() {
     return () => sub.remove();
   }, [isPlatformPaySupported]);
 
-  // Bouton « Configurer Apple Pay » : appareil iOS sans carte dans Wallet.
-  const applePaySetup = Platform.OS === 'ios' && !applePayReady;
+  // Le bouton Apple Pay est toujours affiché sur iPhone ; sans carte dans
+  // Wallet, il ouvre Wallet pour en ajouter une.
+  const showApplePay = Platform.OS === 'ios' || applePayReady;
 
   useEffect(() => {
     if (!booking_id) return;
@@ -368,34 +369,19 @@ export default function PaymentScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Moyen de paiement</Text>
             <View style={styles.card}>
-              {(applePayReady || applePaySetup) && (
+              {showApplePay && (
                 <>
-                  {applePayReady ? (
-                    <PlatformPayButton
-                      type={PlatformPay.ButtonType.Pay}
-                      appearance={PlatformPay.ButtonStyle.Black}
-                      borderRadius={14}
-                      onPress={handleApplePay}
-                      disabled={loading}
-                      style={styles.applePayBtn}
-                    />
-                  ) : (
-                    <>
-                      <PlatformPayButton
-                        type={PlatformPay.ButtonType.SetUp}
-                        appearance={PlatformPay.ButtonStyle.Black}
-                        borderRadius={14}
-                        onPress={() => {
-                          openPlatformPaySetup().catch(() => {});
-                        }}
-                        disabled={loading}
-                        style={styles.applePayBtn}
-                      />
-                      <Text style={styles.applePaySetupHint}>
-                        Ajoutez une carte à Wallet pour payer avec Apple Pay.
-                      </Text>
-                    </>
-                  )}
+                  <PlatformPayButton
+                    type={PlatformPay.ButtonType.Pay}
+                    appearance={PlatformPay.ButtonStyle.Black}
+                    borderRadius={14}
+                    onPress={() => {
+                      if (applePayReady) handleApplePay();
+                      else openPlatformPaySetup().catch(() => {});
+                    }}
+                    disabled={loading}
+                    style={styles.applePayBtn}
+                  />
                   <View style={styles.orRow}>
                     <View style={styles.orLine} />
                     <Text style={styles.orText}>ou par carte</Text>
@@ -450,7 +436,7 @@ export default function PaymentScreen() {
         )}
         {!canPay && !error && (
           <Text style={styles.payHint}>
-            {applePayReady ? 'Payez avec Apple Pay, ou renseignez votre carte.' : 'Renseignez votre carte pour activer le paiement.'}
+            {showApplePay ? 'Payez avec Apple Pay, ou renseignez votre carte.' : 'Renseignez votre carte pour activer le paiement.'}
           </Text>
         )}
         <TouchableOpacity
@@ -465,7 +451,7 @@ export default function PaymentScreen() {
             <>
               <Ionicons name="lock-closed-outline" size={16} color="#fff" />
               <Text style={styles.payBtnText}>
-                {applePayReady ? 'Payer par carte' : 'Confirmer le paiement'}
+                {showApplePay ? 'Payer par carte' : 'Confirmer le paiement'}
               </Text>
               <Text style={styles.payBtnAmount}>{totalNow} €</Text>
             </>
@@ -487,13 +473,6 @@ const styles = StyleSheet.create({
   },
   applePayBtn: {
     height: 54,
-  },
-  applePaySetupHint: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    marginTop: -2,
   },
   orRow: {
     flexDirection: 'row',
