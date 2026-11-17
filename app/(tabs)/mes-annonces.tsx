@@ -14,6 +14,7 @@ import {
   Pressable,
   useWindowDimensions,
 } from 'react-native';
+import { withGuestGate } from '@/components/GuestGate';
 import { EmptyIllustration } from '@/components/EmptyIllustration';
 import { AdaptiveImage } from '@/components/AdaptiveImage';
 import { getOptimizedImageUrl } from '@/lib/imageUrl';
@@ -246,7 +247,7 @@ function ListingCard({ item, index, onEdit, onToggle, onDelete, togglingId }: Li
 
 type TabKey = 'active' | 'inactive';
 
-export default function MesAnnoncesScreen() {
+function MesAnnoncesScreen() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -1137,3 +1138,6 @@ const desktopStyles = StyleSheet.create({
     height: 160,
   },
 });
+
+// Visiteur sans compte : écran d'invitation à se connecter (App Store 5.1.1(v)).
+export default withGuestGate(MesAnnoncesScreen, 'listings');

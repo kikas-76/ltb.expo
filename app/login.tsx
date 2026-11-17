@@ -17,17 +17,16 @@ import { useHeaderTop } from '@/hooks/useHeaderTop';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDeepLink } from '@/contexts/DeepLinkContext';
 import { Colors } from '@/constants/colors';
 import GoogleButton from '@/components/GoogleButton';
 import AppleButton from '@/components/AppleButton';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
+import { clearAuthReturnPath } from '@/lib/authReturn';
 
 
 export default function LoginScreen() {
   const headerTop = useHeaderTop();
-  const { signIn, signInWithGoogle, signInWithApple, profile, profileLoading, session, profileError } = useAuth();
-  const { pendingListingId, setPendingListingId } = useDeepLink();
+  const { signIn, signInWithGoogle, signInWithApple, profile, profileLoading, profileError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -95,22 +94,17 @@ export default function LoginScreen() {
           ? 'Connexion impossible pour le moment. Vérifiez votre connexion et réessayez.'
           : "Aucun compte n'existe avec cette adresse email.",
       );
-      return;
     }
-
-    const inPrelaunch = PRELAUNCH_MODE && profile?.role !== 'admin';
-
-    if (pendingListingId && !inPrelaunch) {
-      const id = pendingListingId;
-      setPendingListingId(null);
-      router.replace(`/listing/${id}` as any);
-    } else if (inPrelaunch) {
-      if (pendingListingId) setPendingListingId(null);
-      router.replace('/(tabs)/mes-annonces' as any);
-    } else {
-      router.replace('/(tabs)');
-    }
+    // Profil chargé : le garde de app/_layout.tsx quitte cet écran (retour sur
+    // l'écran d'origine, ou onboarding pour un compte neuf).
   }, [waitingForProfile, profileLoading, profile]);
+
+  // Fermer sans se connecter : l'app se parcourt sans compte.
+  const handleClose = () => {
+    clearAuthReturnPath();
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  };
 
   const handleGoogleLogin = async () => {
     setError(null);
@@ -159,6 +153,18 @@ export default function LoginScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      {!PRELAUNCH_MODE && (
+        <TouchableOpacity
+          style={[styles.closeBtn, { top: headerTop + 6 }]}
+          onPress={handleClose}
+          activeOpacity={0.75}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Fermer et continuer sans compte"
+        >
+          <Ionicons name="close" size={22} color={Colors.text} />
+        </TouchableOpacity>
+      )}
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.scroll}
@@ -266,6 +272,12 @@ export default function LoginScreen() {
               <Text style={styles.registerLinkBold}>S'inscrire</Text>
             </Text>
           </TouchableOpacity>
+
+          {!PRELAUNCH_MODE && (
+            <TouchableOpacity onPress={handleClose} style={styles.guestLink} activeOpacity={0.6}>
+              <Text style={styles.guestLinkText}>Continuer sans compte</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -273,6 +285,29 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  closeBtn: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: '#E7E3D5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestLink: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  guestLinkText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: Colors.textSecondary,
+    textDecorationLine: 'underline',
+  },
   consent: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,

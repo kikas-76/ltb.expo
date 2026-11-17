@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
 import { getDiscount, getRentalDays } from '@/lib/pricing';
+import { setAuthReturnPath } from '@/lib/authReturn';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
@@ -92,9 +93,12 @@ export default function DirectBookPage() {
     fetchListing();
   }, [fetchListing]);
 
+  // Après connexion / inscription, retour sur cette page avec les mêmes dates.
   const savePendingUrl = () => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.sessionStorage) {
-      sessionStorage.setItem('pending_book_url', window.location.pathname + window.location.search);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      setAuthReturnPath(window.location.pathname + window.location.search);
+    } else if (id) {
+      setAuthReturnPath(`/listing/${id}`);
     }
   };
 

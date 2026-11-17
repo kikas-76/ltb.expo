@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { TabIcon } from '@/components/TabIcon';
@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUnread } from '@/contexts/UnreadContext';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth } from '@/contexts/AuthContext';
+import { setAuthReturnPath } from '@/lib/authReturn';
+import { markExplored } from '@/lib/guestBrowsing';
 
 const TAB_BAR_HEIGHT = 58;
 const WEB_BOTTOM_PAD = Platform.OS === 'web' ? 8 : 0;
@@ -78,7 +80,8 @@ function SidebarItem({ icon, label, focused, onPress, showDot, collapsed, descri
 
 function DesktopSidebar({ collapsed, onToggle, hideToggle }: { collapsed: boolean; onToggle: () => void; hideToggle?: boolean }) {
   const { hasIncomingRequests } = useUnread();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
+  const isGuest = !session;
   const isAdmin = profile?.role === 'admin';
   const pathname = usePathname();
 
@@ -105,7 +108,7 @@ function DesktopSidebar({ collapsed, onToggle, hideToggle }: { collapsed: boolea
       label: 'Louer un objet',
       description: 'Publier une annonce',
       icon: (focused: boolean) => <TabIcon name="listings" size={22} active={focused} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
-      onPress: () => router.push('/create-listing'),
+      onPress: () => router.push(isGuest ? '/(tabs)/mes-annonces' : '/create-listing'),
     },
     {
       route: 'reservations',
@@ -117,10 +120,17 @@ function DesktopSidebar({ collapsed, onToggle, hideToggle }: { collapsed: boolea
     },
     {
       route: 'profil',
-      label: 'Mon Compte',
-      description: 'Profil & paramètres',
+      label: isGuest ? 'Se connecter' : 'Mon Compte',
+      description: isGuest ? 'Connexion ou inscription' : 'Profil & paramètres',
       icon: (focused: boolean) => <TabIcon name="profile" size={22} active={focused} color={focused ? Colors.primaryDark : Colors.textSecondary} />,
-      onPress: () => router.push('/(tabs)/profil'),
+      onPress: () => {
+        if (isGuest) {
+          setAuthReturnPath(pathname);
+          router.push('/login');
+        } else {
+          router.push('/(tabs)/profil');
+        }
+      },
     },
     ...(isAdmin ? [{
       route: 'admin',
@@ -187,7 +197,7 @@ function DesktopSidebar({ collapsed, onToggle, hideToggle }: { collapsed: boolea
 }
 
 function makeTabButton(
-  onPressNav: () => void,
+  onPressNav: (pathname: string) => void,
   icon: (color: string) => React.ReactNode,
   label: string,
   segments: string[],
@@ -203,7 +213,7 @@ function makeTabButton(
     const color = focused ? Colors.primary : '#9CA3AF';
     return (
       <TouchableOpacity
-        onPress={onPressNav}
+        onPress={() => onPressNav(pathname)}
         style={styles.tabItemTouchable}
         activeOpacity={0.7}
       >
@@ -219,8 +229,16 @@ export default function TabLayout() {
     ? WEB_BOTTOM_PAD
     : Math.max(insets.bottom, 8);
   const { hasIncomingRequests } = useUnread();
+  const { session } = useAuth();
+  const isGuest = !session;
   const { isDesktop, isTabletOrDesktop, isTablet } = useResponsive();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Web : un visiteur qui a vu les annonces y revient au rafraîchissement de « / »
+  // (URL partagée avec la landing, voir app/index.tsx).
+  useEffect(() => {
+    if (Platform.OS === 'web' && isGuest) markExplored();
+  }, [isGuest]);
 
   if (isTabletOrDesktop && Platform.OS === 'web') {
     return (
@@ -287,7 +305,8 @@ export default function TabLayout() {
         name="mes-annonces"
         options={{
           tabBarButton: makeTabButton(
-            () => router.push('/create-listing'),
+            // Visiteur : l'onglet explique qu'il faut un compte (GuestGate).
+            () => router.push(isGuest ? '/(tabs)/mes-annonces' : '/create-listing'),
             (c) => <TabIcon name="listings" size={26} color={c} active={c === Colors.primaryDark} />,
             'Louer',
             ['/create-listing', '/mes-annonces'],
@@ -310,9 +329,18 @@ export default function TabLayout() {
         name="profil"
         options={{
           tabBarButton: makeTabButton(
-            () => router.push('/(tabs)/profil'),
+            // Visiteur : « Se connecter » ouvre directement la connexion, puis
+            // ramène sur l'écran en cours.
+            (pathname) => {
+              if (isGuest) {
+                setAuthReturnPath(pathname);
+                router.push('/login');
+              } else {
+                router.push('/(tabs)/profil');
+              }
+            },
             (c) => <TabIcon name="profile" size={26} color={c} active={c === Colors.primaryDark} />,
-            'Mon Compte',
+            isGuest ? 'Se connecter' : 'Mon Compte',
             ['/profil', '/account-settings', '/edit-address', '/wallet', '/onboarding'],
           ),
         }}

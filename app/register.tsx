@@ -118,6 +118,17 @@ export default function RegisterScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      {/* Retour aux annonces : l'app se parcourt sans compte. */}
+      <TouchableOpacity
+        style={[styles.backBtn, { top: headerTop + 6 }]}
+        onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+        activeOpacity={0.75}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel="Retour"
+      >
+        <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
+      </TouchableOpacity>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.scroll}
@@ -239,6 +250,19 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  backBtn: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: '#E7E3D5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   consent: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,

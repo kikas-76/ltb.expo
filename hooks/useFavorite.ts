@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useFavoritesContext } from '@/contexts/FavoritesContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 // Reads from the FavoritesContext cache (one batch SELECT per session)
 // instead of doing a per-card SELECT — see P2-3 in the audit.
@@ -14,9 +15,15 @@ export function useFavorite(
     useFavoritesContext();
 
   const isFavorite = isFavInCtx(listingId);
+  const requireAuth = useRequireAuth();
 
   const toggle = useCallback(async () => {
-    if (!userId || loading) return;
+    // Visiteur : connexion puis retour sur l'écran (les favoris sont liés au compte).
+    if (!userId) {
+      requireAuth();
+      return;
+    }
+    if (loading) return;
     setLoading(true);
 
     // Optimistic update so the UI flips immediately.
@@ -51,7 +58,7 @@ export function useFavorite(
     // Reconcile any lists that key off refreshKey (e.g. /favorites screen).
     triggerRefresh();
     setLoading(false);
-  }, [userId, listingId, isFavorite, loading, listingName, setFavoriteLocal, showSnackbar, triggerRefresh]);
+  }, [userId, listingId, isFavorite, loading, listingName, setFavoriteLocal, showSnackbar, triggerRefresh, requireAuth]);
 
   return { isFavorite, toggle, loading };
 }

@@ -6,6 +6,12 @@ import { constantTimeEquals, requireEnv } from "../_shared/auth.ts";
 // Crash at boot if cron secret is missing — see hold-deposit for rationale.
 const INTERNAL_SECRET = requireEnv("INTERNAL_EDGE_SECRET");
 
+// Compte de démonstration App Review (apple.review@louetonbien.fr) : sa
+// réservation acceptée doit rester payable pendant toute la durée de l'examen
+// Apple (le relecteur peut revenir sur le paiement Apple Pay des heures plus
+// tard). Aucun autre compte n'est concerné.
+const REVIEW_RENTER_IDS = new Set(["5c510b3f-9ebc-470c-8e07-d5e517604ebe"]);
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -49,7 +55,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!staleBookings || staleBookings.length === 0) {
+    const expirable = (staleBookings ?? []).filter(
+      (b: any) => !REVIEW_RENTER_IDS.has(b.renter_id),
+    );
+
+    if (expirable.length === 0) {
       return new Response(
         JSON.stringify({ success: true, expired_count: 0, booking_ids: [] }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -58,7 +68,7 @@ Deno.serve(async (req: Request) => {
 
     const expiredIds: string[] = [];
 
-    for (const booking of staleBookings) {
+    for (const booking of expirable) {
       const { error: bookingUpdateError } = await supabase
         .from("bookings")
         .update({ status: "cancelled" })

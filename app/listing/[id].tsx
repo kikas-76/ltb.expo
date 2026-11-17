@@ -24,6 +24,7 @@ import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCityFromCoords } from '@/lib/googleMaps';
 import { useFavorite } from '@/hooks/useFavorite';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useFavoritesContext } from '@/contexts/FavoritesContext';
 import ImageGallery from '@/components/listing/ImageGallery';
 import DateRangeCalendar from '@/components/listing/DateRangeCalendar';
@@ -142,10 +143,17 @@ function isSameDay(a: Date, b: Date) {
     a.getDate() === b.getDate();
 }
 
+// Colonnes du propriétaire lisibles par un visiteur sans compte (droits « anon »
+// de la table profiles) ; l'adresse et le SIREN d'un pro demandent un compte.
+const OWNER_COLUMNS_PUBLIC =
+  'id, username, photo_url, avatar_url, created_at, is_pro, business_name, business_type, business_hours, rating_avg, rating_count';
+const OWNER_COLUMNS_SIGNED_IN = `${OWNER_COLUMNS_PUBLIC}, business_address, siren_number`;
+
 export default function ListingDetailScreen() {
   const { id, start: startParam, end: endParam } = useLocalSearchParams<{ id: string; start?: string; end?: string }>();
   const { profile, session } = useAuth();
   const userId = session?.user.id ?? null;
+  const requireAuth = useRequireAuth();
   const { showSnackbar } = useFavoritesContext();
   const { isDesktop, isTabletOrDesktop } = useResponsive();
   const { width: windowWidth } = useWindowDimensions();
@@ -217,9 +225,11 @@ export default function ListingDetailScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  // Rechargée à la connexion : les coordonnées pro du propriétaire (adresse,
+  // SIREN) ne sont lisibles que par les comptes.
   useEffect(() => {
     if (id) fetchListing();
-  }, [id]);
+  }, [id, userId]);
 
   // Date pre-fill from route params (?start=YYYY-MM-DD&end=...). Used by the
   // owner-catalog carousel: tapping a sibling listing forwards the dates so
@@ -353,7 +363,7 @@ export default function ListingDetailScreen() {
             `id, name, description, price, deposit_amount, photos_url, category_name, category_id,
              approx_latitude, approx_longitude, created_at, owner_id, views_count, saves_count,
              rating_avg, rating_count, stock_count, packs,
-             owner:profiles!listings_owner_id_fkey(id, username, photo_url, avatar_url, created_at, is_pro, business_name, business_address, business_type, business_hours, siren_number, rating_avg, rating_count),
+             owner:profiles!listings_owner_id_fkey(${userId ? OWNER_COLUMNS_SIGNED_IN : OWNER_COLUMNS_PUBLIC}),
              category:categories!listings_category_id_fkey(value)`
           )
           .eq('id', id)
@@ -565,7 +575,15 @@ export default function ListingDetailScreen() {
   const handleRequestPress = () => {
     haptics.confirm();
     if (!selectedDays || !selectedStart || !selectedEnd) return;
+    // Visiteur : connexion (ou inscription) puis retour sur cette annonce, dates
+    // conservées (l'écran reste dans la pile).
+    if (!requireAuth()) return;
     setMessageModalVisible(true);
+  };
+
+  const openReport = () => {
+    if (!listing || !requireAuth()) return;
+    router.push({ pathname: '/report', params: { type: 'listing', targetId: listing.id, targetLabel: listing.name } } as any);
   };
 
   const handleRequest = async (customMessage: string) => {
@@ -754,7 +772,7 @@ export default function ListingDetailScreen() {
           </TouchableOpacity>
           <Text style={desktopStyles.topBarTitle} numberOfLines={1}>{listing.name}</Text>
           <View style={styles.navBtnGroup}>
-            {userId && listing?.owner?.id && userId !== listing.owner.id && (
+            {listing?.owner?.id && userId !== listing.owner.id && (
               <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85}>
                 <Ionicons
                   name={isFavorite ? 'heart' : 'heart-outline'}
@@ -973,7 +991,7 @@ export default function ListingDetailScreen() {
                 <TouchableOpacity
                   style={styles.reportBtn}
                   activeOpacity={0.75}
-                  onPress={() => router.push({ pathname: '/report', params: { type: 'listing', targetId: listing.id, targetLabel: listing.name } } as any)}
+                  onPress={openReport}
                 >
                   <Ionicons name="flag-outline" size={14} color={Colors.textMuted} />
                   <Text style={styles.reportBtnText}>Signaler cette annonce</Text>
@@ -1222,7 +1240,7 @@ export default function ListingDetailScreen() {
           <Ionicons name="arrow-back-outline" size={20} color={Colors.text} />
         </TouchableOpacity>
         <View style={styles.navBtnGroup}>
-          {userId && listing?.owner?.id && userId !== listing.owner.id && (
+          {listing?.owner?.id && userId !== listing.owner.id && (
             <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85}>
               <Ionicons
                 name={isFavorite ? 'heart' : 'heart-outline'}
@@ -1714,12 +1732,7 @@ export default function ListingDetailScreen() {
             <TouchableOpacity
               style={styles.reportBtn}
               activeOpacity={0.75}
-              onPress={() =>
-                router.push({
-                  pathname: '/report',
-                  params: { type: 'listing', targetId: listing.id, targetLabel: listing.name },
-                } as any)
-              }
+              onPress={openReport}
             >
               <Ionicons name="flag-outline" size={14} color={Colors.textMuted} />
               <Text style={styles.reportBtnText}>Signaler cette annonce</Text>

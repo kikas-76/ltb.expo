@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
+  AppState,
 } from 'react-native';
 import LoadingBlock from '@/components/LoadingBlock';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -65,7 +66,7 @@ export default function PaymentScreen() {
   const { booking_id } = useLocalSearchParams<{ booking_id: string }>();
   const insets = useSafeAreaInsets();
   const { confirmPayment } = useStripe();
-  const { isPlatformPaySupported, confirmPlatformPayPayment } = usePlatformPay();
+  const { isPlatformPaySupported, confirmPlatformPayPayment, openPlatformPaySetup } = usePlatformPay();
 
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
@@ -74,11 +75,23 @@ export default function PaymentScreen() {
   const [error, setError] = useState<string | null>(null);
   const [applePayReady, setApplePayReady] = useState(false);
 
+  // Vrai seulement si Wallet contient une carte compatible. Sinon (iOS), on
+  // affiche le bouton Apple « Configurer Apple Pay » ; on revérifie au retour
+  // dans l'app, après l'ajout d'une carte dans Wallet.
   useEffect(() => {
-    isPlatformPaySupported()
-      .then((supported) => setApplePayReady(supported))
-      .catch(() => setApplePayReady(false));
+    const check = () =>
+      isPlatformPaySupported()
+        .then((supported) => setApplePayReady(supported))
+        .catch(() => setApplePayReady(false));
+    check();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') check();
+    });
+    return () => sub.remove();
   }, [isPlatformPaySupported]);
+
+  // Bouton « Configurer Apple Pay » : appareil iOS sans carte dans Wallet.
+  const applePaySetup = Platform.OS === 'ios' && !applePayReady;
 
   useEffect(() => {
     if (!booking_id) return;
@@ -355,16 +368,34 @@ export default function PaymentScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Moyen de paiement</Text>
             <View style={styles.card}>
-              {applePayReady && (
+              {(applePayReady || applePaySetup) && (
                 <>
-                  <PlatformPayButton
-                    type={PlatformPay.ButtonType.Pay}
-                    appearance={PlatformPay.ButtonStyle.Black}
-                    borderRadius={14}
-                    onPress={handleApplePay}
-                    disabled={loading}
-                    style={styles.applePayBtn}
-                  />
+                  {applePayReady ? (
+                    <PlatformPayButton
+                      type={PlatformPay.ButtonType.Pay}
+                      appearance={PlatformPay.ButtonStyle.Black}
+                      borderRadius={14}
+                      onPress={handleApplePay}
+                      disabled={loading}
+                      style={styles.applePayBtn}
+                    />
+                  ) : (
+                    <>
+                      <PlatformPayButton
+                        type={PlatformPay.ButtonType.SetUp}
+                        appearance={PlatformPay.ButtonStyle.Black}
+                        borderRadius={14}
+                        onPress={() => {
+                          openPlatformPaySetup().catch(() => {});
+                        }}
+                        disabled={loading}
+                        style={styles.applePayBtn}
+                      />
+                      <Text style={styles.applePaySetupHint}>
+                        Ajoutez une carte à Wallet pour payer avec Apple Pay.
+                      </Text>
+                    </>
+                  )}
                   <View style={styles.orRow}>
                     <View style={styles.orLine} />
                     <Text style={styles.orText}>ou par carte</Text>
@@ -456,6 +487,13 @@ const styles = StyleSheet.create({
   },
   applePayBtn: {
     height: 54,
+  },
+  applePaySetupHint: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: -2,
   },
   orRow: {
     flexDirection: 'row',
