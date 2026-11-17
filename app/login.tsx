@@ -160,8 +160,6 @@ export default function LoginScreen() {
           onPress={handleClose}
           activeOpacity={0.75}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Fermer et continuer sans compte"
         >
           <Ionicons name="close" size={22} color={Colors.text} />
         </TouchableOpacity>

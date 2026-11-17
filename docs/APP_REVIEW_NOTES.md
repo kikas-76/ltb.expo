@@ -9,6 +9,10 @@ réservation n'expire pas (exemption dans `expire-stale-pending-payments`). Si l
 14 décembre, décaler `conversations.start_date / end_date` de cette conversation.
 
 Historique : build 4 refusé le 17/11/2026 (5.1.1(v) compte obligatoire ; 2.1 Apple Pay introuvable).
+Cause du 2.1 trouvée en base : le relecteur n'a PAS utilisé le compte démo (dernière connexion démo le 11/11) ;
+il a créé son propre compte « Se connecter avec Apple » le 17/11 à 16 h 54 UTC (0 conversation, 0 demande),
+donc aucun écran de paiement accessible. D'où l'insistance sur le compte démo ci-dessous. Joindre aussi une
+courte vidéo du paiement Apple Pay dans App Review Information → Attachment.
 Le build suivant ouvre l'app sans compte ; le bouton Apple Pay est toujours affiché sur iPhone (Wallet vide :
 il ouvre Wallet pour ajouter une carte). Exemption du compte démo déployée le 17/11/2026.
 
@@ -22,8 +26,9 @@ Demo account (already verified, onboarding completed):
 - Email: apple.review@louetonbien.fr
 - Password: <see field "Sign-in required">
 
-Where to find Apple Pay:
-1. Sign in with the demo account (tab "Se connecter", or Sign in with Apple / Google).
+Where to find Apple Pay (please use the demo account):
+Apple Pay is offered on the payment screen of a rental, which only becomes available once the owner has accepted a rental request. The demo account already has an accepted request. A new account (for example one created with Sign in with Apple) has none, so it cannot reach the payment screen during a review session; this is why Apple Pay could not be found during the previous review.
+1. Sign in with the demo account: tab "Se connecter", then enter the email and password below (do not use Sign in with Apple).
 2. Open the "Messages" tab, then the conversation "Airpods". The owner has already accepted this rental request.
 3. Tap the green "Payer" button. The payment screen ("Paiement sécurisé") shows the Apple Pay button at the top of the "Moyen de paiement" section, above the card form.
 4. The Apple Pay button is always displayed. If the device has no card in Wallet, tapping it opens Wallet to add one; once a card is added, tapping it again presents the Apple Pay payment sheet.
@@ -47,7 +52,7 @@ Thank you for your review. We have submitted a new build of version 1.0, which a
 
 Guideline 5.1.1(v): the app no longer requires an account to be used. It now opens directly on the listings, and users can search, browse categories, view listing details, owner profiles, the help center and the legal pages without signing in. Registration is only requested for account-based features: renting an item (request and payment), messaging other users, favorites, publishing a listing and account settings.
 
-Guideline 2.1: the app does integrate Apple Pay, on the payment screen of a rental. To reach it: sign in with the demo account, open the "Messages" tab, open the "Airpods" conversation (the request is already accepted by the owner) and tap "Payer". The Apple Pay button is at the top of the "Moyen de paiement" section. In build 4 the button was only displayed when a card was present in Wallet, which is probably why it was not visible on the review device. It is now always displayed; without a card in Wallet, tapping it opens Wallet to add one. The steps are also in the Review Notes.
+Guideline 2.1: the app does integrate Apple Pay, on the payment screen of a rental. This screen only becomes available once the owner has accepted a rental request. During the previous review a new account was created with Sign in with Apple; it had no accepted request, so the payment screen could not be reached. Please use the demo account provided in the Review Notes, which already has an accepted request: sign in with its email and password, open the "Messages" tab, open the "Airpods" conversation and tap "Payer". The Apple Pay button is at the top of the "Moyen de paiement" section. In build 4 the button was only displayed when a card was present in Wallet, which is probably why it was not visible on the review device. It is now always displayed; without a card in Wallet, tapping it opens Wallet to add one. The steps are also in the Review Notes.
 
 Best regards,
 LoueTonBien

@@ -64,8 +64,6 @@ function FavoriteButton({ listingId, userId, listingName }: { listingId: string;
       }}
       activeOpacity={0.8}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      accessibilityRole="button"
-      accessibilityLabel={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
         <Ionicons

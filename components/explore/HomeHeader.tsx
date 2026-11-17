@@ -42,7 +42,6 @@ export default function HomeHeader({ username, isGuest }: HomeHeaderProps) {
             clearPendingFavorite();
             router.push('/login');
           }}
-          accessibilityRole="button"
         >
           <Text style={styles.loginText}>Se connecter</Text>
         </TouchableOpacity>

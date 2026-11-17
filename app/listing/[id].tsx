@@ -778,7 +778,7 @@ export default function ListingDetailScreen() {
           <Text style={desktopStyles.topBarTitle} numberOfLines={1}>{listing.name}</Text>
           <View style={styles.navBtnGroup}>
             {listing?.owner?.id && userId !== listing.owner.id && (
-              <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
+              <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85}>
                 <Ionicons
                   name={isFavorite ? 'heart' : 'heart-outline'}
                   size={18}
@@ -1246,7 +1246,7 @@ export default function ListingDetailScreen() {
         </TouchableOpacity>
         <View style={styles.navBtnGroup}>
           {listing?.owner?.id && userId !== listing.owner.id && (
-            <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
+            <TouchableOpacity onPress={toggleFavorite} style={styles.navBtn} activeOpacity={0.85}>
               <Ionicons
                 name={isFavorite ? 'heart' : 'heart-outline'}
                 size={18}

@@ -124,8 +124,6 @@ export default function RegisterScreen() {
         onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
         activeOpacity={0.75}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        accessibilityRole="button"
-        accessibilityLabel="Retour"
       >
         <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
       </TouchableOpacity>
