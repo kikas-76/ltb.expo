@@ -15,6 +15,7 @@ import LoadingBlock from '@/components/LoadingBlock';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { passwordProblem } from '@/lib/passwordRules';
 import { waitForSession } from '@/lib/waitForSession';
 import { Colors } from '@/constants/colors';
 
@@ -97,8 +98,9 @@ export default function ResetPasswordScreen() {
       setError('Le mot de passe est requis.');
       return;
     }
-    if (password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères.');
+    const weak = passwordProblem(password);
+    if (weak) {
+      setError(weak);
       return;
     }
     if (password !== confirm) {

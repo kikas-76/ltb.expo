@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import { waitForSession } from '@/lib/waitForSession';
+import { resolveDraftToken } from '@/lib/publishDraft';
 
 export default function EmailConfirmedScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -62,7 +63,7 @@ export default function EmailConfirmedScreen() {
     restoreSession();
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (restoreFailed) {
       router.replace('/login');
       return;
@@ -70,6 +71,12 @@ export default function EmailConfirmedScreen() {
     // Brand-new accounts always need to complete the onboarding flow,
     // and the global guard sends already-onboarded users to the right
     // tab (mes-annonces in prelaunch, the marketplace otherwise).
+    // Compte créé depuis le lien /publier : finir là-bas (pseudo + publication).
+    const { data: { session } } = await supabase.auth.getSession();
+    if (resolveDraftToken(session?.user?.user_metadata)) {
+      router.replace('/publier/terminer' as any);
+      return;
+    }
     router.replace('/onboarding/profile' as any);
   };
 
