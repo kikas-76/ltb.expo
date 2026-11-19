@@ -39,6 +39,7 @@ import AnimatedSplash from '@/components/AnimatedSplash';
 import { supabase } from '@/lib/supabase';
 import { readCache, writeCache } from '@/lib/queryCache';
 import { clearAuthReturnPath, clearPendingFavorite, navigateAfterAuth, setAuthReturnPath } from '@/lib/authReturn';
+import { resolveDraftToken } from '@/lib/publishDraft';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -183,6 +184,8 @@ function RootNavigator() {
       'legal',
       'book',
       'link-google-account',
+      // Lien de partage « publier une annonce sans compte » (web).
+      'publier',
     ]);
 
     const AUTH_ROUTES = new Set([
@@ -261,6 +264,14 @@ function RootNavigator() {
     }
 
     if (!profile?.onboarding_completed && !isOnboardingRoute) {
+      // Lien /publier : l'inscription se termine sur /publier/terminer (pseudo,
+      // puis publication de l'annonce préparée), y compris quand le lien de
+      // confirmation de l'e-mail s'ouvre dans un autre navigateur.
+      if (seg === 'publier') return;
+      if (resolveDraftToken(session.user?.user_metadata)) {
+        router.replace('/publier/terminer' as any);
+        return;
+      }
       router.replace('/onboarding/profile' as any);
       return;
     }

@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import InfiniteIconStrip from '@/components/InfiniteIconStrip';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
+import { passwordProblem } from '@/lib/passwordRules';
 import { useAuth } from '@/contexts/AuthContext';
 import GoogleButton from '@/components/GoogleButton';
 import AppleButton from '@/components/AppleButton';
@@ -79,7 +80,8 @@ export default function RegisterScreen() {
     if (!email.trim()) { setError("L'email est requis."); return; }
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!emailOk) { setError('Adresse email invalide.'); return; }
-    if (password.length < 6) { setError('Le mot de passe doit contenir au moins 6 caractères.'); return; }
+    const weak = passwordProblem(password);
+    if (weak) { setError(weak); return; }
     if (password !== confirmPassword) { setError('Les mots de passe ne correspondent pas.'); return; }
 
     setSubmitting(true);

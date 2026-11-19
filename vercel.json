@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/publier",
+      "destination": "/publier.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -66,7 +70,7 @@
         },
         {
           "key": "Content-Security-Policy-Report-Only",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network https://m.stripe.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https: ; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://m.stripe.network https://maps.googleapis.com https://*.google.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https://*.stripe.com https://www.google.com https://maps.googleapis.com; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network https://m.stripe.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https: ; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://data.geopf.fr wss://*.supabase.co https://api.stripe.com https://m.stripe.network https://maps.googleapis.com https://*.google.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https://*.stripe.com https://www.google.com https://maps.googleapis.com; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'"
         }
       ]
     }

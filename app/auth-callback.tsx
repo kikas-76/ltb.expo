@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
+import { getDraftToken } from '@/lib/publishDraft';
 
 async function redirectByProfile() {
   // onboarding_completed and role are not in the authenticated SELECT
@@ -13,7 +14,10 @@ async function redirectByProfile() {
   const { data } = await supabase.rpc('get_my_profile');
   const me = Array.isArray(data) ? data[0] : data;
 
-  if (!me?.onboarding_completed) {
+  // Connexion Google lancée depuis le lien /publier : publier l'annonce préparée.
+  if (getDraftToken()) {
+    router.replace('/publier/terminer' as any);
+  } else if (!me?.onboarding_completed) {
     router.replace('/onboarding/profile' as any);
   } else if (PRELAUNCH_MODE && me.role !== 'admin') {
     router.replace('/(tabs)/mes-annonces' as any);

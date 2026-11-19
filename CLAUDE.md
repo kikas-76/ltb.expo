@@ -59,15 +59,17 @@ All screens live in `app/`. The routing structure:
 
 **Guest browsing (App Store guideline 5.1.1(v))**: the marketplace is usable without an account. Guests can open `(tabs)`, `listing`, `owner`, `search`, `category`, `deals`, `nearby`, `popular`, `recent`, `help-center`, `help` (plus the public routes below). The native app opens directly on `/(tabs)`; the web keeps its landing at `/` (its primary CTA leads to the listings, and `lib/guestBrowsing.ts` skips it on refresh once a guest has browsed). The Louer / Messages / Mon Compte tabs render `components/GuestGate.tsx` for guests (`withGuestGate`), and the 4th tab is labelled « Se connecter » and opens `/login`. Account-only actions call `useRequireAuth()` (`hooks/useRequireAuth.ts`), which remembers the current screen (`lib/authReturn.ts`) and opens `/login`; after sign-in (or onboarding for a new account) `navigateAfterAuth` returns there with `router.dismissTo`.
 
+**Share link `/publier` (web acquisition, `?ref=<canal>`)**: a guest fills a listing without an account (`components/screens/CreateListingScreen.tsx` in `guest` mode, with an extra LOCATION step using the IGN address API `lib/frenchAddress.ts`), then creates the account that publishes it. The draft is kept on the device (`lib/publishDraft.ts`: fields in localStorage, photos in IndexedDB) and, on « Publier », sent to the edge function `listing-draft` (table `listing_drafts`, private bucket `listing-drafts`, secret token stored hashed). The token lives in localStorage and in `user_metadata.publish_draft` (passed to `signUp`), so the e-mail confirmation link works even when it opens in another browser. The guard sends a not-onboarded session with a pending token to `/publier/terminer` (username only, then `publish`, which creates the listing once with the service role and copies the photos to `listing-photos/<uid>/`), and exempts the `publier` segment from the onboarding redirect. Unpublished drafts are deleted after 7 days (cron `listing-drafts-cleanup-daily`). `scripts/web-share-pages.js` (run by `build:web`) writes `dist/publier.html` with its own Open Graph tags; `vercel.json` rewrites `/publier` to it. Password rules (Supabase Auth): 6+ chars with a lowercase, an uppercase and a digit (`lib/passwordRules.ts`).
+
 **Auth guard flow** (in `app/_layout.tsx`):
 1. No session + private route -> remember the path, redirect to `/login` (right after a sign-out -> `/(tabs)` instead)
-2. Session + `onboarding_completed === false` -> redirect to `/onboarding/profile`
+2. Session + `onboarding_completed === false` -> redirect to `/onboarding/profile` (or `/publier/terminer` when a `/publier` draft is pending; no redirect on `publier` routes)
 3. Admin route + `role !== 'admin'` -> redirect to `/(tabs)`
 4. Onboarded session on an auth route or the landing -> `navigateAfterAuth` (remembered path, else `/(tabs)`)
 
 In prelaunch mode (`EXPO_PUBLIC_PRELAUNCH_MODE=true`) guests only get the public routes, as before.
 
-**Public routes** (accessible without login, even in prelaunch): landing, login, register, verify-email, email-confirmed, auth-callback, forgot-password, reset-password, legal, book, link-google-account.
+**Public routes** (accessible without login, even in prelaunch): landing, login, register, verify-email, email-confirmed, auth-callback, forgot-password, reset-password, legal, book, link-google-account, publier.
 
 Anon column grants on `profiles` exclude `business_address`, `siren_number`, `location_data`…: queries run by guests must only select granted columns (see `OWNER_COLUMNS_PUBLIC` in `app/listing/[id].tsx`).
 
@@ -124,7 +126,8 @@ All functions are Deno-based and use `SUPABASE_SERVICE_ROLE_KEY` server-side:
 | `chat-notify` | Sends email notifications on booking accept/reject/dispute. |
 | `auto-validate-bookings` | Cron: completes bookings 24h after return confirmation. Releases deposit. Updates audit trail. |
 | `expire-stale-pending-payments` | Cron: cancels bookings stuck in `pending_payment` for 2h. |
-| `maps-proxy` | Proxies Google Maps API requests to keep the key server-side. |
+| `maps-proxy` | Proxies Google Maps API requests to keep the key server-side (signed-in users only). |
+| `listing-draft` | `/publier` drafts: create (guest, IP rate limit, signed photo uploads), ready, status, publish (signed-in, once), cleanup (cron). Deployed with `--no-verify-jwt`. |
 | `post-system-message` | Inserts system messages in conversations. |
 | `admin-action` | Admin moderation (suspend, ban, unban, flag). |
 | `get-account-details` | Returns Stripe account balance, payouts, transfers for wallet screen. |
