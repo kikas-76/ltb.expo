@@ -47,7 +47,7 @@ export default function DisputePage() {
     setUploading(true);
     setError(null);
     try {
-      if (!user) throw new Error('Not authenticated');
+      if (!user) throw new Error('Session expirée. Reconnectez-vous.');
       // Map the picker's extension/asset.mimeType to a real mime that
       // matches the bucket's allowed_mime_types (image/jpeg, not
       // image/jpg). Anything outside the allowlist is rejected upfront

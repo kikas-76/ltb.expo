@@ -21,6 +21,7 @@ import { getCurrentPosition, geoErrorMessage } from '@/lib/geolocation';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchPlaceSuggestions, fetchPlaceDetails, reverseGeocode, PlaceSuggestion, getGoogleMapsEmbedHtml, GOOGLE_MAPS_WEBVIEW_BASE_URL } from '@/lib/googleMaps';
 import { Colors } from '@/constants/colors';
+import { frenchError } from '@/lib/errorMessages';
 
 const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY as string;
 
@@ -217,7 +218,7 @@ export default function OnboardingAddressScreen() {
     const { error: updateError } = await supabase.from('profiles').update(updates).eq('id', user.id);
 
     if (updateError) {
-      setError('Erreur lors de la sauvegarde : ' + updateError.message);
+      setError(frenchError(updateError, 'Erreur lors de la sauvegarde. Réessayez.'));
       setSubmitting(false);
       return;
     }

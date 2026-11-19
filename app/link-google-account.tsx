@@ -15,6 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
+import { frenchError } from '@/lib/errorMessages';
 
 
 export default function LinkGoogleAccountScreen() {
@@ -49,7 +50,7 @@ export default function LinkGoogleAccountScreen() {
 
     if (linkError) {
       setSubmitting(false);
-      setError('Impossible de lier le compte Google : ' + linkError.message);
+      setError(frenchError(linkError, 'Impossible de lier le compte Google. Réessayez.'));
       return;
     }
 

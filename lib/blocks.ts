@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { frenchError } from '@/lib/errorMessages';
 
 export interface BlockStatus {
   blockedByMe: boolean;
@@ -18,12 +19,12 @@ export async function blockUser(meId: string, otherId: string): Promise<string |
   const { error } = await supabase
     .from('blocked_users')
     .upsert({ blocker_id: meId, blocked_id: otherId }, { onConflict: 'blocker_id,blocked_id', ignoreDuplicates: true });
-  return error ? error.message : null;
+  return error ? frenchError(error) : null;
 }
 
 export async function unblockUser(meId: string, otherId: string): Promise<string | null> {
   const { error } = await supabase.from('blocked_users').delete().eq('blocker_id', meId).eq('blocked_id', otherId);
-  return error ? error.message : null;
+  return error ? frenchError(error) : null;
 }
 
 /** Vrai si l'erreur vient d'un trigger de blocage (message envoyé, conversation ou réservation refusée). */

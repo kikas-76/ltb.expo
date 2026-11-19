@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { passwordProblem } from '@/lib/passwordRules';
 import { waitForSession } from '@/lib/waitForSession';
 import { Colors } from '@/constants/colors';
+import { frenchError } from '@/lib/errorMessages';
 
 export default function ResetPasswordScreen() {
   const [password, setPassword] = useState('');
@@ -112,7 +113,7 @@ export default function ResetPasswordScreen() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) {
-        setError(error.message);
+        setError(frenchError(error, 'Erreur lors de la mise à jour du mot de passe.'));
         return;
       }
       setDone(true);
@@ -121,7 +122,7 @@ export default function ResetPasswordScreen() {
         Animated.timing(successFade, { toValue: 1, duration: 350, useNativeDriver: true }),
       ]).start();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur lors de la mise à jour.');
+      setError(frenchError(e, 'Erreur lors de la mise à jour du mot de passe.'));
     } finally {
       setLoading(false);
     }

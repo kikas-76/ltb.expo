@@ -22,6 +22,7 @@ import {
   connectStatusColors,
 } from '@/lib/stripeConnectStatus';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
+import { frenchError } from '@/lib/errorMessages';
 // Marge sous l'encoche / Dynamic Island (56 px fixes mordaient sur les iPhone récents).
 const HEADER_TOP = Platform.OS === 'web' ? 24 : (initialWindowMetrics?.insets.top ?? 47) + 8;
 
@@ -211,7 +212,7 @@ export default function AdminUserDetail() {
       const result = await res.json();
 
       if (!res.ok) {
-        setActionError(result.error ?? 'Une erreur est survenue.');
+        setActionError(frenchError(result.error, 'Une erreur est survenue.'));
         setActionLoading(false);
         return;
       }

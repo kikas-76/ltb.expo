@@ -36,7 +36,7 @@ export async function createPendingPaymentBooking(
   if (error) return { data: null, error };
 
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return { data: null, error: new Error('No booking returned') };
+  if (!row) return { data: null, error: new Error("La réservation n'a pas pu être créée.") };
 
   return {
     data: {

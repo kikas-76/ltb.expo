@@ -21,6 +21,7 @@ import { passwordProblem } from '@/lib/passwordRules';
 import { useAuth } from '@/contexts/AuthContext';
 import GoogleButton from '@/components/GoogleButton';
 import AppleButton from '@/components/AppleButton';
+import { frenchError } from '@/lib/errorMessages';
 
 
 function Stepper({ active }: { active: number }) {
@@ -100,7 +101,7 @@ export default function RegisterScreen() {
       if (signUpError.message.toLowerCase().includes('already registered') || signUpError.message.toLowerCase().includes('user already')) {
         setError('Un compte existe déjà avec cet email. Connecte-toi.');
       } else {
-        setError(signUpError.message);
+        setError(frenchError(signUpError, 'Création du compte impossible. Réessayez.'));
       }
       return;
     }

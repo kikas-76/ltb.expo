@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
+import { frenchError } from '@/lib/errorMessages';
 
 const RESEND_COOLDOWN = 60;
 
@@ -74,7 +75,7 @@ export default function VerifyEmailScreen() {
       setCooldown(RESEND_COOLDOWN);
       setTimeout(() => setResendSuccess(false), 5000);
     } else {
-      setResendError("L'envoi a échoué. Vérifie ton adresse email et réessaie.");
+      setResendError(frenchError(error, "L'envoi a échoué. Vérifie ton adresse email et réessaie."));
     }
   };
 

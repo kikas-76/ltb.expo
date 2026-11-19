@@ -21,6 +21,7 @@ import { PAYOUT_INTERVAL_DAYS, PAYOUT_INTERVAL_LABEL } from '@/lib/payoutSchedul
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 import PreviewUnavailable from '@/components/PreviewUnavailable';
 import { type ConnectStatus, deriveConnectStatus } from '@/lib/stripeConnectStatus';
+import { frenchError } from '@/lib/errorMessages';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 
@@ -702,7 +703,7 @@ function WalletScreenContent() {
         );
 
         const data = await response.json();
-        if (!data.url) throw new Error(data.error || 'URL manquante');
+        if (!data.url) throw new Error(frenchError(data.error, "Impossible d'ouvrir l'activation des paiements. Réessaie."));
 
         const result = await WebBrowser.openAuthSessionAsync(data.url, 'louetonbien://wallet/success');
         if (result.type === 'success' || result.type === 'dismiss') {
@@ -710,8 +711,7 @@ function WalletScreenContent() {
           if (freshToken) await checkAccountStatus(freshToken);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Une erreur est survenue';
-        Alert.alert('Erreur', message);
+        Alert.alert('Erreur', frenchError(err, 'Une erreur est survenue. Réessaie.'));
       } finally {
         setActivateLoading(false);
       }

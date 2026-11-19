@@ -19,6 +19,7 @@ import {
   type HandoverModalProps,
   type IssueTokenResult,
 } from './types';
+import { frenchError } from '@/lib/errorMessages';
 
 // Re-issue every 60s while the modal is open. The server-side TTL is 90s,
 // so the displayed code is always valid for ≥30s when scanned.
@@ -50,7 +51,7 @@ export default function HandoverQRDisplay({
     });
     const result = (data ?? {}) as IssueTokenResult;
     if (rpcError || result.error) {
-      setError(result.error ?? rpcError?.message ?? 'Impossible de générer le QR');
+      setError(frenchError(result.error ?? rpcError, 'Impossible de générer le QR code. Réessayez.'));
       setLoading(false);
       return;
     }

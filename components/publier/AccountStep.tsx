@@ -22,6 +22,7 @@ import { setAuthReturnPath } from '@/lib/authReturn';
 import { isInAppBrowser } from '@/lib/inAppBrowser';
 import { PASSWORD_HINT, passwordProblem } from '@/lib/passwordRules';
 import { fetchDraftStatus, forgetPublishDraft } from '@/lib/publishDraft';
+import { frenchError } from '@/lib/errorMessages';
 
 export interface DraftSummary {
   name: string;
@@ -110,7 +111,7 @@ export default function AccountStep({
       } else if (signUpError.code === 'weak_password') {
         setError(passwordProblem(password) ?? 'Mot de passe trop faible.');
       } else {
-        setError(signUpError.message);
+        setError(frenchError(signUpError, 'Création du compte impossible. Réessayez.'));
       }
       return;
     }
@@ -267,6 +268,7 @@ function CheckEmail({ email, token, onChangeEmail }: { email: string; token: str
   const [publishedId, setPublishedId] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
   const [resending, setResending] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
 
   useEffect(() => {
     let stopped = false;
@@ -289,8 +291,13 @@ function CheckEmail({ email, token, onChangeEmail }: { email: string; token: str
 
   const resend = async () => {
     setResending(true);
-    await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: confirmRedirectUrl() } });
+    setResendError(null);
+    const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: confirmRedirectUrl() } });
     setResending(false);
+    if (error) {
+      setResendError(frenchError(error, "L'e-mail n'a pas pu être renvoyé. Réessayez dans quelques minutes."));
+      return;
+    }
     setResent(true);
   };
 
@@ -334,6 +341,7 @@ function CheckEmail({ email, token, onChangeEmail }: { email: string; token: str
             <TouchableOpacity onPress={resend} disabled={resending || resent} style={styles.linkBtn} activeOpacity={0.6}>
               <Text style={styles.linkText}>{resent ? 'E-mail renvoyé' : resending ? 'Envoi…' : 'Renvoyer l\'e-mail'}</Text>
             </TouchableOpacity>
+            {resendError && <Text style={[styles.errorText, styles.resendError]}>{resendError}</Text>}
             <TouchableOpacity onPress={onChangeEmail} style={styles.linkBtn} activeOpacity={0.6}>
               <Text style={styles.signInText}>
                 Mauvaise adresse ? <Text style={styles.signInBold}>La modifier</Text>
@@ -460,6 +468,7 @@ const styles = StyleSheet.create({
   },
   consentLink: { fontFamily: 'Inter-SemiBold', color: '#4E6B38', textDecorationLine: 'underline' },
   linkBtn: { paddingVertical: 6 },
+  resendError: { textAlign: 'center', marginTop: 4 },
   linkText: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: Colors.primaryDark, textDecorationLine: 'underline' },
   signInText: { fontFamily: 'Inter-Regular', fontSize: 14, color: Colors.textSecondary },
   signInBold: { fontFamily: 'Inter-SemiBold', color: Colors.primaryDark },

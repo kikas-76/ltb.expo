@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
+import { frenchError } from '@/lib/errorMessages';
 
 
 const BUSINESS_TYPES = [
@@ -131,7 +132,7 @@ export default function BusinessHoursScreen() {
       .eq('id', user.id);
 
     if (updateError) {
-      setError('Erreur lors de la sauvegarde : ' + updateError.message);
+      setError(frenchError(updateError, 'Erreur lors de la sauvegarde. Réessayez.'));
       setSubmitting(false);
       return;
     }
