@@ -232,7 +232,7 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           <Text style={styles.consent}>
-            En créant un compte (e-mail, Apple ou Google), vous confirmez avoir 18 ans et acceptez les{' '}
+            En créant un compte ({Platform.OS === 'ios' ? 'e-mail, Apple ou Google' : 'e-mail ou Google'}), vous confirmez avoir 18 ans et acceptez les{' '}
             <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Conditions d'utilisation</Text>
             {' '}et la{' '}
             <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Politique de confidentialité</Text>.
