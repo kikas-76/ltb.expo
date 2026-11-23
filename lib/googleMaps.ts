@@ -183,7 +183,7 @@ export function getGoogleMapsEmbedUrl(lat: number, lng: number, zoom = 14): stri
     `?key=${GOOGLE_MAPS_KEY}` +
     `&center=${lat},${lng}` +
     `&zoom=${zoom}` +
-    `&maptype=roadmap`
+    `&maptype=roadmap&language=fr&region=FR`
   );
 }
 
@@ -204,7 +204,7 @@ export function getStaticMapUrl(lat: number, lng: number, zoom = 13, size = '600
     `&zoom=${zoom}` +
     `&size=${size}` +
     `&scale=2` +
-    `&maptype=roadmap` +
+    `&maptype=roadmap&language=fr&region=FR` +
     `&style=feature:poi|visibility:off` +
     `&style=feature:transit|visibility:off` +
     `&key=${GOOGLE_MAPS_KEY}`

@@ -14,7 +14,7 @@ function getEmbedUrl(lat: number, lng: number): string {
     `?key=${GOOGLE_MAPS_KEY}` +
     `&center=${lat},${lng}` +
     `&zoom=14` +
-    `&maptype=roadmap`
+    `&maptype=roadmap&language=fr&region=FR`
   );
 }
 
