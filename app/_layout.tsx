@@ -182,6 +182,7 @@ function RootNavigator() {
       'forgot-password',
       'reset-password',
       'legal',
+      'suppression-compte',
       'book',
       'link-google-account',
       // Lien de partage « publier une annonce sans compte » (web).
