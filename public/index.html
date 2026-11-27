@@ -5,6 +5,14 @@
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="theme-color" content="#F5F2E3" />
+    <!-- Bannière Apple « Ouvrir dans l'app » (Safari sur iPhone) : transmet la page
+         actuelle à l'app, qui s'ouvre sur le même écran. Écrite pendant la lecture
+         de l'en-tête pour que Safari la voie. Absente de /publier (parcours web). -->
+    <script>
+      if (!/^\/publier/.test(location.pathname)) {
+        document.write('<meta name="apple-itunes-app" content="app-id=6772197689, app-argument=' + location.href.replace(/["<>]/g, encodeURIComponent) + '" />');
+      }
+    </script>
     <title>%WEB_TITLE%</title>
     <link rel="preconnect" href="https://mpqwdschdxbavxjvorvj.supabase.co" crossorigin />
     <style id="expo-reset">
