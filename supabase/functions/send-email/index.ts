@@ -114,7 +114,14 @@ function nb(text: string): string {
   return text.replace(/ ([!?:;»€])/g, " $1").replace(/« /g, "« ");
 }
 
-function baseLayout(content: string, preheader = ""): string {
+const INSTAGRAM_URL = "https://www.instagram.com/louetonbien.fr/";
+const LINKEDIN_URL = "https://www.linkedin.com/company/louetonbien";
+
+function baseLayout(
+  content: string,
+  preheader = "",
+  footerNote = "Vous recevez cet email car vous avez un compte LoueTonBien.",
+): string {
   return `<!DOCTYPE html>
 <html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -169,8 +176,12 @@ function baseLayout(content: string, preheader = ""): string {
                 &nbsp;·&nbsp;
                 <a href="${APP_URL}/legal" style="color:${C.muted}; text-decoration:underline;">Mentions légales</a>
               </p>
+              <p style="margin:0 0 16px; font-size:13px; line-height:1.6;">
+                <a href="${INSTAGRAM_URL}" style="display:inline-block; margin:0 4px; padding:7px 14px; border-radius:999px; background-color:${C.hairline}; color:${C.brand}; font-weight:700; text-decoration:none;">Instagram</a>
+                <a href="${LINKEDIN_URL}" style="display:inline-block; margin:0 4px; padding:7px 14px; border-radius:999px; background-color:${C.hairline}; color:${C.brand}; font-weight:700; text-decoration:none;">LinkedIn</a>
+              </p>
               <p style="margin:0 0 4px; font-size:12px; line-height:1.6; color:#A9A595;">LoueTonBien SAS · SIREN 988 872 081 · Grand-Couronne, France</p>
-              <p style="margin:0; font-size:12px; line-height:1.6; color:#A9A595;">Vous recevez cet email car vous avez un compte LoueTonBien.</p>
+              <p style="margin:0; font-size:12px; line-height:1.6; color:#A9A595;">${escapeHtml(footerNote)}</p>
             </td>
           </tr>
         </table>
@@ -336,7 +347,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
         ${ctaButton("Confirmer mon adresse email", url)}
         ${linkFallback(url)}
         ${mutedText("Si vous n'êtes pas à l'origine de cette inscription, ignorez simplement cet email.")}
-      `, nb("Confirmez votre adresse pour activer votre compte LoueTonBien.")),
+      `, nb("Confirmez votre adresse pour activer votre compte LoueTonBien."), "Vous recevez cet email suite à votre inscription sur LoueTonBien."),
     };
   },
 
@@ -349,6 +360,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
         ${heading("Choisissez un nouveau mot de passe")}
         ${paragraph("Vous avez demandé à réinitialiser votre mot de passe. Choisissez-en un nouveau avec le bouton ci-dessous.")}
         ${ctaButton("Choisir un nouveau mot de passe", url)}
+        ${linkFallback(url)}
         ${smallText("Ce lien est valable <strong>1 heure</strong>.")}
         ${alertBox(`<strong>Vous n'êtes pas à l'origine de cette demande ?</strong> Ignorez cet email : votre mot de passe reste inchangé. En cas de doute, écrivez-nous à ${escapeHtml(SUPPORT)}.`, "warning")}
       `, nb("Réinitialisez votre mot de passe LoueTonBien.")),
