@@ -11,6 +11,29 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
 
+// Montants d'une demande, calculés comme create_booking_for_payment (prix de
+// la location, quantité et remise comprises) et create-payment-intent (frais
+// et commission au centime). Sert aux e-mails de demande et d'acceptation :
+// la réservation n'existe qu'au moment où le locataire touche « Payer ».
+function requestAmounts(conv: any, listing: any) {
+  const startMs = new Date(conv.start_date).getTime();
+  const endMs = new Date(conv.end_date).getTime();
+  const days = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)));
+  const quantity = Math.max(1, Math.floor(Number(conv.quantity ?? 1)));
+  const discount = days >= 7 ? 0.20 : days >= 3 ? 0.10 : 0;
+  const rental = Math.round(Number(listing.price ?? 0) * quantity * days * (1 - discount));
+  const rentalCents = rental * 100;
+  const renterFeeCents = Math.round(rentalCents * Number(listing.renter_fee_percent ?? 7) / 100);
+  const ownerCommissionCents = Math.round(rentalCents * Number(listing.owner_commission_percent ?? 8) / 100);
+  return {
+    days,
+    rental,
+    totalRenterPays: (rentalCents + renterFeeCents) / 100,
+    ownerEarnings: (rentalCents - ownerCommissionCents) / 100,
+    deposit: Number(listing.deposit_amount ?? 0) * quantity,
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return preflightResponse(req, corsOpts);
@@ -110,8 +133,8 @@ Deno.serve(async (req: Request) => {
       const { data: conv } = await supabaseAdmin
         .from("conversations")
         .select(`
-          id, owner_id, requester_id,
-          listing:listings(name),
+          id, owner_id, requester_id, start_date, end_date, quantity,
+          listing:listings(name, price, deposit_amount, renter_fee_percent, owner_commission_percent),
           owner:profiles!conversations_owner_id_fkey(username),
           requester:profiles!conversations_requester_id_fkey(email)
         `)
@@ -144,20 +167,18 @@ Deno.serve(async (req: Request) => {
       const listingName = (conv.listing as any)?.name ?? "Location";
 
       if (event === "booking_accepted") {
-        const { data: bookingRow } = await supabaseAdmin
-          .from("bookings")
-          .select("id, total_price, deposit_amount, start_date, end_date, conversation_id")
-          .eq("conversation_id", conversation_id)
-          .maybeSingle();
-
+        // La réservation n'existe pas encore (elle naît au « Payer ») : avant,
+        // l'e-mail partait avec des dates vides et « À payer : 0 € ».
+        const amounts = requestAmounts(conv, (conv as any).listing ?? {});
         await dispatchEmail(renterEmail, "booking_accepted_renter", {
           listing_name: listingName,
           owner_name: ownerName,
-          start_date: bookingRow?.start_date ? formatDate(bookingRow.start_date) : "",
-          end_date: bookingRow?.end_date ? formatDate(bookingRow.end_date) : "",
-          total_price: bookingRow?.total_price ?? 0,
-          deposit: bookingRow?.deposit_amount ?? 0,
-          booking_id: bookingRow?.id ?? "",
+          start_date: formatDate((conv as any).start_date),
+          end_date: formatDate((conv as any).end_date),
+          total_price: amounts.rental,
+          amount_to_pay: amounts.totalRenterPays,
+          deposit: amounts.deposit,
+          conversation_id,
         });
       } else {
         await dispatchEmail(renterEmail, "booking_rejected_renter", {
@@ -197,7 +218,7 @@ Deno.serve(async (req: Request) => {
       const { data: conv } = await supabaseAdmin
         .from("conversations")
         .select(`
-          id, owner_id, requester_id, start_date, end_date, listing_id,
+          id, owner_id, requester_id, start_date, end_date, quantity, listing_id,
           listing:listings(name, price, deposit_amount, renter_fee_percent, owner_commission_percent),
           owner:profiles!conversations_owner_id_fkey(username, email),
           requester:profiles!conversations_requester_id_fkey(username, email)
@@ -223,22 +244,10 @@ Deno.serve(async (req: Request) => {
       const owner = (conv as any).owner ?? {};
       const requester = (conv as any).requester ?? {};
 
-      // Mirror the pricing logic in lib/pricing.ts and the
-      // create_booking_for_payment RPC so the email shows the same
-      // numbers the rest of the app does.
-      const startMs = new Date((conv as any).start_date).getTime();
-      const endMs = new Date((conv as any).end_date).getTime();
-      const days = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)));
-      const discount = days >= 7 ? 0.20 : days >= 3 ? 0.10 : 0;
-      const price = Number(listing.price ?? 0);
-      const rental = Math.round(price * days * (1 - discount));
-      const renterFeePct = Number(listing.renter_fee_percent ?? 7);
-      const ownerCommissionPct = Number(listing.owner_commission_percent ?? 8);
-      const renterFee = Math.round(rental * renterFeePct / 100);
-      const ownerCommission = Math.round(rental * ownerCommissionPct / 100);
-      const ownerEarnings = rental - ownerCommission;
-      const totalRenterPays = rental + renterFee;
-      const deposit = Number(listing.deposit_amount ?? 0);
+      // Mêmes montants que le reste de l'app (frais au centime, quantité
+      // comprise) : avant, les frais étaient arrondis à l'euro (« 2 € »
+      // au lieu de 2,14 €) et la quantité ignorée.
+      const { days, rental, totalRenterPays, ownerEarnings, deposit } = requestAmounts(conv, listing);
 
       const renterMessage = typeof body?.message === "string" ? body.message.trim() : "";
 
@@ -261,7 +270,8 @@ Deno.serve(async (req: Request) => {
           listing_name: listing.name ?? "Objet",
           start_date: formatDate((conv as any).start_date),
           end_date: formatDate((conv as any).end_date),
-          total_price: totalRenterPays,
+          total_price: rental,
+          amount_to_pay: totalRenterPays,
           deposit,
           owner_name: owner.username ?? "Le propriétaire",
           conversation_id: conv.id,

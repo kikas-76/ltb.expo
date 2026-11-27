@@ -92,6 +92,9 @@ export async function sendPushToUsers(
   const messages = tokenRows.map((row) => ({
     to: row.token as string,
     sound: "default",
+    // Android : canal créé par l'app avant la demande d'autorisation
+    // (lib/pushNotifications.ts). Ignoré sur iOS.
+    channelId: "default",
     title: msg.title,
     body: msg.body,
     badge: badges.get(row.user_id as string) ?? undefined,

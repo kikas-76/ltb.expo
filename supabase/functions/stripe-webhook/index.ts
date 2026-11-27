@@ -319,8 +319,13 @@ Deno.serve(async (req: Request) => {
                 start_date:   fmt(booking.start_date),
                 end_date:     fmt(booking.end_date),
                 total_price:  booking.total_price,
+                // Montant réellement encaissé (location + frais de service).
+                amount_paid:  typeof data.amount === "number" ? data.amount / 100 : undefined,
                 deposit:      booking.deposit_amount,
+                // Location courte : caution bloquée tout de suite (holdShortRentalDeposit).
+                deposit_now:  new Date(booking.end_date) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
                 booking_id:   booking.id,
+                conversation_id: booking.conversation_id,
               }
             );
 
@@ -335,6 +340,7 @@ Deno.serve(async (req: Request) => {
                 end_date:       fmt(booking.end_date),
                 owner_earnings: ownerEarnings,
                 booking_id:     booking.id,
+                conversation_id: booking.conversation_id,
               }
             );
 

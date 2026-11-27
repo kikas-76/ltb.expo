@@ -42,10 +42,20 @@ function asText(value: unknown, fallback = ""): string {
   return escapeHtml(v || fallback);
 }
 
+// Nombre à la française : « 2 », « 2,14 », « 1 250 » (montants en euros, durées).
 function asNumber(value: unknown, fallback = "0"): string {
   const n = Number(value);
-  if (Number.isFinite(n)) return escapeHtml(String(n));
-  return escapeHtml(fallback);
+  if (!Number.isFinite(n)) return escapeHtml(fallback);
+  const r = Math.round(n * 100) / 100;
+  const [int, dec] = (Number.isInteger(r) ? String(r) : r.toFixed(2)).split(".");
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return escapeHtml(dec ? `${grouped},${dec}` : grouped);
+}
+
+// Ligne « caution » d'une carte d'infos, seulement s'il y a une caution
+// (sinon les e-mails affichaient « Caution : 0 € »).
+function depositRow(d: Record<string, any>, label: string) {
+  return Number(d.deposit) > 0 ? [{ icon: "🔒", label, value: `${asNumber(d.deposit)} €` }] : [];
 }
 
 function isValidEmail(value: string): boolean {
@@ -238,14 +248,14 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
         { icon: "📅", label: "Au", value: asText(d.end_date) },
         { icon: "⏱️", label: "Durée", value: `${asNumber(d.duration, "0")} jour${Number(d.duration) > 1 ? "s" : ""}` },
         { icon: "💶", label: "Tu recevras", value: `${asNumber(d.owner_earnings)} €` },
-        { icon: "🔒", label: "Caution", value: `${asNumber(d.deposit)} €` },
+        ...depositRow(d, "Caution"),
       ])}
       ${d.renter_message ? `
         <div style="background-color:#F9FAFB; border-radius:12px; padding:14px 16px; margin-bottom:20px;">
           <p style="margin:0 0 4px; font-size:12px; color:#9CA3AF; text-transform:uppercase; letter-spacing:1px;">Message de ${asText(d.renter_name, "locataire")}</p>
           <p style="margin:0; font-size:14px; color:#374151; line-height:1.6; font-style:italic;">"${asText(d.renter_message)}"</p>
         </div>` : ""}
-      ${alertBox(`<strong>Tu as 24h pour répondre.</strong> Passé ce délai, la demande expire automatiquement.`)}
+      ${alertBox(`<strong>Tu as 48 h pour répondre.</strong> Passé ce délai, la demande expire automatiquement.`)}
       ${ctaButton("Voir la demande →", conversationUrl(d))}
     `, `${asText(d.renter_name, "Un locataire")} veut louer "${asText(d.listing_name, "ton objet")}", réponds vite !`)
   }),
@@ -254,17 +264,17 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
     subject: `Ta demande pour "${asText(d.listing_name, "cet objet")}" a été envoyée`,
     html: baseLayout(`
       ${heading("Demande envoyée !")}
-      ${paragraph(`${asText(d.owner_name, "Le propriétaire")} a reçu ta demande et a 24h pour répondre.`)}
+      ${paragraph(`${asText(d.owner_name, "Le propriétaire")} a reçu ta demande et a 48 h pour répondre.`)}
       ${infoCard([
         { icon: "📦", label: "Objet", value: asText(d.listing_name, "Objet") },
         { icon: "📅", label: "Du", value: asText(d.start_date) },
         { icon: "📅", label: "Au", value: asText(d.end_date) },
-        { icon: "💶", label: "Total estimé", value: `${asNumber(d.total_price)} €` },
-        { icon: "🔒", label: "Caution prévue", value: `${asNumber(d.deposit)} €` },
+        { icon: "💶", label: "Total estimé", value: `${asNumber(d.amount_to_pay ?? d.total_price)} €` },
+        ...depositRow(d, "Caution prévue"),
       ])}
       ${smallText("Aucun paiement n'a été effectué. Tu seras débité uniquement si la demande est acceptée.")}
       ${ctaButton("Suivre ma demande →", conversationUrl(d))}
-    `, `Ta demande est partie ! ${asText(d.owner_name, "Le propriétaire")} va répondre sous 24h.`)
+    `, `Ta demande est partie ! ${asText(d.owner_name, "Le propriétaire")} va répondre sous 48 h.`)
   }),
 
   booking_accepted_renter: (d) => ({
@@ -276,11 +286,11 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
         { icon: "📦", label: "Objet", value: asText(d.listing_name, "Objet") },
         { icon: "📅", label: "Du", value: asText(d.start_date) },
         { icon: "📅", label: "Au", value: asText(d.end_date) },
-        { icon: "💶", label: "À payer", value: `${asNumber(d.total_price)} €` },
-        { icon: "🔒", label: "Caution (non débitée)", value: `${asNumber(d.deposit)} €` },
+        { icon: "💶", label: "À payer", value: `${asNumber(d.amount_to_pay ?? d.total_price)} €` },
+        ...depositRow(d, "Caution (non débitée)"),
       ])}
       ${alertBox(`<strong>Paiement requis sous 2h</strong> pour confirmer ta réservation.`)}
-      ${ctaButton("Payer maintenant →", paymentUrl(d))}
+      ${ctaButton("Payer maintenant →", d.booking_id ? paymentUrl(d) : conversationUrl(d))}
     `, `${asText(d.owner_name, "Le propriétaire")} a accepté, confirme vite !`)
   }),
 
@@ -305,10 +315,14 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
         { icon: "👤", label: "Loueur", value: asText(d.owner_name, "Le propriétaire") },
         { icon: "📅", label: "Du", value: asText(d.start_date) },
         { icon: "📅", label: "Au", value: asText(d.end_date) },
-        { icon: "💳", label: "Payé", value: `${asNumber(d.total_price)} €` },
-        { icon: "🔒", label: "Caution prévue", value: `${asNumber(d.deposit)} €` },
+        { icon: "💳", label: "Payé", value: `${asNumber(d.amount_paid ?? d.total_price)} €` },
+        ...depositRow(d, d.deposit_now ? "Caution bloquée" : "Caution prévue"),
       ])}
-      ${alertBox(`La caution de <strong>${asNumber(d.deposit)} €</strong> sera bloquée sur ta carte <strong>2 jours avant la fin</strong> de la location, puis libérée après le retour en bon état.`)}
+      ${Number(d.deposit) > 0
+        ? alertBox(d.deposit_now
+          ? `La caution de <strong>${asNumber(d.deposit)} €</strong> est bloquée sur ta carte <strong>dès maintenant</strong> (location de moins de 2 jours), puis libérée après le retour en bon état.`
+          : `La caution de <strong>${asNumber(d.deposit)} €</strong> sera bloquée sur ta carte <strong>2 jours avant la fin</strong> de la location, puis libérée après le retour en bon état.`)
+        : ""}
       ${ctaButton("Voir ma réservation →", conversationUrl(d))}
     `, `Ta réservation est active · ${asText(d.listing_name, "ton objet")} t'attend !`)
   }),
@@ -339,7 +353,7 @@ const templates: Record<string, (d: TemplateData) => { subject: string; html: st
         { icon: "📦", label: "Objet à rendre", value: asText(d.listing_name, "Objet") },
         { icon: "👤", label: "À rendre à", value: asText(d.owner_name, "Le propriétaire") },
         { icon: "📅", label: "Date limite", value: asText(d.end_date) },
-        { icon: "🔒", label: "Caution bloquée", value: `${asNumber(d.deposit)} €` },
+        ...depositRow(d, "Caution bloquée"),
       ])}
       ${paragraph(`Une fois l'objet rendu, clique sur "J'ai rendu l'objet" dans l'app pour libérer ta caution.`)}
       ${ctaButton("Confirmer le retour →", conversationUrl(d))}

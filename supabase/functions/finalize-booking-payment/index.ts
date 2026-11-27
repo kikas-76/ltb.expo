@@ -200,9 +200,14 @@ Deno.serve(async (req: Request) => {
               owner_name: ownerName,
               start_date: startDate,
               end_date: endDate,
-              total_price: totalNow,
+              total_price: booking.total_price,
+              // Montant réellement encaissé par Stripe (location + frais de service).
+              amount_paid: typeof rentalPI.amount === "number" ? rentalPI.amount / 100 : Number(totalNow),
               deposit: booking.deposit_amount ?? 0,
+              // Location courte : caution bloquée tout de suite (voir plus bas).
+              deposit_now: new Date(booking.end_date) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
               booking_id: refId,
+              conversation_id: booking.conversation_id,
             },
           },
         });
@@ -225,6 +230,7 @@ Deno.serve(async (req: Request) => {
               end_date: endDate,
               owner_earnings: ownerEarnings,
               booking_id: refId,
+              conversation_id: booking.conversation_id,
             },
           },
         });
