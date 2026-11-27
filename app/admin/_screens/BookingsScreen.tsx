@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import StatusBadge from '@/components/admin/StatusBadge';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
+import { formatRentalDate } from '@/lib/rentalDates';
 // Marge sous l'encoche / Dynamic Island (56 px fixes mordaient sur les iPhone récents).
 const HEADER_TOP = Platform.OS === 'web' ? 24 : (initialWindowMetrics?.insets.top ?? 47) + 8;
 
@@ -139,9 +140,9 @@ export default function AdminBookings() {
               <View style={styles.detailItem}>
                 <Ionicons name="calendar-outline" size={12} color={Colors.textMuted} />
                 <Text style={styles.detailText}>
-                  {new Date(b.start_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                  {formatRentalDate(b.start_date, { day: '2-digit', month: 'short' })}
                   {' → '}
-                  {new Date(b.end_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                  {formatRentalDate(b.end_date, { day: '2-digit', month: 'short' })}
                 </Text>
               </View>
               <View style={styles.detailItem}>

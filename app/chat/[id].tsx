@@ -27,8 +27,10 @@ import { updateBookingStatus } from '@/lib/updateBookingStatus';
 import HandoverQRDisplay from '@/components/handover/HandoverQRDisplay';
 import HandoverQRScanner from '@/components/handover/HandoverQRScanner';
 import type { HandoverEventType } from '@/components/handover/types';
-import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
-import { getRentalDays } from '@/lib/pricing';
+import { createPendingPaymentBooking } from '@/lib/createBooking';
+import { computeRenterFee, computeRentalTotalWithQty, formatPrice, getRentalDays } from '@/lib/pricing';
+import { formatRentalDate } from '@/lib/rentalDates';
+import { frenchError } from '@/lib/errorMessages';
 import { privateUriFor, resolveAttachmentUrl } from '@/lib/signedUrl';
 import { Skeleton } from '@/components/Skeleton';
 import { Image as ExpoImage } from 'expo-image';
@@ -66,6 +68,8 @@ interface ConvMeta {
   listingThumb: string | null;
   listingCity: string | null;
   listingPrice: number | null;
+  /** Frais de service du locataire, en % (listings.renter_fee_percent). */
+  listingFeePercent: number;
   quantity: number;
   otherUsername: string;
   otherUserId: string;
@@ -85,19 +89,14 @@ function formatMessageTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
+// Dates de location (dates seules de la conversation) : jour calendaire exact,
+// quel que soit le fuseau du téléphone.
 function formatDateFull(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return formatRentalDate(dateStr);
 }
 
 function formatDateShort(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-  });
+  return formatRentalDate(dateStr, { day: 'numeric', month: 'short' });
 }
 
 export default function ChatScreen() {
@@ -162,6 +161,8 @@ export default function ChatScreen() {
   const [block, setBlock] = useState<BlockStatus>(NO_BLOCK);
   const isBlocked = block.blockedByMe || block.blockedByThem;
   const [sendError, setSendError] = useState<string | null>(null);
+  // Échec du bouton « Payer » (dates passées, plus de stock…) : affiché sous le bandeau.
+  const [payError, setPayError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!id || !user) return;
@@ -176,7 +177,7 @@ export default function ChatScreen() {
         owner_id,
         status,
         quantity,
-        listing:listings!conversations_listing_id_fkey(name, photos_url, price),
+        listing:listings!conversations_listing_id_fkey(name, photos_url, price, renter_fee_percent),
         requester:profiles!conversations_requester_id_fkey(username, photo_url, avatar_url),
         owner:profiles!conversations_owner_id_fkey(username, photo_url, avatar_url, is_pro)
       `)
@@ -201,6 +202,7 @@ export default function ChatScreen() {
         listingThumb: listing?.photos_url?.[0] ?? null,
         listingCity: city,
         listingPrice: listing?.price ?? null,
+        listingFeePercent: (listing as any)?.renter_fee_percent ?? 7,
         quantity: Math.max(1, Number((conv as any).quantity ?? 1)),
         otherUsername: other?.username ?? 'Utilisateur',
         otherUserId: isRequester ? conv.owner_id : conv.requester_id,
@@ -898,6 +900,7 @@ export default function ChatScreen() {
     }
 
     setPayLoading(true);
+    setPayError(null);
     try {
       const { data: existingBooking } = await supabase
         .from('bookings')
@@ -918,11 +921,6 @@ export default function ChatScreen() {
         return;
       }
 
-      const days = getRentalDays(meta.startDate, meta.endDate);
-      const totalPrice = meta.listingPrice != null
-        ? computeRentalTotal(meta.listingPrice, days)
-        : 0;
-
       const { data: newBooking, error } = await createPendingPaymentBooking({
         listingId: meta.listingId,
         startDate: meta.startDate,
@@ -931,12 +929,17 @@ export default function ChatScreen() {
         quantity: meta.quantity,
       });
 
-      if (!error && newBooking) {
-        setBookingId(newBooking.id);
-        setBookingTotal(newBooking.total_price ?? null);
-        setBookingStatus(newBooking.status ?? null);
-        router.push(`/payment/${newBooking.id}` as any);
+      if (error || !newBooking) {
+        // Avant : rien ne s'affichait (dates passées, plus de stock, réseau…).
+        setPayError(frenchError(error, "Le paiement n'a pas pu être préparé. Réessayez dans un instant."));
+        return;
       }
+      setBookingId(newBooking.id);
+      setBookingTotal(newBooking.total_price ?? null);
+      setBookingStatus(newBooking.status ?? null);
+      router.push(`/payment/${newBooking.id}` as any);
+    } catch (err) {
+      setPayError(frenchError(err, "Le paiement n'a pas pu être préparé. Réessayez dans un instant."));
     } finally {
       setPayLoading(false);
     }
@@ -1131,6 +1134,15 @@ export default function ChatScreen() {
   }
 
   const days = meta ? getRentalDays(meta.startDate, meta.endDate) : 0;
+  // Prix de la location : celui de la réservation s'il existe, sinon le même
+  // calcul que le serveur (remise 3 j / 7 j et quantité comprises).
+  const rentalPrice = bookingTotal ?? (meta?.listingPrice != null
+    ? computeRentalTotalWithQty(meta.listingPrice, days, meta.quantity)
+    : null);
+  // Montant réellement débité au locataire : location + frais de service.
+  const amountToPay = rentalPrice != null && meta
+    ? rentalPrice + computeRenterFee(rentalPrice, meta.listingFeePercent)
+    : null;
 
   return (
     <View style={[styles.root, isDesktop && chatDesktopStyles.outerWrap]}>
@@ -1207,9 +1219,9 @@ export default function ChatScreen() {
                     <Text style={styles.topBarDaysText}>{days}j</Text>
                   </View>
                 </View>
-                {meta.listingPrice != null && (
+                {rentalPrice != null && (
                   <Text style={styles.topBarPrice}>
-                    {(meta.listingPrice * days).toFixed(0)} €
+                    {formatPrice(rentalPrice)}
                   </Text>
                 )}
               </View>
@@ -1520,7 +1532,7 @@ export default function ChatScreen() {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.payBannerGreenBtnText}>
-                  Payer {bookingTotal != null ? `${bookingTotal} €` : ''} →
+                  Payer {amountToPay != null ? formatPrice(amountToPay) : ''} →
                 </Text>
               )}
             </TouchableOpacity>
@@ -1534,6 +1546,16 @@ export default function ChatScreen() {
             </View>
           </View>
         )
+      )}
+
+      {payError && (
+        <View style={[styles.sendErrorBar, { marginTop: 6 }]}>
+          <Ionicons name="alert-circle-outline" size={16} color={Colors.error} />
+          <Text style={styles.sendErrorText}>{payError}</Text>
+          <TouchableOpacity onPress={() => setPayError(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close" size={16} color={Colors.error} />
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Messages + recap card scrollable ensemble */}
@@ -1571,9 +1593,9 @@ export default function ChatScreen() {
             <View style={styles.recapCardBody}>
               <View style={styles.recapCardHeader}>
                 <Text style={styles.recapTitle} numberOfLines={2}>{meta.listingTitle}</Text>
-                {meta.listingPrice != null && (
+                {rentalPrice != null && (
                   <View style={styles.recapPriceTag}>
-                    <Text style={styles.recapPriceText}>{(meta.listingPrice * days).toFixed(0)} €</Text>
+                    <Text style={styles.recapPriceText}>{formatPrice(rentalPrice)}</Text>
                   </View>
                 )}
               </View>

@@ -23,6 +23,7 @@ import {
 } from '@/lib/stripeConnectStatus';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { frenchError } from '@/lib/errorMessages';
+import { formatRentalDate } from '@/lib/rentalDates';
 // Marge sous l'encoche / Dynamic Island (56 px fixes mordaient sur les iPhone récents).
 const HEADER_TOP = Platform.OS === 'web' ? 24 : (initialWindowMetrics?.insets.top ?? 47) + 8;
 
@@ -492,7 +493,7 @@ export default function AdminUserDetail() {
                 <View style={styles.listRowContent}>
                   <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing_name ?? '-'}</Text>
                   <Text style={styles.listRowSub}>
-                    @{b.other_username ?? '?'} · {new Date(b.start_date).toLocaleDateString('fr-FR')} → {new Date(b.end_date).toLocaleDateString('fr-FR')} · {b.total_price}€
+                    @{b.other_username ?? '?'} · {formatRentalDate(b.start_date, {})} → {formatRentalDate(b.end_date, {})} · {b.total_price}€
                   </Text>
                 </View>
                 <StatusBadge status={b.status} small />
@@ -513,7 +514,7 @@ export default function AdminUserDetail() {
                 <View style={styles.listRowContent}>
                   <Text style={styles.listRowTitle} numberOfLines={1}>{b.listing_name ?? '-'}</Text>
                   <Text style={styles.listRowSub}>
-                    @{b.other_username ?? '?'} · {new Date(b.start_date).toLocaleDateString('fr-FR')} · {b.total_price}€
+                    @{b.other_username ?? '?'} · {formatRentalDate(b.start_date, {})} · {b.total_price}€
                   </Text>
                 </View>
                 <StatusBadge status={b.status} small />

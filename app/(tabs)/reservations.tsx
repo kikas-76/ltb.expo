@@ -26,6 +26,7 @@ import LoadError from '@/components/LoadError';
 import { useAuth } from '@/contexts/AuthContext';
 import { router, useFocusEffect } from 'expo-router';
 import { SkeletonConversationRow } from '@/components/Skeleton';
+import { formatRentalDate } from '@/lib/rentalDates';
 
 
 function describeMessageContent(raw: string | null | undefined): string {
@@ -166,8 +167,8 @@ function getConvSubtext(displayStatus: ConvDisplayStatus, isRequester: boolean):
         : 'En attente du paiement du locataire';
     case 'pending_payment':
       return isRequester
-        ? 'Paiement en cours de traitement'
-        : 'Paiement du locataire en cours';
+        ? 'Paiement à finaliser'
+        : 'En attente du paiement du locataire';
     case 'active':
       return isRequester
         ? 'Confirme la remise sur place avec le loueur'
@@ -259,8 +260,9 @@ interface ConversationRowProps {
   onDeleteRequest: (id: string) => void;
 }
 
+// Dates de location (dates seules) : jour exact, quel que soit le fuseau du téléphone.
 function formatDateShort(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  return formatRentalDate(dateStr, { day: 'numeric', month: 'short' });
 }
 
 import { extractCityFromAddress } from '@/lib/address';
@@ -1051,9 +1053,9 @@ function MessagesScreen() {
                   <View style={desktopStyles.detailDates}>
                     <Ionicons name="calendar-outline" size={14} color={Colors.primaryDark} />
                     <Text style={desktopStyles.detailDatesText}>
-                      {new Date(conv.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {formatRentalDate(conv.startDate)}
                       {' → '}
-                      {new Date(conv.endDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {formatRentalDate(conv.endDate)}
                     </Text>
                   </View>
                   {conv.totalPrice != null && (

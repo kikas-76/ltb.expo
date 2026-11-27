@@ -18,6 +18,8 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { supabase } from '@/lib/supabase';
 import { translatePaymentError } from '@/lib/paymentErrors';
+import { formatRentalDate } from '@/lib/rentalDates';
+import { formatPrice } from '@/lib/pricing';
 import { Colors } from '@/constants/colors';
 
 // Singleton: loadStripe must be called once at module scope. Re-creating
@@ -42,13 +44,8 @@ interface BookingData {
   } | null;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
+// Jour de location (fin à 23:59:59 UTC) : ne pas afficher le lendemain en France.
+const formatDate = (iso: string) => formatRentalDate(iso);
 
 interface StripeEmbedProps {
   rentalClientSecret: string;
@@ -232,7 +229,7 @@ function CheckoutForm({
         ) : (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 } as any}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            Confirmer le paiement — {totalNow} €
+            Confirmer le paiement — {formatPrice(totalNow)}
           </span>
         )}
       </button>
@@ -476,28 +473,28 @@ export default function PaymentScreen() {
 
                 <View style={styles.priceRow}>
                   <Text style={styles.priceLabel}>Location</Text>
-                  <Text style={styles.priceValue}>{booking.total_price} €</Text>
+                  <Text style={styles.priceValue}>{formatPrice(booking.total_price)}</Text>
                 </View>
 
                 <View style={styles.priceRow}>
                   <Text style={styles.priceLabelMuted}>Frais de service ({booking.listing?.renter_fee_percent ?? 7}%)</Text>
-                  <Text style={styles.priceValueMuted}>{serviceFee} €</Text>
+                  <Text style={styles.priceValueMuted}>{formatPrice(serviceFee)}</Text>
                 </View>
 
                 <View style={styles.priceRow}>
                   <Text style={styles.priceLabelOrange}>Caution (bloquée)</Text>
-                  <Text style={styles.priceValueOrange}>{booking.deposit_amount} €</Text>
+                  <Text style={styles.priceValueOrange}>{formatPrice(booking.deposit_amount)}</Text>
                 </View>
 
                 <View style={styles.separator} />
 
                 <View style={styles.priceRow}>
                   <Text style={styles.totalLabel}>Total débité maintenant</Text>
-                  <Text style={styles.totalValue}>{totalNow} €</Text>
+                  <Text style={styles.totalValue}>{formatPrice(totalNow)}</Text>
                 </View>
 
                 <Text style={styles.depositNote}>
-                  La caution de {booking.deposit_amount} € est bloquée mais non débitée, libérée après le retour
+                  La caution de {formatPrice(booking.deposit_amount)} est bloquée mais non débitée, libérée après le retour
                 </Text>
               </View>
             </View>

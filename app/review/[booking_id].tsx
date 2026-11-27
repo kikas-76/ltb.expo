@@ -17,6 +17,7 @@ import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import RatingStars from '@/components/reviews/RatingStars';
 import ReviewModal from '@/components/reviews/ReviewModal';
+import { formatRentalDate } from '@/lib/rentalDates';
 
 // Standalone review screen — the target of the email "Donner mon avis"
 // CTA and the "Noter" pill on the reservations list. Loads the booking
@@ -166,8 +167,8 @@ export default function ReviewScreen() {
           )}
           <Text style={styles.bookingName}>{booking.listing?.name ?? 'Location'}</Text>
           <Text style={styles.bookingDates}>
-            Du {new Date(booking.start_date).toLocaleDateString('fr-FR')} au{' '}
-            {new Date(booking.end_date).toLocaleDateString('fr-FR')}
+            Du {formatRentalDate(booking.start_date, {})} au{' '}
+            {formatRentalDate(booking.end_date, {})}
           </Text>
           <Text style={styles.bookingOther}>
             avec @{booking.other_username ?? (booking.reviewedSide === 'owner' ? 'le propriétaire' : 'le locataire')}

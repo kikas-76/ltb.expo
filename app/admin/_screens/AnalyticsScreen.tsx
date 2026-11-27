@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
+import { formatRentalDate } from '@/lib/rentalDates';
 // Marge sous l'encoche / Dynamic Island (56 px fixes mordaient sur les iPhone récents).
 const HEADER_TOP = Platform.OS === 'web' ? 24 : (initialWindowMetrics?.insets.top ?? 47) + 8;
 
@@ -309,8 +310,8 @@ export default function AdminAnalytics() {
           b.owner?.username ?? '',
           b.total_price,
           b.deposit_amount ?? '',
-          new Date(b.start_date).toLocaleDateString('fr-FR'),
-          new Date(b.end_date).toLocaleDateString('fr-FR'),
+          formatRentalDate(b.start_date, {}),
+          formatRentalDate(b.end_date, {}),
           new Date(b.created_at).toLocaleDateString('fr-FR'),
         ].join(',')
       ),

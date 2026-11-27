@@ -18,7 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { postSystemMessage } from '@/lib/postSystemMessage';
 import { createPendingPaymentBooking, computeRentalTotal } from '@/lib/createBooking';
-import { getDiscount, getRentalDays } from '@/lib/pricing';
+import { formatPrice, getDiscount, getRentalDays } from '@/lib/pricing';
+import { formatRentalDate } from '@/lib/rentalDates';
 import { setAuthReturnPath } from '@/lib/authReturn';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,12 +43,9 @@ interface ListingData {
   } | null;
 }
 
+// Dates du lien (« 2026-12-20 ») : jour exact, quel que soit le fuseau du téléphone.
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return formatRentalDate(dateStr);
 }
 
 export default function DirectBookPage() {
@@ -232,14 +230,14 @@ export default function DirectBookPage() {
 
       <View style={styles.priceRow}>
         <Text style={styles.priceLabel}>Frais de service (7%)</Text>
-        <Text style={styles.priceValue}>{serviceFee.toFixed(2)}€</Text>
+        <Text style={styles.priceValue}>{formatPrice(serviceFee)}</Text>
       </View>
 
       <View style={styles.divider} />
 
       <View style={styles.priceRow}>
         <Text style={styles.totalLabel}>Total à payer</Text>
-        <Text style={styles.totalValue}>{totalWithFee.toFixed(2)}€</Text>
+        <Text style={styles.totalValue}>{formatPrice(totalWithFee)}</Text>
       </View>
 
       {depositAmount > 0 && (
@@ -273,7 +271,7 @@ export default function DirectBookPage() {
           <>
             <Ionicons name="flash-outline" size={18} color="#fff" />
             <Text style={styles.ctaBtnText}>
-              Réserver et payer · {totalWithFee.toFixed(2)}€
+              Réserver et payer · {formatPrice(totalWithFee)}
             </Text>
           </>
         ) : (

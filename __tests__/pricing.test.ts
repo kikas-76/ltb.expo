@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeRentalTotal, getDiscount, getRentalDays } from '@/lib/pricing';
+import { computeRenterFee, computeRentalTotal, formatPrice, getDiscount, getRentalDays } from '@/lib/pricing';
 
 describe('getDiscount', () => {
   it('returns 0 for short rentals (1-2 days)', () => {
@@ -85,5 +85,24 @@ describe('getRentalDays', () => {
 
   it('handles a long rental (365 days)', () => {
     expect(getRentalDays('2026-01-01', '2027-01-01')).toBe(365);
+  });
+});
+
+describe('computeRenterFee', () => {
+  it('calcule les frais au centime comme le serveur', () => {
+    expect(computeRenterFee(2, 7)).toBe(0.14);
+    expect(computeRenterFee(56, 7)).toBe(3.92);
+    expect(computeRenterFee(15, 7)).toBe(1.05);
+    expect(computeRenterFee(0, 7)).toBe(0);
+  });
+});
+
+describe('formatPrice', () => {
+  it('écrit les montants à la française', () => {
+    expect(formatPrice(2)).toBe('2 €');
+    expect(formatPrice(2.14)).toBe('2,14 €');
+    expect(formatPrice(0.1)).toBe('0,10 €');
+    expect(formatPrice('59.92')).toBe('59,92 €');
+    expect(formatPrice(1250)).toBe('1 250 €');
   });
 });

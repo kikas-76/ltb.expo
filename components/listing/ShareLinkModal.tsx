@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
-import { getRentalDays } from '@/lib/pricing';
+import { formatPrice, getRentalDays } from '@/lib/pricing';
 
 const MONTH_NAMES = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -561,12 +561,12 @@ function PriceBox({ pricePerDay, days, basePrice, discount, discountAmt, totalWi
       )}
       <View style={styles.priceRow}>
         <Text style={styles.priceLabel}>Frais de service (7%)</Text>
-        <Text style={styles.priceValue}>{serviceFee.toFixed(2)}€</Text>
+        <Text style={styles.priceValue}>{formatPrice(serviceFee)}</Text>
       </View>
       <View style={styles.divider} />
       <View style={styles.priceRow}>
         <Text style={styles.totalLabel}>Total locataire</Text>
-        <Text style={styles.totalValue}>{totalWithFee}€</Text>
+        <Text style={styles.totalValue}>{formatPrice(totalWithFee)}</Text>
       </View>
       <View style={styles.ownerReceivesRow}>
         <Ionicons name="wallet-outline" size={13} color={Colors.primaryDark} />

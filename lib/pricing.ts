@@ -47,3 +47,18 @@ export function computeOwnerEarnings(totalPrice: number, commissionPercent?: num
   const pct = commissionPercent ?? DEFAULT_OWNER_COMMISSION_PERCENT;
   return Number(totalPrice) * (1 - pct / 100);
 }
+
+// Frais de service payés par le locataire, au centime près, calculés comme
+// create-payment-intent (montant de la location en centimes × pourcentage).
+export function computeRenterFee(rentalTotal: number, feePercent: number): number {
+  const rentalCents = Math.round(Number(rentalTotal) * 100);
+  return Math.round((rentalCents * feePercent) / 100) / 100;
+}
+
+// Montant en euros à la française : « 2 € », « 2,14 € », « 1 250 € ».
+export function formatPrice(value: number | string): string {
+  const n = Math.round(Number(value) * 100) / 100;
+  const [int, dec] = (Number.isInteger(n) ? String(n) : n.toFixed(2)).split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return `${dec ? `${grouped},${dec}` : grouped} €`;
+}

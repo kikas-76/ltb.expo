@@ -18,6 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { getOptimizedImageUrl } from '@/lib/imageUrl';
 import { translatePaymentError } from '@/lib/paymentErrors';
+import { formatRentalDate } from '@/lib/rentalDates';
+import { formatPrice } from '@/lib/pricing';
 import { Colors } from '@/constants/colors';
 import { haptics } from '@/lib/haptics';
 import {
@@ -45,13 +47,8 @@ interface BookingData {
   } | null;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
+// Jour de location (fin à 23:59:59 UTC) : ne pas afficher le lendemain en France.
+const formatDate = (iso: string) => formatRentalDate(iso);
 
 // Doit rester constant : en nouvelle architecture, tout changement de prop recrée
 // le formulaire natif et efface la carte déjà saisie.
@@ -333,12 +330,12 @@ export default function PaymentScreen() {
 
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Location</Text>
-              <Text style={styles.priceValue}>{booking.total_price} €</Text>
+              <Text style={styles.priceValue}>{formatPrice(booking.total_price)}</Text>
             </View>
 
             <View style={styles.priceRow}>
               <Text style={styles.priceLabelMuted}>Frais de service ({booking.listing?.renter_fee_percent ?? 7}%)</Text>
-              <Text style={styles.priceValueMuted}>{serviceFee} €</Text>
+              <Text style={styles.priceValueMuted}>{formatPrice(serviceFee)}</Text>
             </View>
 
             {depositAmount > 0 && (
@@ -346,7 +343,7 @@ export default function PaymentScreen() {
                 <View style={styles.depositLabelRow}>
                   <Text style={styles.priceLabelOrange}>Caution, non débitée</Text>
                 </View>
-                <Text style={styles.priceValueOrange}>{depositAmount} €</Text>
+                <Text style={styles.priceValueOrange}>{formatPrice(depositAmount)}</Text>
               </View>
             )}
 
@@ -354,12 +351,12 @@ export default function PaymentScreen() {
 
             <View style={styles.priceRow}>
               <Text style={styles.totalLabel}>Total débité maintenant</Text>
-              <Text style={styles.totalValue}>{totalNow} €</Text>
+              <Text style={styles.totalValue}>{formatPrice(totalNow)}</Text>
             </View>
 
             {depositAmount > 0 && (
               <Text style={styles.depositNote}>
-                La caution de {depositAmount} € n'est pas débitée : elle est réservée sur votre moyen de paiement deux jours avant la fin de la location, puis libérée après le retour.
+                La caution de {formatPrice(depositAmount)} n'est pas débitée : elle est réservée sur votre moyen de paiement deux jours avant la fin de la location, puis libérée après le retour.
               </Text>
             )}
           </View>
@@ -400,7 +397,7 @@ export default function PaymentScreen() {
               />
               {depositAmount > 0 && (
                 <Text style={styles.consentText}>
-                  En payant, vous autorisez LoueTonBien à réserver la caution de {depositAmount} € sur ce moyen de paiement, sans nouvelle validation de votre part.
+                  En payant, vous autorisez LoueTonBien à réserver la caution de {formatPrice(depositAmount)} sur ce moyen de paiement, sans nouvelle validation de votre part.
                 </Text>
               )}
               <View style={styles.securityRow}>
@@ -453,7 +450,7 @@ export default function PaymentScreen() {
               <Text style={styles.payBtnText}>
                 {showApplePay ? 'Payer par carte' : 'Confirmer le paiement'}
               </Text>
-              <Text style={styles.payBtnAmount}>{totalNow} €</Text>
+              <Text style={styles.payBtnAmount}>{formatPrice(totalNow)}</Text>
             </>
           )}
         </TouchableOpacity>
