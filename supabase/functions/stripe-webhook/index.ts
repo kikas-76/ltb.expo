@@ -39,6 +39,41 @@ const sendEmail = async (
   }
 };
 
+// Réserve tout de suite la caution d'une location courte (fin dans moins de
+// 2 jours), comme finalize-booking-payment quand c'est lui qui active la
+// réservation. Le webhook arrive souvent avant l'app : sans cet appel, la
+// caution attendait le passage quotidien de hold-deposit (02:00 UTC), et une
+// location finissant avant ce passage n'en avait jamais. hold-deposit est
+// idempotent (clé Stripe deposit_hold_<id>, filtre sur les réservations sans
+// caution posée) : aucun double blocage possible.
+const holdShortRentalDeposit = async (
+  supabase: any,
+  booking: { id: string; deposit_amount: number | string | null; end_date: string },
+) => {
+  const twoDaysFromNow = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+  if (!(Number(booking.deposit_amount) > 0) || new Date(booking.end_date) > twoDaysFromNow) return;
+
+  const internalSecret = Deno.env.get("INTERNAL_EDGE_SECRET");
+  try {
+    const { data: holdResult, error: holdErr } = await supabase.functions.invoke("hold-deposit", {
+      headers: internalSecret ? { "x-internal-secret": internalSecret } : {},
+      body: { booking_ids: [booking.id], internal_secret: internalSecret },
+    });
+    if (holdErr) {
+      console.error(`Short-rental hold-deposit invoke failed for booking ${booking.id}:`, holdErr);
+      return;
+    }
+    const result = holdResult?.results?.[0];
+    if (result?.status === "failed") {
+      console.error(`Short-rental hold-deposit declined for booking ${booking.id}:`, result.reason);
+    } else {
+      console.log(`Booking ${booking.id} · caution location courte : ${result?.status ?? "rien à réserver"}`);
+    }
+  } catch (holdErr) {
+    console.error(`Short-rental hold-deposit trigger threw for booking ${booking.id}:`, holdErr);
+  }
+};
+
 // Constant-time string compare. Returns false on length mismatch (length is
 // not secret here — signatures are fixed-size SHA256 hex). Avoids an
 // early-exit `===` that could leak the matching prefix length via timing.
@@ -302,6 +337,10 @@ Deno.serve(async (req: Request) => {
                 booking_id:     booking.id,
               }
             );
+
+            // Le webhook a activé la réservation (pas finalize) : c'est donc à
+            // lui de réserver la caution d'une location courte.
+            await holdShortRentalDeposit(supabase, booking);
           }
         }
 
