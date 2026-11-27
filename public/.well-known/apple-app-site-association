@@ -7,12 +7,56 @@
         ],
         "components": [
           {
+            "/": "/",
+            "comment": "Accueil (logo des emails, liens « Retour à l'accueil »)"
+          },
+          {
             "/": "/listing/*",
             "comment": "Fiche annonce"
           },
           {
             "/": "/book/*",
             "comment": "Lien de réservation"
+          },
+          {
+            "/": "/chat/*",
+            "comment": "Conversation (demandes, paiement, remise, retour)"
+          },
+          {
+            "/": "/payment/*",
+            "comment": "Écran de paiement"
+          },
+          {
+            "/": "/reservations",
+            "comment": "Onglet Messages"
+          },
+          {
+            "/": "/review/*",
+            "comment": "Laisser un avis"
+          },
+          {
+            "/": "/owner/*",
+            "comment": "Profil public d'un membre"
+          },
+          {
+            "/": "/dispute/*",
+            "comment": "Litige"
+          },
+          {
+            "/": "/wallet",
+            "comment": "Portefeuille (pas /wallet/* : pages de retour de Stripe, restent sur le site)"
+          },
+          {
+            "/": "/mes-annonces",
+            "comment": "Onglet Louer"
+          },
+          {
+            "/": "/search",
+            "comment": "Recherche"
+          },
+          {
+            "/": "/help-center",
+            "comment": "Centre d'aide"
           }
         ]
       }
