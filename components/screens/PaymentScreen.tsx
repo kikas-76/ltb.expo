@@ -589,7 +589,7 @@ export default function PaymentScreen() {
                       const result = await res.json();
                       if (!res.ok || result.error) {
                         // Fall back to full form for any issue (3DS, decline, etc.)
-                        setOneClickError(result.error ?? 'La carte enregistrée n\'a pas pu être utilisée. Saisis une autre carte.');
+                        setOneClickError(result.error ? translatePaymentError(result.error) : 'La carte enregistrée n\'a pas pu être utilisée. Saisis une autre carte.');
                         setForceFullForm(true);
                         return;
                       }
@@ -603,7 +603,7 @@ export default function PaymentScreen() {
                       // Navigate to /payment-success which polls the booking.
                       router.replace(`/payment-success?booking_id=${booking_id}` as any);
                     } catch (err: any) {
-                      setOneClickError(err?.message ?? 'Erreur réseau');
+                      setOneClickError(translatePaymentError(err));
                       setForceFullForm(true);
                     } finally {
                       setOneClickConfirming(false);

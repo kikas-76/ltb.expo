@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
+import { frenchError } from '@/lib/errorMessages';
 
 const ORANGE = '#D97706';
 
@@ -88,10 +89,10 @@ export default function WalletRefreshScreen() {
           await WebBrowser.openAuthSessionAsync(data.url, 'louetonbien://wallet/success');
           router.replace('/wallet');
         } else {
-          Alert.alert('Erreur', data.error || 'URL manquante');
+          Alert.alert('Erreur', frenchError(data.error, "Impossible d'ouvrir l'activation des paiements. Réessaie."));
         }
       } catch (err) {
-        Alert.alert('Erreur', err instanceof Error ? err.message : 'Une erreur est survenue');
+        Alert.alert('Erreur', frenchError(err, 'Une erreur est survenue. Réessaie.'));
       } finally {
         setLoading(false);
       }

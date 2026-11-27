@@ -23,6 +23,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { frenchError } from '@/lib/errorMessages';
 
 type Section = 'menu' | 'photo' | 'username' | 'bio' | 'email' | 'phone' | 'password' | 'delete' | 'notifications' | 'blocked';
 
@@ -190,7 +191,7 @@ export default function AccountSettingsScreen() {
       setPhotoSuccess(true);
       setTimeout(() => setSection('menu'), 1200);
     } catch {
-      setPhotoError("Erreur lors de l'upload de la photo.");
+      setPhotoError("Erreur lors de l'envoi de la photo.");
     } finally {
       setPhotoLoading(false);
     }
@@ -232,7 +233,7 @@ export default function AccountSettingsScreen() {
       } else if (error.code === '23514' || error.message?.toLowerCase().includes('check')) {
         setUsernameError('Nom invalide : 2-30 caractères, lettres, chiffres et _ uniquement.');
       } else {
-        setUsernameError('Une erreur est survenue : ' + (error.message ?? 'réessayez plus tard.'));
+        setUsernameError(frenchError(error, 'Une erreur est survenue. Réessayez plus tard.'));
       }
       return;
     }
@@ -260,7 +261,7 @@ export default function AccountSettingsScreen() {
     const { error } = await supabase.auth.updateUser({ email: trimmed });
     setEmailSaving(false);
     if (error) {
-      setEmailError("Erreur : " + error.message);
+      setEmailError(frenchError(error, "Le changement d'adresse e-mail a échoué. Réessayez."));
       return;
     }
     setEmailSuccess(true);
@@ -316,7 +317,7 @@ export default function AccountSettingsScreen() {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
       setPasswordSaving(false);
-      setPasswordError('Erreur : ' + error.message);
+      setPasswordError(frenchError(error, 'Le changement de mot de passe a échoué. Réessayez.'));
       return;
     }
     // No resetPasswordForEmail here: the password change already
@@ -359,7 +360,7 @@ export default function AccountSettingsScreen() {
       const json = await res.json();
 
       if (!res.ok || !json.success) {
-        setDeleteError(json.error ?? 'Une erreur est survenue. Contactez le support.');
+        setDeleteError(frenchError(json.error, 'Une erreur est survenue. Contactez le support.'));
         setDeleteLoading(false);
         return;
       }

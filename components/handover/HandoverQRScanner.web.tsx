@@ -19,6 +19,7 @@ import {
   type HandoverModalProps,
   type RedeemTokenResult,
 } from './types';
+import { frenchError } from '@/lib/errorMessages';
 
 export default function HandoverQRScanner({
   visible,
@@ -61,7 +62,7 @@ export default function HandoverQRScanner({
     const result = (data ?? {}) as RedeemTokenResult;
 
     if (rpcError || result.error) {
-      setError(result.error ?? rpcError?.message ?? 'Échec de la validation');
+      setError(frenchError(result.error ?? rpcError, 'Échec de la validation. Réessayez.'));
       setSubmitting(false);
       setTimeout(() => { handlingRef.current = false; }, 1500);
       return;

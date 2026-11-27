@@ -17,6 +17,7 @@ import { Colors } from '@/constants/colors';
 import StatusBadge from '@/components/admin/StatusBadge';
 import { fetchAdminProfileEmails } from '@/lib/adminEmails';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
+import { frenchError } from '@/lib/errorMessages';
 // Marge sous l'encoche / Dynamic Island (56 px fixes mordaient sur les iPhone récents).
 const HEADER_TOP = Platform.OS === 'web' ? 24 : (initialWindowMetrics?.insets.top ?? 47) + 8;
 
@@ -142,9 +143,9 @@ export default function AdminDisputes() {
       const json = await res.json();
       if (!res.ok) {
         if (Platform.OS === 'web') {
-          window.alert(json.error ?? 'Une erreur est survenue');
+          window.alert(frenchError(json.error, 'Une erreur est survenue.'));
         } else {
-          Alert.alert('Erreur', json.error ?? 'Une erreur est survenue');
+          Alert.alert('Erreur', frenchError(json.error, 'Une erreur est survenue.'));
         }
       } else {
         await loadDisputes();

@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
+import { frenchError } from '@/lib/errorMessages';
 
 
 export default function ForgotPasswordScreen() {
@@ -95,7 +96,7 @@ export default function ForgotPasswordScreen() {
           : 'louetonbien://reset-password',
       });
       if (error) {
-        setError(error.message);
+        setError(frenchError(error, "Erreur lors de l'envoi. Réessayez."));
         return;
       }
       setSent(true);
@@ -104,7 +105,7 @@ export default function ForgotPasswordScreen() {
         Animated.timing(successFade, { toValue: 1, duration: 350, useNativeDriver: true }),
       ]).start();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur lors de l'envoi.");
+      setError(frenchError(e, "Erreur lors de l'envoi. Réessayez."));
     }
   };
 

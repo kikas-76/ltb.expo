@@ -19,6 +19,7 @@ import { PAYOUT_INTERVAL_LABEL } from '@/lib/payoutSchedule';
 import { Colors } from '@/constants/colors';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 import PreviewUnavailable from '@/components/PreviewUnavailable';
+import { frenchError } from '@/lib/errorMessages';
 
 function formatEur(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',') + ' €';
@@ -182,7 +183,7 @@ function WalletManageContent() {
 
         setAccountData(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
+        setError(frenchError(err, 'Erreur lors du chargement.'));
       } finally {
         setLoading(false);
       }

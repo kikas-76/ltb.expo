@@ -20,6 +20,7 @@ import { readUploadBody } from '@/lib/uploadBody';
 import { prepareImageForUpload } from '@/lib/prepareImageForUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { frenchError } from '@/lib/errorMessages';
 
 
 function Stepper({ active }: { active: number }) {
@@ -192,7 +193,7 @@ export default function OnboardingProfileScreen() {
 
     if (updateError) {
       setSubmitting(false);
-      setError('Erreur lors de la mise à jour du profil: ' + updateError.message);
+      setError(frenchError(updateError, 'Erreur lors de la mise à jour du profil. Réessayez.'));
       return;
     }
 

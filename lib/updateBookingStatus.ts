@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { frenchError } from '@/lib/errorMessages';
 
 export async function updateBookingStatus(
   bookingId: string,
@@ -11,8 +12,8 @@ export async function updateBookingStatus(
     p_extra: extra ?? {},
   });
 
-  if (error) return { error: error.message };
-  if (data?.error) return { error: data.error };
+  if (error) return { error: frenchError(error) };
+  if (data?.error) return { error: frenchError(data.error) };
   return {};
 }
 
@@ -27,7 +28,7 @@ export async function updateBookingConfirmationFields(
     p_extra: fields,
   });
 
-  if (error) return { error: error.message };
-  if (data?.error) return { error: data.error };
+  if (error) return { error: frenchError(error) };
+  if (data?.error) return { error: frenchError(data.error) };
   return {};
 }

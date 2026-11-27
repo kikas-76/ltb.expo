@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
+import { frenchError } from '@/lib/errorMessages';
 // Marge sous l'encoche / Dynamic Island (56 px fixes mordaient sur les iPhone récents).
 const HEADER_TOP = Platform.OS === 'web' ? 24 : (initialWindowMetrics?.insets.top ?? 47) + 8;
 
@@ -113,7 +114,7 @@ export default function ProStatsScreen() {
     setError(null);
     const { data: rpcData, error: rpcError } = await supabase.rpc('get_pro_stats_summary');
     if (rpcError || (rpcData as any)?.error) {
-      setError((rpcData as any)?.error ?? rpcError?.message ?? 'Erreur de chargement');
+      setError(frenchError((rpcData as any)?.error ?? rpcError, 'Erreur de chargement.'));
       setLoading(false);
       return;
     }

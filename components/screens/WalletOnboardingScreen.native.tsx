@@ -16,6 +16,7 @@ import { PreOnboardingForm } from '@/components/wallet/PreOnboardingForm';
 import PreviewUnavailable from '@/components/PreviewUnavailable';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 import { haptics } from '@/lib/haptics';
+import { frenchError } from '@/lib/errorMessages';
 
 type Step = 'checking' | 'pre-onboarding' | 'stripe' | 'error';
 
@@ -97,7 +98,7 @@ function WalletOnboardingContent() {
           setStep('pre-onboarding');
         }
       } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : 'Erreur lors du chargement');
+        setErrorMessage(frenchError(err, 'Erreur lors du chargement.'));
         setStep('error');
       }
     })();
@@ -132,7 +133,7 @@ function WalletOnboardingContent() {
       setConnectInstance(instance);
       setStep('stripe');
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      setErrorMessage(frenchError(err, 'Erreur lors du chargement.'));
       setStep('error');
     }
   };
@@ -215,7 +216,7 @@ function WalletOnboardingContent() {
               title={mode === 'edit' ? 'Mes informations' : 'Vérification'}
               onExit={finish}
               onLoadError={({ error }) => {
-                setErrorMessage(error?.message ?? 'Stripe est indisponible pour le moment.');
+                setErrorMessage(frenchError(error, 'Stripe est indisponible pour le moment.'));
                 setStep('error');
               }}
               fullTermsOfServiceUrl="https://app.louetonbien.fr/legal"

@@ -29,6 +29,7 @@ import SuccessOverlay from '@/components/listing/SuccessOverlay';
 import ShareLinkModal from '@/components/listing/ShareLinkModal';
 import { convertHeicToJpegIfPossible, inferMimeFromName } from '@/lib/heicConvert';
 import LocationPicker, { type PickedLocation } from '@/components/publier/LocationPicker';
+import { frenchError } from '@/lib/errorMessages';
 
 const COMMISSION = 0.08;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -569,7 +570,7 @@ export default function CreateListingScreen({ guest }: { guest?: GuestModeProps 
         packs: finalPacks,
       }).eq('id', editId);
       setSubmitting(false);
-      if (updateError) { setError(updateError.message); return; }
+      if (updateError) { setError(frenchError(updateError, "L'annonce n'a pas pu être enregistrée. Réessayez.")); return; }
       setShowSuccess(true);
       setTimeout(() => router.replace(`/listing/${editId}` as any), 2600);
       return;
@@ -603,7 +604,7 @@ export default function CreateListingScreen({ guest }: { guest?: GuestModeProps 
       packs: finalPacks,
     }).select('id').maybeSingle();
     setSubmitting(false);
-    if (insertError) { setError(insertError.message); return; }
+    if (insertError) { setError(frenchError(insertError, "L'annonce n'a pas pu être publiée. Réessayez.")); return; }
     if (insertData?.id) setNewListingId(insertData.id);
     setShowSuccess(true);
     setTimeout(() => router.replace('/(tabs)/mes-annonces'), 5000);

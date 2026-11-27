@@ -1133,10 +1133,10 @@ export default function ListingDetailScreen() {
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
-                    style={[styles.ctaBtn, desktopStyles.ctaBtnTall, { flex: undefined, width: '100%' }, (!selectedDays || quantityExceedsAvailability) && styles.ctaBtnDisabled]}
+                    style={[styles.ctaBtn, desktopStyles.ctaBtnTall, { flex: undefined, width: '100%' }, quantityExceedsAvailability && styles.ctaBtnDisabled]}
                     activeOpacity={0.85}
-                    onPress={handleRequestPress}
-                    disabled={!selectedDays || quantityExceedsAvailability}
+                    onPress={selectedDays ? handleRequestPress : () => setCalendarVisible(true)}
+                    disabled={quantityExceedsAvailability}
                   >
                     <Text style={[styles.ctaBtnText, desktopStyles.ctaBtnTextLarge]}>{selectedDays > 0 ? 'Faire une demande' : 'Choisir des dates'}</Text>
                   </TouchableOpacity>
@@ -1860,10 +1860,10 @@ export default function ListingDetailScreen() {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.ctaBtn, (!selectedDays || quantityExceedsAvailability) && styles.ctaBtnDisabled]}
+              style={[styles.ctaBtn, quantityExceedsAvailability && styles.ctaBtnDisabled]}
               activeOpacity={0.85}
-              onPress={handleRequestPress}
-              disabled={!selectedDays || quantityExceedsAvailability}
+              onPress={selectedDays ? handleRequestPress : () => setCalendarVisible(true)}
+              disabled={quantityExceedsAvailability}
             >
               <Text style={styles.ctaBtnText}>
                 {selectedDays > 0 ? 'Faire une demande' : 'Choisir des dates'}

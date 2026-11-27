@@ -93,6 +93,7 @@ Expo resolves `.native.tsx` over `.tsx` on iOS/Android, and `.web.tsx` over `.ts
 - `lib/updateBookingStatus.ts` — calls `update_booking_status` RPC (used for all booking state transitions)
 - `lib/postSystemMessage.ts` — posts system messages into a booking's chat conversation
 - `lib/googleMaps.ts` — Google Maps API calls proxied via the `maps-proxy` Edge Function
+- `lib/errorMessages.ts` — `frenchError(err, fallback)`: every error shown to users goes through it (Supabase Auth/PostgREST, fetch and some edge functions answer in English). It translates known errors, keeps French messages (our SQL triggers raise French) and falls back to `fallback`. Payment screens use `lib/paymentErrors.ts` (`translatePaymentError`).
 
 **Booking statuses** (CHECK constraint): `pending` -> `accepted` / `refused` -> `pending_payment` -> `active` -> `in_progress` -> `pending_return` -> `pending_owner_validation` -> `completed` (or `disputed` / `cancelled` / `expired`)
 

@@ -20,6 +20,7 @@ import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import ProBadge from '@/components/ProBadge';
+import { frenchError } from '@/lib/errorMessages';
 
 const BEIGE = '#f5f2e8';
 
@@ -118,7 +119,7 @@ function ProfilScreen() {
       } else if (error.code === '23514' || error.message?.toLowerCase().includes('check')) {
         setUsernameError('Nom invalide : 2-30 caractères, lettres, chiffres et _ uniquement.');
       } else {
-        setUsernameError(error.message ?? 'Une erreur est survenue.');
+        setUsernameError(frenchError(error, 'Une erreur est survenue.'));
       }
       return;
     }

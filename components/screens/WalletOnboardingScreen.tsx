@@ -14,6 +14,7 @@ import { Colors } from '@/constants/colors';
 import { PreOnboardingForm } from '@/components/wallet/PreOnboardingForm';
 import { PRELAUNCH_MODE } from '@/lib/launchConfig';
 import PreviewUnavailable from '@/components/PreviewUnavailable';
+import { frenchError } from '@/lib/errorMessages';
 
 type Step = 'checking' | 'pre-onboarding' | 'stripe' | 'error';
 
@@ -99,7 +100,7 @@ function WalletOnboardingContent() {
         setStep('pre-onboarding');
       }
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      setErrorMessage(frenchError(err, 'Erreur lors du chargement.'));
       setStep('error');
     }
   };
@@ -156,7 +157,7 @@ function WalletOnboardingContent() {
       setStripeConnectInstance(instance);
       setStep('stripe');
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      setErrorMessage(frenchError(err, 'Erreur lors du chargement.'));
       setStep('error');
     }
   };

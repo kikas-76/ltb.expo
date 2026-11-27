@@ -6,6 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { registerForPushNotifications, unregisterPushToken } from '@/lib/pushNotifications';
 import { readCache, writeCache } from '@/lib/queryCache';
+import { frenchError } from '@/lib/errorMessages';
 
 interface Profile {
   id: string;
@@ -167,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
+    if (error) return { error: frenchError(error, 'Connexion impossible. Réessayez.') };
     return { error: null };
   };
 
@@ -185,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      if (error) return { error: error.message };
+      if (error) return { error: frenchError(error, 'Connexion avec Google impossible. Réessayez.') };
       if (!data.url) return { error: 'Impossible de lancer le flux Google.' };
 
       if (Platform.OS !== 'web') {
@@ -210,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               access_token: accessToken,
               refresh_token: refreshToken,
             });
-            if (sessionError) return { error: sessionError.message };
+            if (sessionError) return { error: frenchError(sessionError, 'Connexion avec Google impossible. Réessayez.') };
 
             if (sessionData.user) {
               const identities = sessionData.user.identities ?? [];
@@ -238,8 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { error: null };
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Erreur lors de la connexion Google.';
-      return { error: message };
+      return { error: frenchError(e, 'Erreur lors de la connexion Google.') };
     }
   };
 
@@ -271,7 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token: credential.identityToken,
         nonce: rawNonce,
       });
-      if (error) return { error: error.message };
+      if (error) return { error: frenchError(error, 'Connexion avec Apple impossible. Réessayez.') };
 
       // Apple ne transmet le nom qu'à la première autorisation : on le garde
       // dans les métadonnées pour pré-remplir l'onboarding.
@@ -296,8 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (e?.code === 'ERR_REQUEST_CANCELED') {
         return { error: null };
       }
-      const message = e instanceof Error ? e.message : 'Erreur lors de la connexion Apple.';
-      return { error: message };
+      return { error: frenchError(e, 'Erreur lors de la connexion Apple.') };
     }
   };
 
