@@ -38,7 +38,7 @@ const FUNCTIONS = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1`;
 
 async function authedPost(path: string): Promise<any> {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error('Session expirée. Reconnecte-toi.');
+  if (!session?.access_token) throw new Error('Session expirée. Reconnectez-vous.');
   const res = await fetch(`${FUNCTIONS}/${path}`, {
     method: 'POST',
     headers: {
@@ -62,7 +62,7 @@ export default function WalletOnboardingNative() {
     return (
       <PreviewUnavailable
         title="Portefeuille pas encore disponible"
-        description="La configuration Stripe s'ouvrira avec la marketplace. Tu pourras la faire au lancement, avant tes premières locations."
+        description="La configuration Stripe s'ouvrira avec la marketplace. Vous pourrez la faire au lancement, avant vos premières locations."
       />
     );
   }
@@ -84,7 +84,7 @@ function WalletOnboardingContent() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {
-          setErrorMessage('Session expirée. Reconnecte-toi.');
+          setErrorMessage('Session expirée. Reconnectez-vous.');
           setStep('error');
           return;
         }
@@ -175,7 +175,7 @@ function WalletOnboardingContent() {
           <Ionicons name="arrow-back-outline" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {mode === 'edit' ? 'Modifier mes informations' : 'Active tes virements'}
+          {mode === 'edit' ? 'Modifier mes informations' : 'Activez vos virements'}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -184,9 +184,9 @@ function WalletOnboardingContent() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.reassureCard}>
-            <Text style={styles.reassureTitle}>Tu ne crées pas une entreprise</Text>
+            <Text style={styles.reassureTitle}>Vous ne créez pas d'entreprise</Text>
             <Text style={styles.reassureSubtitle}>
-              Pour recevoir tes gains, Stripe doit vérifier ton identité. C'est une obligation réglementaire, même pour les particuliers. LoueTonBien ne voit jamais tes données bancaires.
+              Pour recevoir vos gains, Stripe doit vérifier votre identité. C'est une obligation réglementaire, même pour les particuliers. LoueTonBien ne voit jamais vos données bancaires.
             </Text>
           </View>
           <PreOnboardingForm

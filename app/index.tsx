@@ -68,7 +68,7 @@ const TRUST = [
 
 const TITLE = PRELAUNCH_MODE ? (
   <>
-    Dépose ta première annonce{' '}
+    Déposez votre première annonce{' '}
     <Text style={{ color: Colors.primaryDark }}>avant l'ouverture.</Text>
   </>
 ) : (
@@ -79,7 +79,7 @@ const TITLE = PRELAUNCH_MODE ? (
 );
 
 const SUBTITLE = PRELAUNCH_MODE
-  ? "Crée ton compte et publie ton annonce dès maintenant. La marketplace ouvre au public très bientôt."
+  ? "Créez votre compte et publiez votre annonce dès maintenant. La marketplace ouvre au public très bientôt."
   : 'Louez, prêtez et partagez des objets avec vos voisins, en toute confiance.';
 
 const PRIMARY_LABEL = PRELAUNCH_MODE ? 'Déposer mon annonce' : 'Découvrir les annonces';

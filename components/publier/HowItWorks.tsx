@@ -6,7 +6,7 @@ const STEPS: { icon: keyof typeof Ionicons.glyphMap; title: string; text: string
   {
     icon: 'mail-unread-outline',
     title: 'Un voisin vous envoie une demande',
-    text: 'Vous êtes prévenu par e-mail, avec ses dates et son message.',
+    text: 'Vous êtes prévenu par email, avec ses dates et son message.',
   },
   {
     icon: 'checkmark-circle-outline',

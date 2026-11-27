@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
 
     let sent = 0;
     for (const b of bookings as any[]) {
-      const listingName = b.listing?.name ?? "ta location";
+      const listingName = b.listing?.name ?? "votre location";
       const ownerProfile = b.owner ?? {};
       // Renter side gets the cross-sell tail when the owner is pro.
       if (!reviewedKeys.has(`${b.id}:${b.renter_id}`) && b.renter?.email) {

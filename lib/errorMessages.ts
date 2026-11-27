@@ -10,19 +10,19 @@ export const NETWORK_ERROR = 'Connexion impossible. Vérifiez votre connexion in
 export const SESSION_ERROR = 'Votre session a expiré. Reconnectez-vous puis réessayez.';
 export const PERMISSION_ERROR = "Vous n'avez pas l'autorisation d'effectuer cette action.";
 const RATE_LIMIT_ERROR = 'Trop de tentatives. Patientez quelques minutes avant de réessayer.';
-const EMAIL_RATE_LIMIT_ERROR = "Trop d'e-mails envoyés à cette adresse. Patientez quelques minutes avant de réessayer.";
+const EMAIL_RATE_LIMIT_ERROR = "Trop d'emails envoyés à cette adresse. Patientez quelques minutes avant de réessayer.";
 const LINK_EXPIRED_ERROR = 'Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau.';
 const WEAK_PASSWORD_ERROR = 'Mot de passe trop faible : 6 caractères minimum, dont une minuscule, une majuscule et un chiffre.';
 
 // Codes d'erreur de Supabase Auth (error.code).
 const AUTH_CODES: Record<string, string> = {
-  invalid_credentials: 'E-mail ou mot de passe incorrect.',
-  email_not_confirmed: "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le lien reçu par e-mail.",
-  user_already_exists: 'Un compte existe déjà avec cette adresse e-mail.',
-  email_exists: 'Un compte existe déjà avec cette adresse e-mail.',
+  invalid_credentials: 'Email ou mot de passe incorrect.',
+  email_not_confirmed: "Votre adresse email n'est pas encore confirmée. Ouvrez le lien reçu par email.",
+  user_already_exists: 'Un compte existe déjà avec cette adresse email.',
+  email_exists: 'Un compte existe déjà avec cette adresse email.',
   identity_already_exists: 'Ce compte est déjà lié à un autre compte LoueTonBien.',
-  email_address_invalid: 'Adresse e-mail invalide.',
-  email_address_not_authorized: "Impossible d'envoyer un e-mail à cette adresse. Utilisez-en une autre.",
+  email_address_invalid: 'Adresse email invalide.',
+  email_address_not_authorized: "Impossible d'envoyer un email à cette adresse. Utilisez-en une autre.",
   weak_password: WEAK_PASSWORD_ERROR,
   same_password: "Le nouveau mot de passe doit être différent de l'ancien.",
   over_email_send_rate_limit: EMAIL_RATE_LIMIT_ERROR,
@@ -42,11 +42,11 @@ const AUTH_CODES: Record<string, string> = {
   no_authorization: SESSION_ERROR,
   reauthentication_needed: 'Par sécurité, reconnectez-vous puis réessayez.',
   reauthentication_not_valid: 'Code de vérification incorrect.',
-  user_not_found: 'Aucun compte ne correspond à cette adresse e-mail.',
+  user_not_found: 'Aucun compte ne correspond à cette adresse email.',
   user_banned: 'Ce compte est suspendu. Contactez admin@louetonbien.fr.',
   signup_disabled: 'Les inscriptions sont momentanément fermées.',
   provider_disabled: 'Ce mode de connexion est indisponible pour le moment.',
-  email_provider_disabled: 'La connexion par e-mail est indisponible pour le moment.',
+  email_provider_disabled: 'La connexion par email est indisponible pour le moment.',
   oauth_provider_not_supported: 'Ce mode de connexion est indisponible pour le moment.',
   manual_linking_disabled: 'La liaison de comptes est indisponible pour le moment.',
   single_identity_not_deletable: 'Ce mode de connexion est le seul de votre compte : il ne peut pas être retiré.',
@@ -112,7 +112,7 @@ const PATTERNS: [RegExp, string | ((m: RegExpMatchArray) => string)][] = [
   [/unable to validate email|email address .* is invalid|invalid email/i, AUTH_CODES.email_address_invalid],
   [/signups? not allowed/i, AUTH_CODES.signup_disabled],
   [/token has expired|link is invalid or has expired|otp.*expired/i, LINK_EXPIRED_ERROR],
-  [/error sending .*email|error sending confirmation|error sending recovery/i, "L'e-mail n'a pas pu être envoyé. Réessayez dans quelques minutes."],
+  [/error sending .*email|error sending confirmation|error sending recovery/i, "L'email n'a pas pu être envoyé. Réessayez dans quelques minutes."],
   [/provider is not enabled|unsupported provider/i, AUTH_CODES.provider_disabled],
   [/user is banned/i, AUTH_CODES.user_banned],
 

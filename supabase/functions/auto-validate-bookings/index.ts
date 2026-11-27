@@ -140,7 +140,7 @@ Deno.serve(async (req: Request) => {
 
         const ownerProfile = (booking as any).owner ?? {};
         const baseData = {
-          listing_name: (booking as any).listing?.name ?? "ta location",
+          listing_name: (booking as any).listing?.name ?? "votre location",
           booking_id: booking.id,
           deposit_released: !!updateData.deposit_released_at,
         };

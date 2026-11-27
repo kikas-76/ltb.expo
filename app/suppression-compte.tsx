@@ -17,14 +17,14 @@ const STEPS = [
 ];
 
 const DELETED = [
-  'Votre profil : nom, pseudo, photo, adresse e-mail, téléphone et adresse.',
+  'Votre profil : nom, pseudo, photo, adresse email, téléphone et adresse.',
   'Vos annonces et leurs photos, ainsi que vos favoris.',
   'Le contenu des messages que vous avez envoyés.',
   "Votre accès : il n'est plus possible de se connecter au compte.",
 ];
 
 const KEPT = [
-  "L'historique de vos réservations et paiements, anonymisé (sans nom, e-mail ni téléphone), conservé 10 ans pour nos obligations comptables et fiscales.",
+  "L'historique de vos réservations et paiements, anonymisé (sans nom, email ni téléphone), conservé 10 ans pour nos obligations comptables et fiscales.",
 ];
 
 function Bullets({ items, icon, color }: { items: string[]; icon: keyof typeof Ionicons.glyphMap; color: string }) {
@@ -87,7 +87,7 @@ export default function AccountDeletionScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Par e-mail</Text>
+          <Text style={styles.cardTitle}>Par email</Text>
           <Text style={styles.paragraph}>
             Écrivez à{' '}
             <Text style={styles.link} onPress={mail}>

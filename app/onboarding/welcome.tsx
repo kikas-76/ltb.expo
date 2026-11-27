@@ -23,20 +23,20 @@ const { width } = Dimensions.get('window');
 const STEPS = [
   {
     icon: 'location-outline',
-    title: 'Cherche un objet',
-    desc: "Trouve l'objet dont tu as besoin près de chez toi",
+    title: 'Cherchez un objet',
+    desc: "Trouvez l'objet dont vous avez besoin près de chez vous",
     num: '01',
   },
   {
     icon: 'chatbubble-outline',
-    title: 'Contacte & réserve',
+    title: 'Contactez et réservez',
     desc: 'Échange avec le propriétaire et paye en toute sécurité',
     num: '02',
   },
   {
     icon: 'cube-outline',
-    title: 'Récupère & profite',
-    desc: 'Utilise ton objet en toute tranquillité, protégé par la plateforme',
+    title: 'Récupérez et profitez',
+    desc: 'Utilisez l\'objet en toute tranquillité, protégé par la plateforme',
     num: '03',
   },
 ];

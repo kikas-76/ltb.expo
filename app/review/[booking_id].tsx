@@ -79,13 +79,13 @@ export default function ReviewScreen() {
       const isRenter = b.renter_id === user.id;
       const isOwner = b.owner_id === user.id;
       if (!isRenter && !isOwner) {
-        setError("Tu n'es pas participant de cette location.");
+        setError("Vous ne participez pas à cette location.");
         setLoading(false);
         return;
       }
       if (b.status !== 'completed') {
         setError(
-          'La location doit être terminée pour être notée. Reviens une fois le retour validé.',
+          'La location doit être terminée pour être notée. Revenez une fois le retour validé.',
         );
         setLoading(false);
         return;
@@ -176,7 +176,7 @@ export default function ReviewScreen() {
 
           {existing ? (
             <View style={styles.existingBlock}>
-              <Text style={styles.existingLabel}>Ta note actuelle</Text>
+              <Text style={styles.existingLabel}>Votre note actuelle</Text>
               <RatingStars value={existing.rating} readonly size={20} />
               {existing.comment ? (
                 <Text style={styles.existingComment} numberOfLines={3}>« {existing.comment} »</Text>

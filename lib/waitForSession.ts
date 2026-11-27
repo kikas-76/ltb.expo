@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 
 /**
  * Attend qu'une session soit disponible. Sur natif, la session d'un lien
- * e-mail (confirmation, réinitialisation) est posée par le layout racine
+ * email (confirmation, réinitialisation) est posée par le layout racine
  * APRÈS le montage de l'écran d'arrivée : lire la session une seule fois au
  * montage donnait toujours « Session expirée ». On écoute donc les
  * événements d'auth pendant `timeoutMs` avant de conclure.

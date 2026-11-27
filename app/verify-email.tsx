@@ -52,7 +52,7 @@ export default function VerifyEmailScreen() {
   const handleResend = async () => {
     if (resending || cooldown > 0) return;
     if (!email) {
-      setResendError("Adresse email introuvable. Recommence l'inscription.");
+      setResendError("Adresse email introuvable. Recommencez l'inscription.");
       return;
     }
     setResending(true);
@@ -75,7 +75,7 @@ export default function VerifyEmailScreen() {
       setCooldown(RESEND_COOLDOWN);
       setTimeout(() => setResendSuccess(false), 5000);
     } else {
-      setResendError(frenchError(error, "L'envoi a échoué. Vérifie ton adresse email et réessaie."));
+      setResendError(frenchError(error, "L'envoi a échoué. Vérifiez votre adresse email et réessayez."));
     }
   };
 
@@ -100,7 +100,7 @@ export default function VerifyEmailScreen() {
         </Animated.View>
 
         <Animated.View style={[styles.textBlock, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <Text style={styles.title}>Vérifie ta boîte mail</Text>
+          <Text style={styles.title}>Vérifiez votre boîte mail</Text>
           <Text style={styles.subtitle}>
             Un lien de confirmation a été envoyé à
           </Text>
@@ -109,7 +109,7 @@ export default function VerifyEmailScreen() {
             <Text style={styles.emailChipText} numberOfLines={1}>{email}</Text>
           </View>
           <Text style={styles.instructions}>
-            Clique sur le lien dans l'email pour activer ton compte et continuer l'inscription. Vérifie également tes spams.
+            Cliquez sur le lien de l'email pour activer votre compte et continuer l'inscription. Pensez à vérifier vos spams.
           </Text>
         </Animated.View>
 
@@ -161,7 +161,7 @@ export default function VerifyEmailScreen() {
         <View style={styles.helpRow}>
           <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
           <Text style={styles.helpText}>
-            Une fois ton email confirmé, tu pourras compléter ton profil.
+            Une fois votre email confirmé, vous pourrez compléter votre profil.
           </Text>
         </View>
       </View>

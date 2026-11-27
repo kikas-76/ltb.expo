@@ -159,8 +159,8 @@ export default function HandoverQRScanner({
                     const msg = (e as { message?: string })?.message ?? '';
                     setCameraError(
                       msg.includes('permission') || msg.includes('NotAllowed')
-                        ? 'Permission caméra refusée. Saisis le code à 6 chiffres ci-dessous.'
-                        : 'Caméra indisponible. Saisis le code à 6 chiffres ci-dessous.',
+                        ? 'Permission caméra refusée. Saisissez le code à 6 chiffres ci-dessous.'
+                        : 'Caméra indisponible. Saisissez le code à 6 chiffres ci-dessous.',
                     );
                   }}
                   formats={['qr_code']}

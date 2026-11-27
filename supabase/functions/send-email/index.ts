@@ -52,12 +52,6 @@ function asNumber(value: unknown, fallback = "0"): string {
   return escapeHtml(dec ? `${grouped},${dec}` : grouped);
 }
 
-// Ligne « caution » d'une carte d'infos, seulement s'il y a une caution
-// (sinon les e-mails affichaient « Caution : 0 € »).
-function depositRow(d: Record<string, any>, label: string) {
-  return Number(d.deposit) > 0 ? [{ icon: "🔒", label, value: `${asNumber(d.deposit)} €` }] : [];
-}
-
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -83,105 +77,223 @@ function getAuthorized(req: Request, body: Record<string, any>): boolean {
   return isServiceRole || isInternal;
 }
 
+// ── Charte des emails ───────────────────────────────────────────────────
+// Couleurs de l'app (constants/colors.ts). Mise en page en tableaux et
+// styles en ligne : c'est ce que Gmail, Outlook et Apple Mail affichent tous.
+// En-tête vert foncé + logo blanc : lisible aussi quand la messagerie passe
+// en mode sombre (un logo noir sur fond clair y deviendrait invisible).
+const C = {
+  page: "#F5F2E3",
+  card: "#FFFFFF",
+  ink: "#2C2C2C",
+  body: "#4A4A45",
+  muted: "#8A877C",
+  hairline: "#ECE8DA",
+  panel: "#F8F6EE",
+  brand: "#4E6B38",
+  brandSoft: "#E8EEE0",
+};
+
+type Tone = "brand" | "success" | "info" | "warning" | "danger" | "neutral";
+
+const TONES: Record<Tone, { soft: string; strong: string }> = {
+  brand: { soft: "#E8EEE0", strong: "#4E6B38" },
+  success: { soft: "#E3F1DC", strong: "#3F6B2A" },
+  info: { soft: "#E8F0FB", strong: "#2F5E9E" },
+  warning: { soft: "#FCF1D6", strong: "#9A5B07" },
+  danger: { soft: "#FBE7E5", strong: "#A3372F" },
+  neutral: { soft: "#EFEDE6", strong: "#5F5C53" },
+};
+
+const FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const FONT_TITLE = "'Outfit', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const LOGO_URL = `${APP_URL}/email/logo-blanc.png`;
+
+// Typographie française : espace insécable avant ! ? : ; » € et après «.
+function nb(text: string): string {
+  return text.replace(/ ([!?:;»€])/g, " $1").replace(/« /g, "« ");
+}
+
 function baseLayout(content: string, preheader = ""): string {
   return `<!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
   <title>LoueTonBien</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { color-scheme: light only; supported-color-schemes: light only; }
+    body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; }
+    a { color: ${C.brand}; }
+    @media (max-width: 600px) {
+      .ltb-wrap { padding: 12px 10px 28px !important; }
+      .ltb-head { padding: 20px 22px !important; }
+      .ltb-card { padding: 28px 22px 26px !important; }
+      .ltb-title { font-size: 24px !important; }
+      .ltb-btn { width: 100% !important; }
+      .ltb-btn a { display: block !important; text-align: center !important; }
+    }
+  </style>
 </head>
-<body style="margin:0; padding:0; background-color:#F6F8FC; font-family:Arial, Helvetica, sans-serif;">
-  <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#F6F8FC;line-height:1px;">
-    ${escapeHtml(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+<body style="margin:0; padding:0; background-color:${C.page};">
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; font-size:1px; line-height:1px; color:${C.page};">
+    ${escapeHtml(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
   </div>
-
-  <div style="max-width:560px; margin:0 auto; padding:32px 20px;">
-    <div style="background-color:#ffffff; border-radius:18px; padding:36px 32px; box-shadow:0 6px 24px rgba(0,0,0,0.08);">
-      <div style="text-align:center; margin-bottom:28px;">
-        <div style="display:inline-block; background-color:#ccd5ae; color:#111; font-size:22px; font-weight:700; padding:12px 20px; border-radius:14px;">
-          LoueTonBien
-        </div>
-      </div>
-
-      ${content}
-
-      <div style="border-top:1px solid #E5E7EB; padding-top:20px; margin-top:28px;">
-        <p style="margin:0 0 6px; font-size:13px; line-height:1.6; color:#9CA3AF; text-align:center;">
-          Des questions ? Écris-nous à
-          <a href="mailto:${escapeHtml(SUPPORT)}" style="color:#ccd5ae; text-decoration:none; font-weight:600;">${escapeHtml(SUPPORT)}</a>
-        </p>
-        <p style="margin:0 0 6px; font-size:12px; color:#D1D5DB; text-align:center;">
-          LoueTonBien SAS · SIREN 988 872 081 · Grand-Couronne, France
-        </p>
-        <p style="margin:0; font-size:12px; color:#D1D5DB; text-align:center;">
-          <a href="${APP_URL}/legal" style="color:#9CA3AF; text-decoration:underline;">Mentions légales</a>
-        </p>
-      </div>
-    </div>
-  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.page};">
+    <tr>
+      <td align="center" class="ltb-wrap" style="padding:32px 16px 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+          <tr>
+            <td class="ltb-head" bgcolor="${C.brand}" style="background-color:${C.brand}; border-radius:20px 20px 0 0; padding:22px 32px;">
+              <a href="${APP_URL}" style="text-decoration:none;">
+                <img src="${LOGO_URL}" width="150" alt="LoueTonBien" style="display:block; width:150px; height:auto; border:0; outline:none; color:#FFFFFF; font-family:${FONT}; font-size:22px; font-weight:700;" />
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td class="ltb-card" bgcolor="${C.card}" style="background-color:${C.card}; border-radius:0 0 20px 20px; padding:34px 32px 30px;">
+              ${content}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 12px 0; text-align:center; font-family:${FONT};">
+              <p style="margin:0 0 8px; font-size:13px; line-height:1.6; color:${C.muted};">
+                ${nb("Une question ? Écrivez-nous à")} <a href="mailto:${escapeHtml(SUPPORT)}" style="color:${C.brand}; font-weight:700; text-decoration:none;">${escapeHtml(SUPPORT)}</a>
+              </p>
+              <p style="margin:0 0 14px; font-size:13px; line-height:1.6; color:${C.muted};">
+                <a href="${APP_URL}/help-center" style="color:${C.muted}; text-decoration:underline;">Centre d'aide</a>
+                &nbsp;·&nbsp;
+                <a href="${APP_URL}/legal" style="color:${C.muted}; text-decoration:underline;">Mentions légales</a>
+              </p>
+              <p style="margin:0 0 4px; font-size:12px; line-height:1.6; color:#A9A595;">LoueTonBien SAS · SIREN 988 872 081 · Grand-Couronne, France</p>
+              <p style="margin:0; font-size:12px; line-height:1.6; color:#A9A595;">Vous recevez cet email car vous avez un compte LoueTonBien.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 }
 
-function heading(text: string): string {
-  return `<h2 style="margin:0 0 18px 0; font-size:28px; line-height:1.2; color:#111827; text-align:center;">${text}</h2>`;
-}
-
-function paragraph(text: string): string {
-  return `<p style="margin:0 0 16px 0; font-size:16px; line-height:1.6; color:#374151; text-align:center;">${text}</p>`;
-}
-
-function smallText(text: string): string {
-  return `<p style="margin:0 0 14px 0; font-size:14px; line-height:1.6; color:#6B7280; text-align:center;">${text}</p>`;
-}
-
-function mutedText(text: string): string {
-  return `<p style="margin:0; font-size:13px; line-height:1.6; color:#9CA3AF; text-align:center;">${text}</p>`;
-}
-
-function ctaButton(label: string, url: string): string {
+// Étiquette de statut au-dessus du titre (« Paiement confirmé »…).
+function eyebrow(text: string, tone: Tone = "brand"): string {
+  const t = TONES[tone];
   return `
-    <div style="text-align:center; margin:28px 0 24px 0;">
-      <a href="${escapeHtml(url)}"
-         style="display:inline-block; background-color:#ccd5ae; color:#111; text-decoration:none; font-size:16px; font-weight:700; padding:15px 28px; border-radius:12px;">
-        ${escapeHtml(label)}
-      </a>
-    </div>`;
-}
-
-function infoRow(icon: string, label: string, value: string): string {
-  return `
-    <tr>
-      <td style="padding:10px 0; border-bottom:1px solid #F3F4F6;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td width="28" style="font-size:16px; vertical-align:middle;">${icon}</td>
-            <td style="font-size:14px; color:#6B7280; vertical-align:middle;">${label}</td>
-            <td align="right" style="font-size:14px; font-weight:600; color:#111827; vertical-align:middle;">${value}</td>
-          </tr>
-        </table>
-      </td>
-    </tr>`;
-}
-
-function infoCard(rows: { icon: string; label: string; value: string }[]): string {
-  return `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0"
-           style="background-color:#F9FAFB; border-radius:12px; padding:4px 16px; margin-bottom:20px;">
-      ${rows.map((r) => infoRow(r.icon, escapeHtml(r.label), escapeHtml(r.value))).join("")}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;">
+      <tr>
+        <td style="background-color:${t.soft}; border-radius:999px; padding:6px 12px; font-family:${FONT}; font-size:12px; line-height:16px; font-weight:700; letter-spacing:0.2px; color:${t.strong};">${nb(text)}</td>
+      </tr>
     </table>`;
 }
 
-function alertBox(text: string, borderColor = "#ccd5ae", bgColor = "#f0f4e8"): string {
-  return `
-    <div style="background-color:${escapeHtml(bgColor)}; border-left:4px solid ${escapeHtml(borderColor)}; border-radius:0 10px 10px 0; padding:14px 16px; margin-bottom:20px;">
-      <p style="margin:0; font-size:14px; color:#374151; line-height:1.6;">${text}</p>
-    </div>`;
+function heading(text: string): string {
+  return `<h1 class="ltb-title" style="margin:0 0 12px; font-family:${FONT_TITLE}; font-size:26px; line-height:1.25; font-weight:700; color:${C.ink};">${nb(text)}</h1>`;
 }
 
-// FIX: removed /(tabs)/ from URLs. Expo-router strips group segments on web
+function paragraph(text: string): string {
+  return `<p style="margin:0 0 16px; font-family:${FONT}; font-size:16px; line-height:1.65; color:${C.body};">${nb(text)}</p>`;
+}
+
+function smallText(text: string): string {
+  return `<p style="margin:0 0 14px; font-family:${FONT}; font-size:14px; line-height:1.6; color:${C.muted};">${nb(text)}</p>`;
+}
+
+function mutedText(text: string): string {
+  return `<p style="margin:18px 0 0; font-family:${FONT}; font-size:13px; line-height:1.6; color:${C.muted};">${nb(text)}</p>`;
+}
+
+// Bouton compatible avec toutes les messageries (cellule colorée + lien).
+function ctaButton(label: string, url: string, variant: "primary" | "secondary" = "primary"): string {
+  const primary = variant === "primary";
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="ltb-btn" style="margin:26px 0 6px;">
+      <tr>
+        <td align="center" bgcolor="${primary ? C.brand : C.card}" style="background-color:${primary ? C.brand : C.card}; border-radius:12px;${primary ? "" : ` border:1.5px solid ${C.brand};`}">
+          <a href="${escapeHtml(url)}" style="display:inline-block; padding:${primary ? "15px 28px" : "13px 26px"}; font-family:${FONT}; font-size:16px; line-height:20px; font-weight:700; color:${primary ? "#FFFFFF" : C.brand}; text-decoration:none; border-radius:12px;">${nb(escapeHtml(label))}</a>
+        </td>
+      </tr>
+    </table>`;
+}
+
+type InfoRow = { label: string; value: string; strong?: boolean };
+
+// Récapitulatif (objet, dates, montants). `strong` met une ligne en valeur.
+function infoCard(rows: InfoRow[]): string {
+  const cells = rows.map((r, i) => {
+    const border = i < rows.length - 1 ? `border-bottom:1px solid ${C.hairline};` : "";
+    return `
+        <tr>
+          <td style="padding:12px 0; ${border} font-family:${FONT}; font-size:14px; line-height:20px; color:${C.muted}; white-space:nowrap;">${nb(escapeHtml(r.label))}</td>
+          <td align="right" style="padding:12px 0 12px 16px; ${border} font-family:${FONT}; font-size:${r.strong ? "17px" : "15px"}; line-height:20px; font-weight:700; color:${r.strong ? C.brand : C.ink};">${nb(escapeHtml(r.value))}</td>
+        </tr>`;
+  }).join("");
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0; background-color:${C.panel}; border:1px solid ${C.hairline}; border-radius:14px;">
+      <tr>
+        <td style="padding:4px 18px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${cells}
+          </table>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function alertBox(text: string, tone: Tone = "brand"): string {
+  const t = TONES[tone];
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
+      <tr>
+        <td style="background-color:${t.soft}; border-left:4px solid ${t.strong}; border-radius:0 12px 12px 0; padding:14px 16px; font-family:${FONT}; font-size:14px; line-height:1.6; color:#3F3F3A;">${nb(text)}</td>
+      </tr>
+    </table>`;
+}
+
+// Citation d'un membre (message de demande, motif de refus, avis).
+function quoteBox(title: string, text: string): string {
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
+      <tr>
+        <td style="background-color:${C.card}; border:1px solid ${C.hairline}; border-radius:14px; padding:16px 18px; font-family:${FONT};">
+          <p style="margin:0 0 6px; font-size:12px; line-height:16px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase; color:${C.muted};">${nb(title)}</p>
+          <p style="margin:0; font-size:15px; line-height:1.6; font-style:italic; color:${C.ink};">${nb(`« ${text} »`)}</p>
+        </td>
+      </tr>
+    </table>`;
+}
+
+// Lien de secours sous un bouton (certaines messageries bloquent les boutons).
+function linkFallback(url: string): string {
+  return `
+    ${smallText("Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :")}
+    <p style="margin:0 0 8px; font-family:${FONT}; font-size:13px; line-height:1.6; word-break:break-all; color:${C.brand};">${escapeHtml(url)}</p>`;
+}
+
+function stars(rating: unknown): string {
+  const n = Math.max(1, Math.min(5, Math.round(Number(rating) || 1)));
+  return `<span style="color:#D99A00; font-size:22px; letter-spacing:2px;">${"★".repeat(n)}</span><span style="color:#E2DED0; font-size:22px; letter-spacing:2px;">${"★".repeat(5 - n)}</span>`;
+}
+
+// Ligne « caution » du récapitulatif, seulement s'il y a une caution.
+function depositRow(d: Record<string, any>, label: string): InfoRow[] {
+  return Number(d.deposit) > 0 ? [{ label, value: `${asNumber(d.deposit)} €` }] : [];
+}
+
+// Objet et texte d'aperçu : texte brut (pas d'échappement HTML, sinon une
+// annonce « L'aspirateur » arrivait en « L&#39;aspirateur »).
+function plain(value: unknown, fallback = ""): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim() || fallback;
+}
+
+function subjectLine(text: string): string {
+  return nb(text);
+}
+
 function reservationsUrl() {
   return `${APP_URL}/reservations`;
 }
@@ -202,355 +314,384 @@ type TemplateData = Record<string, any>;
 
 const templates: Record<string, (d: TemplateData) => { subject: string; html: string }> = {
   welcome: (d) => ({
-    subject: `Bienvenue sur LoueTonBien, ${asText(d.first_name, "nouvel utilisateur")} !`,
+    subject: subjectLine(`Bienvenue sur LoueTonBien, ${plain(d.first_name, "et bienvenue")} !`),
     html: baseLayout(`
-      ${heading(`Bienvenue, ${asText(d.first_name, "nouvel utilisateur")} !`)}
-      ${paragraph(`Ton compte est créé. Tu peux maintenant louer et proposer des objets près de chez toi.`)}
-      ${paragraph(`Avec LoueTonBien, tu rejoins une communauté qui croit en la consommation collaborative. Loue ce dont tu as besoin, propose ce qui prend la poussière.`)}
-      ${alertBox(`<strong>Pour commencer :</strong> complète ton profil et ajoute ta première annonce. Les loueurs avec photo de profil reçoivent 3× plus de demandes.`)}
-      ${ctaButton("Découvrir l'app →", `${APP_URL}/explore`)}
-    `, `Bienvenue dans la communauté LoueTonBien, ${asText(d.first_name, "nouvel utilisateur")} !`)
+      ${eyebrow("Bienvenue")}
+      ${heading(`Bienvenue, ${asText(d.first_name, "et merci")} !`)}
+      ${paragraph("Votre compte est créé. Vous pouvez maintenant louer et proposer des objets près de chez vous.")}
+      ${paragraph("Avec LoueTonBien, vous rejoignez des voisins qui partagent plutôt que d'acheter : louez ce dont vous avez besoin, proposez ce qui dort dans vos placards.")}
+      ${alertBox("<strong>Pour bien commencer :</strong> complétez votre profil et publiez votre première annonce. Une photo de profil inspire confiance aux autres membres.")}
+      ${ctaButton("Découvrir les annonces", APP_URL)}
+    `, nb(`Bienvenue sur LoueTonBien, ${plain(d.first_name, "et merci de nous rejoindre")} !`)),
   }),
 
-  email_verification: (d) => ({
-    subject: `Confirme ton adresse email · LoueTonBien`,
-    html: baseLayout(`
-      ${heading("Confirme ton inscription")}
-      ${paragraph(`Bienvenue sur <strong>LoueTonBien</strong>. Pour activer ton compte et commencer à louer ou proposer des objets, confirme ton adresse e-mail.`)}
-      ${ctaButton("Confirmer mon e-mail →", String(d.confirmation_url ?? `${APP_URL}/explore`))}
-      ${smallText("Si le bouton ne fonctionne pas, copie et colle ce lien :")}
-      <p style="margin:0 0 24px 0; font-size:13px; line-height:1.6; word-break:break-all; color:#ccd5ae; text-align:center;">
-        ${escapeHtml(String(d.confirmation_url ?? `${APP_URL}/explore`))}
-      </p>
-      ${mutedText("Si tu n'es pas à l'origine de cette inscription, ignore cet email.")}
-    `, "Confirme ton adresse pour activer ton compte LoueTonBien.")
-  }),
+  email_verification: (d) => {
+    const url = String(d.confirmation_url ?? APP_URL);
+    return {
+      subject: subjectLine("Confirmez votre adresse email · LoueTonBien"),
+      html: baseLayout(`
+        ${eyebrow("Inscription")}
+        ${heading("Confirmez votre adresse email")}
+        ${paragraph("Bienvenue sur <strong>LoueTonBien</strong>. Pour activer votre compte et commencer à louer ou proposer des objets, confirmez votre adresse email.")}
+        ${ctaButton("Confirmer mon adresse email", url)}
+        ${linkFallback(url)}
+        ${mutedText("Si vous n'êtes pas à l'origine de cette inscription, ignorez simplement cet email.")}
+      `, nb("Confirmez votre adresse pour activer votre compte LoueTonBien.")),
+    };
+  },
 
-  reset_password: (d) => ({
-    subject: `Réinitialise ton mot de passe · LoueTonBien`,
-    html: baseLayout(`
-      ${heading("Nouveau mot de passe")}
-      ${paragraph("Tu as demandé à réinitialiser ton mot de passe. Clique sur le bouton ci-dessous pour en choisir un nouveau.")}
-      ${ctaButton("Choisir un nouveau mot de passe →", String(d.reset_url ?? `${APP_URL}/explore`))}
-      ${smallText("Ce lien est valable <strong>1 heure</strong>.")}
-      ${alertBox(`<strong>Tu n'as pas fait cette demande ?</strong> Ton compte est peut-être compromis. Change ton mot de passe et contacte-nous à ${escapeHtml(SUPPORT)}.`, "#F59E0B", "#FEF3C7")}
-    `, "Réinitialise ton mot de passe LoueTonBien.")
-  }),
+  reset_password: (d) => {
+    const url = String(d.reset_url ?? APP_URL);
+    return {
+      subject: subjectLine("Réinitialisez votre mot de passe · LoueTonBien"),
+      html: baseLayout(`
+        ${eyebrow("Mot de passe")}
+        ${heading("Choisissez un nouveau mot de passe")}
+        ${paragraph("Vous avez demandé à réinitialiser votre mot de passe. Choisissez-en un nouveau avec le bouton ci-dessous.")}
+        ${ctaButton("Choisir un nouveau mot de passe", url)}
+        ${smallText("Ce lien est valable <strong>1 heure</strong>.")}
+        ${alertBox(`<strong>Vous n'êtes pas à l'origine de cette demande ?</strong> Ignorez cet email : votre mot de passe reste inchangé. En cas de doute, écrivez-nous à ${escapeHtml(SUPPORT)}.`, "warning")}
+      `, nb("Réinitialisez votre mot de passe LoueTonBien.")),
+    };
+  },
 
   booking_request_owner: (d) => ({
-    subject: `${asText(d.renter_name, "Un locataire")} veut louer "${asText(d.listing_name, "ton objet")}"`,
+    subject: subjectLine(`${plain(d.renter_name, "Un membre")} souhaite louer « ${plain(d.listing_name, "votre objet")} »`),
     html: baseLayout(`
-      ${heading("Nouvelle demande")}
-      ${paragraph(`<strong>${asText(d.renter_name, "Un locataire")}</strong> est intéressé par ton annonce.`)}
+      ${eyebrow("Nouvelle demande")}
+      ${heading(`${asText(d.renter_name, "Un membre")} souhaite louer votre objet`)}
+      ${paragraph("Vous avez reçu une demande de location. Acceptez-la ou refusez-la depuis la conversation.")}
       ${infoCard([
-        { icon: "📦", label: "Objet", value: asText(d.listing_name, "Objet") },
-        { icon: "📅", label: "Du", value: asText(d.start_date) },
-        { icon: "📅", label: "Au", value: asText(d.end_date) },
-        { icon: "⏱️", label: "Durée", value: `${asNumber(d.duration, "0")} jour${Number(d.duration) > 1 ? "s" : ""}` },
-        { icon: "💶", label: "Tu recevras", value: `${asNumber(d.owner_earnings)} €` },
+        { label: "Objet", value: plain(d.listing_name, "Objet") },
+        { label: "Du", value: plain(d.start_date) },
+        { label: "Au", value: plain(d.end_date) },
+        { label: "Durée", value: `${asNumber(d.duration, "1")} jour${Number(d.duration) > 1 ? "s" : ""}` },
+        { label: "Vous recevrez", value: `${asNumber(d.owner_earnings)} €`, strong: true },
         ...depositRow(d, "Caution"),
       ])}
-      ${d.renter_message ? `
-        <div style="background-color:#F9FAFB; border-radius:12px; padding:14px 16px; margin-bottom:20px;">
-          <p style="margin:0 0 4px; font-size:12px; color:#9CA3AF; text-transform:uppercase; letter-spacing:1px;">Message de ${asText(d.renter_name, "locataire")}</p>
-          <p style="margin:0; font-size:14px; color:#374151; line-height:1.6; font-style:italic;">"${asText(d.renter_message)}"</p>
-        </div>` : ""}
-      ${alertBox(`<strong>Tu as 48 h pour répondre.</strong> Passé ce délai, la demande expire automatiquement.`)}
-      ${ctaButton("Voir la demande →", conversationUrl(d))}
-    `, `${asText(d.renter_name, "Un locataire")} veut louer "${asText(d.listing_name, "ton objet")}", réponds vite !`)
+      ${d.renter_message ? quoteBox(`Message de ${asText(d.renter_name, "votre locataire")}`, asText(d.renter_message)) : ""}
+      ${alertBox("<strong>Vous avez 48 h pour répondre.</strong> Passé ce délai, la demande expire automatiquement.")}
+      ${ctaButton("Répondre à la demande", conversationUrl(d))}
+    `, nb(`${plain(d.renter_name, "Un membre")} souhaite louer « ${plain(d.listing_name, "votre objet")} ». Répondez sous 48 h.`)),
   }),
 
   booking_request_renter: (d) => ({
-    subject: `Ta demande pour "${asText(d.listing_name, "cet objet")}" a été envoyée`,
+    subject: subjectLine(`Votre demande pour « ${plain(d.listing_name, "cet objet")} » est envoyée`),
     html: baseLayout(`
-      ${heading("Demande envoyée !")}
-      ${paragraph(`${asText(d.owner_name, "Le propriétaire")} a reçu ta demande et a 48 h pour répondre.`)}
+      ${eyebrow("Demande envoyée")}
+      ${heading("Votre demande est partie")}
+      ${paragraph(`${asText(d.owner_name, "Le propriétaire")} a reçu votre demande et a 48 h pour vous répondre.`)}
       ${infoCard([
-        { icon: "📦", label: "Objet", value: asText(d.listing_name, "Objet") },
-        { icon: "📅", label: "Du", value: asText(d.start_date) },
-        { icon: "📅", label: "Au", value: asText(d.end_date) },
-        { icon: "💶", label: "Total estimé", value: `${asNumber(d.amount_to_pay ?? d.total_price)} €` },
+        { label: "Objet", value: plain(d.listing_name, "Objet") },
+        { label: "Du", value: plain(d.start_date) },
+        { label: "Au", value: plain(d.end_date) },
+        { label: "Total estimé", value: `${asNumber(d.amount_to_pay ?? d.total_price)} €`, strong: true },
         ...depositRow(d, "Caution prévue"),
       ])}
-      ${smallText("Aucun paiement n'a été effectué. Tu seras débité uniquement si la demande est acceptée.")}
-      ${ctaButton("Suivre ma demande →", conversationUrl(d))}
-    `, `Ta demande est partie ! ${asText(d.owner_name, "Le propriétaire")} va répondre sous 48 h.`)
+      ${smallText("Aucun paiement n'a été effectué. Vous ne serez débité qu'après l'accord du propriétaire, quand vous réglerez la location.")}
+      ${ctaButton("Suivre ma demande", conversationUrl(d))}
+    `, nb(`${plain(d.owner_name, "Le propriétaire")} va vous répondre sous 48 h.`)),
   }),
 
   booking_accepted_renter: (d) => ({
-    subject: `Demande acceptée · "${asText(d.listing_name, "ta réservation")}"`,
+    subject: subjectLine(`Demande acceptée · « ${plain(d.listing_name, "votre location")} »`),
     html: baseLayout(`
+      ${eyebrow("Demande acceptée", "success")}
       ${heading("C'est accepté !")}
-      ${paragraph(`<strong>${asText(d.owner_name, "Le propriétaire")}</strong> a accepté ta demande. Procède au paiement pour confirmer.`)}
+      ${paragraph(`<strong>${asText(d.owner_name, "Le propriétaire")}</strong> a accepté votre demande. Réglez la location pour la confirmer.`)}
       ${infoCard([
-        { icon: "📦", label: "Objet", value: asText(d.listing_name, "Objet") },
-        { icon: "📅", label: "Du", value: asText(d.start_date) },
-        { icon: "📅", label: "Au", value: asText(d.end_date) },
-        { icon: "💶", label: "À payer", value: `${asNumber(d.amount_to_pay ?? d.total_price)} €` },
+        { label: "Objet", value: plain(d.listing_name, "Objet") },
+        { label: "Du", value: plain(d.start_date) },
+        { label: "Au", value: plain(d.end_date) },
+        { label: "À payer", value: `${asNumber(d.amount_to_pay ?? d.total_price)} €`, strong: true },
         ...depositRow(d, "Caution (non débitée)"),
       ])}
-      ${alertBox(`<strong>Paiement requis sous 2h</strong> pour confirmer ta réservation.`)}
-      ${ctaButton("Payer maintenant →", d.booking_id ? paymentUrl(d) : conversationUrl(d))}
-    `, `${asText(d.owner_name, "Le propriétaire")} a accepté, confirme vite !`)
+      ${alertBox("Le paiement se fait dans l'app, depuis la conversation. Une fois lancé, vous avez <strong>2 heures</strong> pour le terminer.")}
+      ${ctaButton("Payer maintenant", d.booking_id ? paymentUrl(d) : conversationUrl(d))}
+    `, nb(`${plain(d.owner_name, "Le propriétaire")} a accepté votre demande : réglez la location pour la confirmer.`)),
   }),
 
   booking_rejected_renter: (d) => ({
-    subject: `Demande pour "${asText(d.listing_name, "cet objet")}" · Réponse reçue`,
+    subject: subjectLine(`Votre demande pour « ${plain(d.listing_name, "cet objet")} »`),
     html: baseLayout(`
-      ${heading("Ta demande n'a pas abouti")}
-      ${paragraph(`${asText(d.owner_name, "Le propriétaire")} n'est pas disponible pour cette période. Aucun paiement n'a été effectué.`)}
-      ${d.owner_reason ? alertBox(`Message de ${asText(d.owner_name, "Le propriétaire")} : <em>"${asText(d.owner_reason)}"</em>`, "#F59E0B", "#FEF3C7") : ""}
-      ${paragraph("Ne t'inquiète pas, il y a sûrement d'autres objets similaires près de chez toi !")}
-      ${ctaButton("Chercher un objet similaire →", `${APP_URL}/search`)}
-    `, "D'autres options t'attendent sur LoueTonBien.")
+      ${eyebrow("Demande non retenue", "neutral")}
+      ${heading("Votre demande n'a pas abouti")}
+      ${paragraph(`${asText(d.owner_name, "Le propriétaire")} n'est pas disponible à ces dates. Aucun paiement n'a été effectué.`)}
+      ${d.owner_reason ? quoteBox(`Message de ${asText(d.owner_name, "le propriétaire")}`, asText(d.owner_reason)) : ""}
+      ${paragraph("D'autres objets similaires sont sûrement disponibles près de chez vous.")}
+      ${ctaButton("Chercher un objet similaire", `${APP_URL}/search`)}
+    `, nb("D'autres objets vous attendent sur LoueTonBien.")),
   }),
 
   booking_paid_renter: (d) => ({
-    subject: `Paiement confirmé · "${asText(d.listing_name, "ta location")}"`,
+    subject: subjectLine(`Paiement confirmé · « ${plain(d.listing_name, "votre location")} »`),
     html: baseLayout(`
-      ${heading("Réservation confirmée !")}
-      ${paragraph("Ton paiement a bien été reçu. La location est active.")}
+      ${eyebrow("Paiement confirmé", "success")}
+      ${heading("Votre location est confirmée")}
+      ${paragraph("Votre paiement a bien été reçu. Convenez de la remise de l'objet avec le propriétaire dans la conversation.")}
       ${infoCard([
-        { icon: "📦", label: "Objet", value: asText(d.listing_name, "Objet") },
-        { icon: "👤", label: "Loueur", value: asText(d.owner_name, "Le propriétaire") },
-        { icon: "📅", label: "Du", value: asText(d.start_date) },
-        { icon: "📅", label: "Au", value: asText(d.end_date) },
-        { icon: "💳", label: "Payé", value: `${asNumber(d.amount_paid ?? d.total_price)} €` },
+        { label: "Objet", value: plain(d.listing_name, "Objet") },
+        { label: "Propriétaire", value: plain(d.owner_name, "Le propriétaire") },
+        { label: "Du", value: plain(d.start_date) },
+        { label: "Au", value: plain(d.end_date) },
+        { label: "Payé", value: `${asNumber(d.amount_paid ?? d.total_price)} €`, strong: true },
         ...depositRow(d, d.deposit_now ? "Caution bloquée" : "Caution prévue"),
       ])}
       ${Number(d.deposit) > 0
         ? alertBox(d.deposit_now
-          ? `La caution de <strong>${asNumber(d.deposit)} €</strong> est bloquée sur ta carte <strong>dès maintenant</strong> (location de moins de 2 jours), puis libérée après le retour en bon état.`
-          : `La caution de <strong>${asNumber(d.deposit)} €</strong> sera bloquée sur ta carte <strong>2 jours avant la fin</strong> de la location, puis libérée après le retour en bon état.`)
+          ? `La caution de <strong>${asNumber(d.deposit)} €</strong> est bloquée sur votre carte <strong>dès maintenant</strong> (location de moins de 2 jours). Elle sera libérée après le retour de l'objet en bon état.`
+          : `La caution de <strong>${asNumber(d.deposit)} €</strong> sera bloquée sur votre carte <strong>2 jours avant la fin</strong> de la location, puis libérée après le retour de l'objet en bon état.`)
         : ""}
-      ${ctaButton("Voir ma réservation →", conversationUrl(d))}
-    `, `Ta réservation est active · ${asText(d.listing_name, "ton objet")} t'attend !`)
+      ${ctaButton("Voir ma réservation", conversationUrl(d))}
+    `, nb(`Votre location de « ${plain(d.listing_name, "votre objet")} » est confirmée.`)),
   }),
 
   booking_paid_owner: (d) => ({
-    subject: `Réservation confirmée · "${asText(d.listing_name, "ta location")}"`,
+    subject: subjectLine(`Réservation confirmée · « ${plain(d.listing_name, "votre objet")} »`),
     html: baseLayout(`
-      ${heading("C'est parti !")}
-      ${paragraph(`<strong>${asText(d.renter_name, "Le locataire")}</strong> a finalisé sa réservation. Tout est confirmé.`)}
+      ${eyebrow("Réservation payée", "success")}
+      ${heading("Votre objet est réservé")}
+      ${paragraph(`<strong>${asText(d.renter_name, "Le locataire")}</strong> a payé la location. Convenez de la remise de l'objet dans la conversation.`)}
       ${infoCard([
-        { icon: "📦", label: "Objet", value: asText(d.listing_name, "Objet") },
-        { icon: "👤", label: "Locataire", value: asText(d.renter_name, "Le locataire") },
-        { icon: "📅", label: "Du", value: asText(d.start_date) },
-        { icon: "📅", label: "Au", value: asText(d.end_date) },
-        { icon: "💶", label: "Tu recevras", value: `${asNumber(d.owner_earnings)} €` },
+        { label: "Objet", value: plain(d.listing_name, "Objet") },
+        { label: "Locataire", value: plain(d.renter_name, "Le locataire") },
+        { label: "Du", value: plain(d.start_date) },
+        { label: "Au", value: plain(d.end_date) },
+        { label: "Vous recevrez", value: `${asNumber(d.owner_earnings)} €`, strong: true },
       ])}
-      ${alertBox(`Le virement sur ton compte sera effectué <strong>14 jours après le paiement</strong>.`)}
-      ${ctaButton("Gérer la réservation →", conversationUrl(d))}
-    `, `${asText(d.renter_name, "Le locataire")} a confirmé, tout est bon !`)
+      ${alertBox("Le virement sur votre compte bancaire est effectué <strong>14 jours après le paiement</strong>.")}
+      ${ctaButton("Voir la réservation", conversationUrl(d))}
+    `, nb(`${plain(d.renter_name, "Le locataire")} a payé la location de « ${plain(d.listing_name, "votre objet")} ».`)),
   }),
 
   return_reminder: (d) => ({
-    subject: `Rappel · Retour de "${asText(d.listing_name, "ta location")}" demain`,
+    subject: subjectLine(`Rappel · retour de « ${plain(d.listing_name, "votre location")} » demain`),
     html: baseLayout(`
-      ${heading("Retour demain !")}
-      ${paragraph(`Pense à rendre <strong>"${asText(d.listing_name, "cet objet")}"</strong> à ${asText(d.owner_name, "son propriétaire")} avant le ${asText(d.end_date)}.`)}
+      ${eyebrow("Rappel", "info")}
+      ${heading("Retour prévu demain")}
+      ${paragraph(`Pensez à rendre <strong>« ${asText(d.listing_name, "l'objet")} »</strong> à ${asText(d.owner_name, "son propriétaire")} avant le ${asText(d.end_date)}.`)}
       ${infoCard([
-        { icon: "📦", label: "Objet à rendre", value: asText(d.listing_name, "Objet") },
-        { icon: "👤", label: "À rendre à", value: asText(d.owner_name, "Le propriétaire") },
-        { icon: "📅", label: "Date limite", value: asText(d.end_date) },
+        { label: "Objet à rendre", value: plain(d.listing_name, "Objet") },
+        { label: "À rendre à", value: plain(d.owner_name, "Le propriétaire") },
+        { label: "Date limite", value: plain(d.end_date), strong: true },
         ...depositRow(d, "Caution bloquée"),
       ])}
-      ${paragraph(`Une fois l'objet rendu, clique sur "J'ai rendu l'objet" dans l'app pour libérer ta caution.`)}
-      ${ctaButton("Confirmer le retour →", conversationUrl(d))}
-    `, `N'oublie pas, "${asText(d.listing_name, "cet objet")}" doit être rendu demain !`)
+      ${paragraph("Une fois l'objet rendu, confirmez le retour dans l'app pour libérer votre caution.")}
+      ${ctaButton("Confirmer le retour", conversationUrl(d))}
+    `, nb(`N'oubliez pas : « ${plain(d.listing_name, "l'objet")} » est à rendre demain.`)),
   }),
 
   deposit_released: (d) => ({
-    subject: `Caution libérée · ${asNumber(d.deposit)} € de retour sur ta carte`,
+    subject: subjectLine(`Caution libérée · ${asNumber(d.deposit)} € de retour sur votre carte`),
     html: baseLayout(`
-      ${heading("Caution libérée !")}
-      ${paragraph(`Les <strong>${asNumber(d.deposit)} €</strong> bloqués pour "${asText(d.listing_name, "cette location")}" sont libérés.`)}
-      ${paragraph(`Le montant apparaîtra sur ton relevé bancaire sous <strong>5 à 10 jours ouvrés</strong> selon ta banque.`)}
-      ${alertBox("La location s'est terminée sans litige. Merci d'avoir pris soin de l'objet !")}
-      ${ctaButton("Retour à l'accueil →", `${APP_URL}/explore`)}
-    `, `Ta caution de ${asNumber(d.deposit)} € est libérée.`)
+      ${eyebrow("Caution libérée", "success")}
+      ${heading("Votre caution est libérée")}
+      ${paragraph(`Les <strong>${asNumber(d.deposit)} €</strong> bloqués pour « ${asText(d.listing_name, "cette location")} » sont libérés.`)}
+      ${paragraph("Le montant réapparaît sur votre compte sous <strong>5 à 10 jours ouvrés</strong>, selon votre banque.")}
+      ${alertBox("La location s'est terminée sans litige. Merci d'avoir pris soin de l'objet !", "success")}
+      ${ctaButton("Retour à l'accueil", APP_URL)}
+    `, nb(`Votre caution de ${asNumber(d.deposit)} € est libérée.`)),
   }),
 
   payout_sent: (d) => ({
-    subject: `Virement de ${asNumber(d.amount)} € en route`,
+    subject: subjectLine(`Virement de ${asNumber(d.amount)} € en route`),
     html: baseLayout(`
-      ${heading(`${asNumber(d.amount)} € en chemin !`)}
-      ${paragraph(`Ton virement pour la location de "${asText(d.listing_name, "ton objet")}" a été initié.`)}
+      ${eyebrow("Virement envoyé", "success")}
+      ${heading(`${asNumber(d.amount)} € en route vers votre compte`)}
+      ${paragraph(`Le virement pour la location de « ${asText(d.listing_name, "votre objet")} » a été lancé.`)}
       ${infoCard([
-        { icon: "📦", label: "Objet loué", value: asText(d.listing_name, "Objet") },
-        { icon: "👤", label: "Locataire", value: asText(d.renter_name, "Le locataire") },
-        { icon: "💶", label: "Montant viré", value: `${asNumber(d.amount)} €` },
-        { icon: "🏦", label: "Arrivée estimée", value: "14 jours après le paiement" },
+        { label: "Objet loué", value: plain(d.listing_name, "Objet") },
+        { label: "Locataire", value: plain(d.renter_name, "Le locataire") },
+        { label: "Montant viré", value: `${asNumber(d.amount)} €`, strong: true },
       ])}
-      ${ctaButton("Voir mon portefeuille →", `${APP_URL}/wallet`)}
-    `, `Ton virement de ${asNumber(d.amount)} € a été initié.`)
+      ${smallText("Le délai d'arrivée dépend de votre banque : en général quelques jours ouvrés.")}
+      ${ctaButton("Voir mon portefeuille", `${APP_URL}/wallet`)}
+    `, nb(`Votre virement de ${asNumber(d.amount)} € est en route.`)),
   }),
 
-  // Sent J+1 by the review-reminder cron when a participant of a
-  // completed booking hasn't left a review yet. Targets both the
-  // renter (rates the owner+listing) and the owner (rates the renter).
+  // Envoyé à J+1 par la tâche review-reminder aux participants d'une location
+  // terminée qui n'ont pas encore laissé d'avis (locataire et propriétaire).
   review_reminder: (d) => ({
-    subject: `Comment s'est passée ta location de "${asText(d.listing_name, "cet objet")}" ?`,
+    subject: subjectLine(`Comment s'est passée votre location de « ${plain(d.listing_name, "cet objet")} » ?`),
     html: baseLayout(`
-      ${heading("Donne ton avis")}
-      ${paragraph(`Ta location de <strong>"${asText(d.listing_name, "cet objet")}"</strong> est terminée. Ton avis aide la communauté à louer en confiance.`)}
-      ${alertBox(`<strong>2 minutes</strong> suffisent : 1 à 5 étoiles + un commentaire optionnel. Tu peux modifier ta note pendant 7 jours après publication.`)}
-      ${ctaButton("Donner mon avis →", `${APP_URL}/review/${asText(d.booking_id)}`)}
+      ${eyebrow("Votre avis compte")}
+      ${heading("Donnez votre avis")}
+      ${paragraph(`Votre location de <strong>« ${asText(d.listing_name, "cet objet")} »</strong> est terminée. Votre avis aide la communauté à louer en confiance.`)}
+      ${alertBox("<strong>2 minutes suffisent :</strong> une note de 1 à 5 étoiles et un commentaire si vous le souhaitez. Vous pourrez modifier votre avis pendant 7 jours.")}
+      ${ctaButton("Donner mon avis", `${APP_URL}/review/${encodeURIComponent(plain(d.booking_id))}`)}
       ${d.owner_is_pro && d.owner_id ? `
-        ${paragraph(`Tu as aimé ? <strong>@${asText(d.owner_username, "ce pro")}</strong> propose d'autres objets — il/elle a déjà ta confiance et tes coordonnées de paiement enregistrées.`)}
-        ${ctaButton(`Voir tous les objets de @${asText(d.owner_username, "ce pro")} →`, `${APP_URL}/owner/${asText(d.owner_id)}`)}
+        ${paragraph(`Envie de recommencer ? <strong>@${asText(d.owner_username, "ce professionnel")}</strong> propose d'autres objets à louer.`)}
+        ${ctaButton(`Voir les objets de @${plain(d.owner_username, "ce professionnel")}`, `${APP_URL}/owner/${encodeURIComponent(plain(d.owner_id))}`, "secondary")}
       ` : ""}
-    `, "Ta note aide la communauté LoueTonBien.")
+    `, nb("Votre avis aide la communauté LoueTonBien.")),
   }),
 
-  // Sent immediately when the booking transitions to `completed`
-  // (owner validation OR auto-validation cron). Targets both the
-  // renter and the owner with a short confirmation + soft CTA to rate.
+  // Envoyé dès que la location passe en « completed » (validation du
+  // propriétaire ou validation automatique), au locataire et au propriétaire.
   booking_completed: (d) => ({
-    subject: `Location finalisée · "${asText(d.listing_name, "ta location")}"`,
+    subject: subjectLine(`Location terminée · « ${plain(d.listing_name, "votre location")} »`),
     html: baseLayout(`
-      ${heading("Location finalisée")}
-      ${paragraph(`Ta location de <strong>"${asText(d.listing_name, "cet objet")}"</strong> est terminée et validée. ${d.deposit_released ? "La caution a été libérée." : ""}`)}
-      ${paragraph("Si tu as 2 minutes, partage ton expérience à l'autre partie — ça aide toute la communauté.")}
-      ${ctaButton("Donner mon avis →", `${APP_URL}/review/${asText(d.booking_id)}`)}
+      ${eyebrow("Location terminée", "success")}
+      ${heading("Location terminée")}
+      ${paragraph(`Votre location de <strong>« ${asText(d.listing_name, "cet objet")} »</strong> est terminée et validée.${d.deposit_released ? " La caution a été libérée." : ""}`)}
+      ${paragraph("Si vous avez 2 minutes, laissez un avis : cela aide toute la communauté.")}
+      ${ctaButton("Donner mon avis", `${APP_URL}/review/${encodeURIComponent(plain(d.booking_id))}`)}
       ${d.owner_is_pro && d.owner_id ? `
-        ${paragraph(`<strong>@${asText(d.owner_username, "ce pro")}</strong> a d'autres objets à louer. Profite de la confiance déjà établie pour ta prochaine location.`)}
-        ${ctaButton(`Voir tous les objets de @${asText(d.owner_username, "ce pro")} →`, `${APP_URL}/owner/${asText(d.owner_id)}`)}
+        ${paragraph(`<strong>@${asText(d.owner_username, "ce professionnel")}</strong> a d'autres objets à louer.`)}
+        ${ctaButton(`Voir les objets de @${plain(d.owner_username, "ce professionnel")}`, `${APP_URL}/owner/${encodeURIComponent(plain(d.owner_id))}`, "secondary")}
       ` : ""}
-    `, "Merci de faire vivre LoueTonBien.")
+    `, nb("Merci d'avoir utilisé LoueTonBien.")),
   }),
 
-  // Fired right after a participant submits a review. Targets the
-  // person being reviewed (reviewed_id), not the reviewer.
+  // Envoyé juste après la publication d'un avis, à la personne notée.
   review_received: (d) => ({
-    subject: `Tu as reçu une note ${"⭐".repeat(Math.max(1, Math.min(5, Number(d.rating) || 1)))}`,
+    subject: subjectLine(`Vous avez reçu un avis ${"★".repeat(Math.max(1, Math.min(5, Math.round(Number(d.rating) || 1))))}`),
     html: baseLayout(`
-      ${heading(`${asText(d.reviewer_name, "Quelqu'un")} t'a noté ${"⭐".repeat(Math.max(1, Math.min(5, Number(d.rating) || 1)))}`)}
-      ${paragraph(`Sur la location de <strong>"${asText(d.listing_name, "ton objet")}"</strong>.`)}
-      ${d.comment ? alertBox(`«&nbsp;${asText(d.comment)}&nbsp;»`) : ""}
-      ${paragraph("Cette note s'ajoute à ta moyenne publique. Tu peux la consulter sur ton profil.")}
-      ${ctaButton("Voir mon profil →", `${APP_URL}/owner/${asText(d.reviewed_id)}`)}
-    `, "Ta réputation grandit avec chaque location.")
+      ${eyebrow("Nouvel avis")}
+      ${heading(`${asText(d.reviewer_name, "Un membre")} vous a laissé un avis`)}
+      <p style="margin:0 0 10px;">${stars(d.rating)}</p>
+      ${paragraph(`Pour la location de <strong>« ${asText(d.listing_name, "votre objet")} »</strong>.`)}
+      ${d.comment ? quoteBox(`Avis de ${asText(d.reviewer_name, "ce membre")}`, asText(d.comment)) : ""}
+      ${paragraph("Cet avis s'ajoute à votre note moyenne, visible sur votre profil.")}
+      ${ctaButton("Voir mon profil", `${APP_URL}/owner/${encodeURIComponent(plain(d.reviewed_id))}`)}
+    `, nb("Votre réputation grandit avec chaque location.")),
   }),
 
   dispute_opened: (d) => ({
-    subject: `Litige ouvert · "${asText(d.listing_name, "ta location")}"`,
+    subject: subjectLine(`Litige ouvert · « ${plain(d.listing_name, "votre location")} »`),
     html: baseLayout(`
+      ${eyebrow("Litige", "warning")}
       ${heading("Un litige a été signalé")}
-      ${paragraph(`Un problème a été signalé concernant la location de <strong>"${asText(d.listing_name, "cet objet")}"</strong>.`)}
+      ${paragraph(`Un problème a été signalé sur la location de <strong>« ${asText(d.listing_name, "cet objet")} »</strong>.`)}
       ${infoCard([
-        { icon: "📦", label: "Objet concerné", value: asText(d.listing_name, "Objet") },
-        { icon: "📅", label: "Location", value: `${asText(d.start_date)} → ${asText(d.end_date)}` },
-        { icon: "🔒", label: "Caution gelée", value: `${asNumber(d.deposit)} €` },
+        { label: "Objet concerné", value: plain(d.listing_name, "Objet") },
+        { label: "Location", value: `${plain(d.start_date)} → ${plain(d.end_date)}` },
+        ...depositRow(d, "Caution gelée"),
       ])}
-      ${alertBox(`<strong>Prochaine étape :</strong> notre équipe va examiner les preuves soumises. Tu recevras une décision sous <strong>48 heures ouvrées</strong>. La caution reste gelée.`, "#F59E0B", "#FEF3C7")}
-      ${paragraph("Si tu as des éléments supplémentaires (photos, messages), ajoute-les dans l'app.")}
-      ${ctaButton("Voir le litige →", disputeUrl(d))}
-    `, "Notre équipe examine la situation. Décision sous 48h.")
+      ${alertBox("<strong>Prochaine étape :</strong> notre équipe examine les éléments transmis et vous répond sous <strong>48 heures ouvrées</strong>. La caution reste gelée d'ici là.", "warning")}
+      ${paragraph("Vous avez d'autres éléments (photos, messages) ? Ajoutez-les depuis l'app.")}
+      ${ctaButton("Voir le litige", disputeUrl(d))}
+    `, nb("Notre équipe examine la situation et vous répond sous 48 h ouvrées.")),
   }),
 
   dispute_resolved_renter_won: (d) => ({
-    subject: `Litige résolu · Caution remboursée`,
+    subject: subjectLine("Litige résolu · caution libérée"),
     html: baseLayout(`
-      ${heading("Litige résolu en ta faveur")}
-      ${paragraph(`Après examen, la caution de <strong>${asNumber(d.deposit)} €</strong> te sera intégralement remboursée.`)}
-      ${alertBox(`<strong>Décision :</strong> remboursement total de la caution de ${asNumber(d.deposit)} €. Le montant apparaîtra sur ta carte sous 5 à 10 jours ouvrés.`)}
-      ${paragraph(`Merci de ta patience. Si tu as des questions, contacte-nous à ${escapeHtml(SUPPORT)}.`)}
-      ${ctaButton("Retour à l'accueil →", `${APP_URL}/explore`)}
-    `, `Ta caution de ${asNumber(d.deposit)} € va être remboursée.`)
+      ${eyebrow("Litige résolu", "success")}
+      ${heading("Litige résolu en votre faveur")}
+      ${paragraph(`Après examen, la caution de <strong>${asNumber(d.deposit)} €</strong> vous est intégralement rendue.`)}
+      ${alertBox(`<strong>Décision :</strong> libération totale de la caution de ${asNumber(d.deposit)} €. Le montant réapparaît sur votre carte sous 5 à 10 jours ouvrés.`, "success")}
+      ${paragraph(`Merci de votre patience. Pour toute question, écrivez-nous à ${escapeHtml(SUPPORT)}.`)}
+      ${ctaButton("Retour à l'accueil", APP_URL)}
+    `, nb(`Votre caution de ${asNumber(d.deposit)} € vous est rendue.`)),
   }),
 
   dispute_resolved_owner_won: (d) => ({
-    subject: `Litige résolu · Dédommagement confirmé`,
+    subject: subjectLine("Litige résolu · dédommagement confirmé"),
     html: baseLayout(`
-      ${heading("Litige résolu en ta faveur")}
-      ${paragraph(`Après examen des preuves, la caution de <strong>${asNumber(d.deposit)} €</strong> va être capturée.`)}
-      ${alertBox(`<strong>Décision :</strong> capture de la caution de ${asNumber(d.deposit)} €. Le montant sera viré sur ton compte selon ton calendrier Stripe.`)}
+      ${eyebrow("Litige résolu", "success")}
+      ${heading("Litige résolu en votre faveur")}
+      ${paragraph(`Après examen des éléments, la caution de <strong>${asNumber(d.deposit)} €</strong> vous est attribuée.`)}
+      ${alertBox(`<strong>Décision :</strong> la caution de ${asNumber(d.deposit)} € est prélevée et vous sera versée selon votre calendrier de virements Stripe.`, "success")}
       ${paragraph("Nous sommes désolés que cette location se soit mal passée.")}
-      ${ctaButton("Voir mon portefeuille →", `${APP_URL}/wallet`)}
-    `, `La caution de ${asNumber(d.deposit)} € t'est versée.`)
+      ${ctaButton("Voir mon portefeuille", `${APP_URL}/wallet`)}
+    `, nb(`La caution de ${asNumber(d.deposit)} € vous est attribuée.`)),
   }),
 
   dispute_resolved_renter_lost: (d) => ({
-    subject: `Litige résolu · La caution est débitée`,
+    subject: subjectLine("Litige résolu · caution prélevée"),
     html: baseLayout(`
-      ${heading("Litige résolu")}
-      ${paragraph(`Après examen du dossier, la caution de <strong>${asNumber(d.deposit)} €</strong> liée à "${asText(d.listing_name, "cette location")}" sera débitée.`)}
-      ${alertBox(`<strong>Décision :</strong> la caution de ${asNumber(d.deposit)} € est attribuée au propriétaire en compensation.` , "#F59E0B", "#FEF3C7")}
-      ${paragraph(`Si tu souhaites des précisions, contacte-nous à ${escapeHtml(SUPPORT)}.`)}
-      ${ctaButton("Voir mes réservations →", reservationsUrl())}
-    `, "Le litige est terminé et la caution est débitée.")
+      ${eyebrow("Litige résolu", "warning")}
+      ${heading("Décision sur le litige")}
+      ${paragraph(`Après examen du dossier, la caution de <strong>${asNumber(d.deposit)} €</strong> liée à « ${asText(d.listing_name, "cette location")} » est prélevée.`)}
+      ${alertBox(`<strong>Décision :</strong> la caution de ${asNumber(d.deposit)} € est attribuée au propriétaire en dédommagement.`, "warning")}
+      ${paragraph(`Pour toute précision, écrivez-nous à ${escapeHtml(SUPPORT)}.`)}
+      ${ctaButton("Voir mes réservations", reservationsUrl())}
+    `, nb("Le litige est clos : la caution est prélevée.")),
   }),
 
   booking_cancelled_owner: (d) => ({
-    subject: `Annulation · "${asText(d.listing_name, "ton objet")}" est de nouveau disponible`,
+    subject: subjectLine(`Annulation · « ${plain(d.listing_name, "votre objet")} » est de nouveau disponible`),
     html: baseLayout(`
+      ${eyebrow("Réservation annulée", "warning")}
       ${heading("Réservation annulée")}
-      ${paragraph(`<strong>${asText(d.renter_name, "Le locataire")}</strong> a annulé sa réservation pour "${asText(d.listing_name, "ton objet")}".`)}
+      ${paragraph(`<strong>${asText(d.renter_name, "Le locataire")}</strong> a annulé sa réservation de « ${asText(d.listing_name, "votre objet")} ».`)}
       ${infoCard([
-        { icon: "📦", label: "Objet", value: asText(d.listing_name, "Objet") },
-        { icon: "📅", label: "Créneau annulé", value: `${asText(d.start_date)} → ${asText(d.end_date)}` },
+        { label: "Objet", value: plain(d.listing_name, "Objet") },
+        { label: "Dates libérées", value: `${plain(d.start_date)} → ${plain(d.end_date)}` },
       ])}
-      ${paragraph("Ton annonce est automatiquement remise en ligne pour ces dates.")}
-      ${ctaButton("Voir mes annonces →", `${APP_URL}/mes-annonces`)}
-    `, `${asText(d.renter_name, "Le locataire")} a annulé, ton objet est de nouveau disponible.`)
+      ${paragraph("Votre annonce est de nouveau disponible à ces dates.")}
+      ${ctaButton("Voir mes annonces", `${APP_URL}/mes-annonces`)}
+    `, nb(`${plain(d.renter_name, "Le locataire")} a annulé : votre objet est de nouveau disponible.`)),
   }),
 
-  stripe_account_activated: (d) => ({
-    subject: `Ton compte paiement est actif`,
+  stripe_account_activated: () => ({
+    subject: subjectLine("Votre compte de paiement est actif"),
     html: baseLayout(`
-      ${heading("Compte paiement activé !")}
-      ${paragraph("Tu peux maintenant recevoir des virements directement sur ton compte bancaire.")}
-      ${paragraph("Toutes les locations futures seront automatiquement virées sur ton compte 14 jours après le paiement du locataire.")}
-      ${alertBox(`<strong>Prochaine étape :</strong> publie ta première annonce et commence à gagner de l'argent !`)}
-      ${ctaButton("Créer une annonce →", `${APP_URL}/create-listing`)}
-    `, "Ton compte est prêt, les virements peuvent démarrer !")
+      ${eyebrow("Compte de paiement", "success")}
+      ${heading("Votre compte de paiement est actif")}
+      ${paragraph("Vous pouvez maintenant recevoir l'argent de vos locations directement sur votre compte bancaire.")}
+      ${paragraph("Chaque location vous est versée 14 jours après le paiement du locataire.")}
+      ${alertBox("<strong>Prochaine étape :</strong> publiez votre première annonce et commencez à louer vos objets.")}
+      ${ctaButton("Publier une annonce", `${APP_URL}/create-listing`)}
+    `, nb("Votre compte est prêt : vous pouvez recevoir vos premiers virements.")),
   }),
 
-  // Stripe re-disabled the account (KYC threshold, missing docs, deadline
-  // approaching). The wallet UI shows a banner; this email pushes a
-  // notification so the owner doesn't discover the issue when a renter
-  // tries to pay.
+  // Stripe a désactivé le compte (seuil KYC, justificatif manquant, échéance
+  // proche). Le portefeuille affiche un bandeau ; cet email prévient le
+  // propriétaire avant qu'un locataire ne bute sur un paiement impossible.
   stripe_account_action_required: (d) => {
     const deadlineRaw = typeof d.deadline === "string" ? d.deadline : null;
     const deadlineLabel = deadlineRaw
       ? new Date(deadlineRaw).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
       : null;
     return {
-      subject: `Action requise · Ton compte paiement Stripe`,
+      subject: subjectLine("Action requise · votre compte de paiement"),
       html: baseLayout(`
-        ${heading("Action requise sur ton compte paiement")}
-        ${paragraph(`Stripe demande des informations supplémentaires pour continuer à traiter tes paiements.`)}
-        ${alertBox(
-          `<strong>Sans action de ta part${deadlineLabel ? ` avant le ${deadlineLabel}` : ""}, ton compte sera désactivé</strong> et les locataires ne pourront plus te payer.`,
-          "#F59E0B",
-          "#FEF3C7",
-        )}
-        ${paragraph("Connecte-toi à ton portefeuille pour fournir les justificatifs demandés.")}
-        ${ctaButton("Régler maintenant →", `${APP_URL}/wallet`)}
-      `, `Stripe a besoin d'informations complémentaires${deadlineLabel ? ` avant le ${deadlineLabel}` : ""}.`),
+        ${eyebrow("Action requise", "danger")}
+        ${heading("Votre compte de paiement a besoin de vous")}
+        ${paragraph("Stripe, notre prestataire de paiement, demande des informations supplémentaires pour continuer à traiter vos paiements.")}
+        ${alertBox(`<strong>Sans action de votre part${deadlineLabel ? ` avant le ${deadlineLabel}` : ""}, votre compte sera désactivé</strong> et les locataires ne pourront plus vous payer.`, "danger")}
+        ${paragraph("Ouvrez votre portefeuille dans l'app pour fournir les justificatifs demandés.")}
+        ${ctaButton("Compléter mon compte", `${APP_URL}/wallet`)}
+      `, nb(`Stripe a besoin d'informations complémentaires${deadlineLabel ? ` avant le ${deadlineLabel}` : ""}.`)),
     };
   },
 
   deposit_hold_created: (d) => ({
-    subject: `Caution de ${asNumber(d.deposit)} € bloquée · retour de "${asText(d.listing_name, "ta location")}" bientôt`,
+    subject: subjectLine(`Caution de ${asNumber(d.deposit)} € bloquée · « ${plain(d.listing_name, "votre location")} »`),
     html: baseLayout(`
+      ${eyebrow("Caution", "info")}
       ${heading("Caution bloquée")}
-      ${paragraph(`La caution de <strong>${asNumber(d.deposit)} €</strong> pour "${asText(d.listing_name, "ta location")}" a été bloquée sur ta carte en prévision du retour.`)}
-      ${alertBox(`Ce montant est <strong>bloqué mais non débité</strong>. Il sera automatiquement libéré après le retour de l'objet en bon état.`)}
-      ${ctaButton("Voir ma réservation →", reservationsUrl())}
-    `, `Caution de ${asNumber(d.deposit)} € bloquée pour le retour.`)
+      ${paragraph(`La caution de <strong>${asNumber(d.deposit)} €</strong> pour « ${asText(d.listing_name, "votre location")} » a été bloquée sur votre carte en prévision du retour.`)}
+      ${alertBox("Ce montant est <strong>bloqué, pas débité</strong>. Il sera libéré automatiquement après le retour de l'objet en bon état.")}
+      ${ctaButton("Voir ma réservation", reservationsUrl())}
+    `, nb(`Caution de ${asNumber(d.deposit)} € bloquée en prévision du retour.`)),
   }),
 
-  deposit_hold_failed: (d) => ({
-    subject: `Action requise · Impossible de bloquer la caution de ${asNumber(d.deposit)} €`,
-    html: baseLayout(`
-      ${heading("Caution non bloquée")}
-      ${paragraph(`Nous n'avons pas pu bloquer la caution de <strong>${asNumber(d.deposit)} €</strong> pour "${asText(d.listing_name, "ta location")}".`)}
-      ${alertBox(`<strong>Raison possible :</strong> carte expirée, fonds insuffisants, ou moyen de paiement supprimé. Veuillez mettre à jour votre moyen de paiement.`, "#F59E0B", "#FEF3C7")}
-      ${ctaButton("Voir ma réservation →", reservationsUrl())}
-    `, `Action requise : la caution de ${asNumber(d.deposit)} € n'a pas pu être bloquée.`)
-  }),
+  // Envoyé au locataire ET au propriétaire (d.role) : seul le locataire a
+  // quelque chose à faire.
+  deposit_hold_failed: (d) => d.role === "owner"
+    ? {
+      subject: subjectLine(`Caution non bloquée · « ${plain(d.listing_name, "votre objet")} »`),
+      html: baseLayout(`
+        ${eyebrow("Caution non bloquée", "warning")}
+        ${heading("La caution n'a pas pu être bloquée")}
+        ${paragraph(`La caution de <strong>${asNumber(d.deposit)} €</strong> pour « ${asText(d.listing_name, "votre objet")} » n'a pas pu être bloquée sur la carte du locataire.`)}
+        ${alertBox("Le locataire a été prévenu et doit mettre à jour son moyen de paiement. Une nouvelle tentative a lieu automatiquement chaque jour. Vous n'avez rien à faire.", "warning")}
+        ${ctaButton("Voir la réservation", reservationsUrl())}
+      `, nb("La caution n'a pas pu être bloquée : le locataire a été prévenu.")),
+    }
+    : {
+      subject: subjectLine(`Action requise · caution de ${asNumber(d.deposit)} € non bloquée`),
+      html: baseLayout(`
+        ${eyebrow("Action requise", "danger")}
+        ${heading("La caution n'a pas pu être bloquée")}
+        ${paragraph(`Nous n'avons pas pu bloquer la caution de <strong>${asNumber(d.deposit)} €</strong> pour « ${asText(d.listing_name, "votre location")} ».`)}
+        ${alertBox("<strong>Causes possibles :</strong> carte expirée, plafond atteint ou moyen de paiement supprimé. Mettez à jour votre moyen de paiement pour que la location puisse se poursuivre.", "danger")}
+        ${ctaButton("Voir ma réservation", reservationsUrl())}
+      `, nb(`Action requise : la caution de ${asNumber(d.deposit)} € n'a pas pu être bloquée.`)),
+    },
 };
 
 serve(async (req: Request) => {

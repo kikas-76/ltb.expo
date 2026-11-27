@@ -97,7 +97,7 @@ export default function GuestGate({ variant }: { variant: Variant }) {
               router.push('/login');
             }}
           >
-            <Text style={styles.emailBtnText}>Se connecter avec un e-mail</Text>
+            <Text style={styles.emailBtnText}>Se connecter avec un email</Text>
           </TouchableOpacity>
         </View>
 

@@ -110,7 +110,7 @@ function PaymentStatusCard({
           <View style={styles.statusTextWrap}>
             <Text style={styles.statusTitle}>Compte bancaire connecté</Text>
             <Text style={styles.statusSubtitle}>
-              Ton compte Stripe est actif. Tu peux recevoir des paiements.
+              Votre compte Stripe est actif. Vous pouvez recevoir des paiements.
             </Text>
           </View>
         </View>
@@ -141,7 +141,7 @@ function PaymentStatusCard({
           <View style={styles.statusTextWrap}>
             <Text style={styles.statusTitle}>Vérification Stripe en cours</Text>
             <Text style={styles.statusSubtitle}>
-              Tes informations sont en cours de validation. Ça prend généralement quelques minutes, parfois jusqu'à 48h. Tu seras notifié dès l'activation.
+              Vos informations sont en cours de validation. Cela prend généralement quelques minutes, parfois jusqu'à 48 h. Vous serez prévenu dès l'activation.
             </Text>
           </View>
         </View>
@@ -169,9 +169,9 @@ function PaymentStatusCard({
             <Ionicons name="alert-circle-outline" size={20} color="#C0392B" />
           </View>
           <View style={styles.statusTextWrap}>
-            <Text style={styles.statusTitle}>Action requise sur ton compte</Text>
+            <Text style={styles.statusTitle}>Action requise sur votre compte</Text>
             <Text style={styles.statusSubtitle}>
-              Stripe demande des informations supplémentaires. Sans action de ta part, les paiements peuvent être suspendus. Mets à jour tes informations dès que possible.
+              Stripe demande des informations supplémentaires. Sans action de votre part, les paiements peuvent être suspendus. Mettez à jour vos informations dès que possible.
             </Text>
           </View>
         </View>
@@ -201,7 +201,7 @@ function PaymentStatusCard({
           <View style={styles.statusTextWrap}>
             <Text style={styles.statusTitle}>Onboarding incomplet</Text>
             <Text style={styles.statusSubtitle}>
-              Tu as commencé l'inscription Stripe mais le formulaire n'est pas encore soumis. Reprends là où tu t'es arrêté.
+              Vous avez commencé l'inscription Stripe, mais le formulaire n'est pas encore envoyé. Reprenez là où vous vous êtes arrêté.
             </Text>
           </View>
         </View>
@@ -229,9 +229,9 @@ function PaymentStatusCard({
           <Ionicons name="warning-outline" size={20} color="#D97706" />
         </View>
         <View style={styles.statusTextWrap}>
-          <Text style={styles.statusTitle}>Active tes paiements</Text>
+          <Text style={styles.statusTitle}>Activez vos paiements</Text>
           <Text style={styles.statusSubtitle}>
-            Connecte ton compte bancaire pour recevoir tes gains. Sécurisé par Stripe.
+            Reliez votre compte bancaire pour recevoir vos gains. Sécurisé par Stripe.
           </Text>
         </View>
       </View>
@@ -268,7 +268,7 @@ function NextTransferCard({
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Prochain virement</Text>
       {!accountComplete ? (
-        <Text style={styles.emptySubtext}>Active ton compte pour recevoir tes virements</Text>
+        <Text style={styles.emptySubtext}>Activez votre compte pour recevoir vos virements</Text>
       ) : loading ? (
         <ActivityIndicator color={Colors.primaryDark} style={{ marginTop: 12 }} />
       ) : (
@@ -364,7 +364,7 @@ function HistorySection({
             <Ionicons name="receipt-outline" size={36} color={Colors.textMuted} />
             <Text style={styles.emptyTitle}>Aucune transaction pour le moment</Text>
             <Text style={styles.emptySubtext}>
-              Tes revenus et paiements apparaîtront ici
+              Vos revenus et paiements apparaîtront ici
             </Text>
           </View>
         ) : (
@@ -380,7 +380,7 @@ function HistorySection({
 function InfoCard() {
   const items = [
     'La location est payée à la réservation',
-    'Tu reçois 92% du montant total (8% de commission)',
+    'Vous recevez 92 % du montant total (8 % de commission)',
     'Le locataire paie 7% de frais de service en plus du prix affiché',
   ];
 
@@ -405,7 +405,7 @@ export default function WalletScreen() {
     return (
       <PreviewUnavailable
         title="Portefeuille pas encore disponible"
-        description="La configuration du portefeuille et des virements Stripe s'ouvrira avec la marketplace. Tu pourras la faire au lancement, avant tes premières locations."
+        description="La configuration du portefeuille et des virements Stripe s'ouvrira avec la marketplace. Vous pourrez la faire au lancement, avant vos premières locations."
       />
     );
   }
@@ -683,7 +683,7 @@ function WalletScreenContent() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
-          Alert.alert('Erreur', 'Reconnecte-toi');
+          Alert.alert('Erreur', 'Session expirée. Reconnectez-vous.');
           router.push('/login');
           setActivateLoading(false);
           return;
@@ -703,7 +703,7 @@ function WalletScreenContent() {
         );
 
         const data = await response.json();
-        if (!data.url) throw new Error(frenchError(data.error, "Impossible d'ouvrir l'activation des paiements. Réessaie."));
+        if (!data.url) throw new Error(frenchError(data.error, "Impossible d'ouvrir l'activation des paiements. Réessayez."));
 
         const result = await WebBrowser.openAuthSessionAsync(data.url, 'louetonbien://wallet/success');
         if (result.type === 'success' || result.type === 'dismiss') {
@@ -711,7 +711,7 @@ function WalletScreenContent() {
           if (freshToken) await checkAccountStatus(freshToken);
         }
       } catch (err) {
-        Alert.alert('Erreur', frenchError(err, 'Une erreur est survenue. Réessaie.'));
+        Alert.alert('Erreur', frenchError(err, 'Une erreur est survenue. Réessayez.'));
       } finally {
         setActivateLoading(false);
       }

@@ -244,12 +244,12 @@ export default function ProStatsScreen() {
             <Text style={[styles.revenueBreakdownValue, { color: '#C0392B' }]}>−{Number(revenue.all_time_commission).toFixed(2)}€</Text>
           </View>
           <View style={[styles.revenueBreakdownRow, { borderTopWidth: 1, borderTopColor: Colors.borderLight, paddingTop: 8, marginTop: 4 }]}>
-            <Text style={[styles.revenueBreakdownLabel, { fontWeight: '700' }]}>Net dans ta poche</Text>
+            <Text style={[styles.revenueBreakdownLabel, { fontWeight: '700' }]}>Net pour vous</Text>
             <Text style={[styles.revenueBreakdownValue, { color: Colors.primaryDark, fontSize: 16 }]}>{Number(revenue.all_time_net).toFixed(2)}€</Text>
           </View>
 
           <Text style={styles.footerNote}>
-            Les locations comptent dès que le paiement est capturé (statut ≥ active). La commission plateforme est calculée par annonce selon ton pourcentage configuré.
+            Les locations comptent dès que le paiement est capturé (statut ≥ active). La commission plateforme est calculée par annonce selon votre pourcentage configuré.
           </Text>
         </View>
 
@@ -278,7 +278,7 @@ export default function ProStatsScreen() {
           <FunnelStep icon="paper-plane-outline"   label="Demandes reçues"   value={f.requests} sub={`${formatPct(f.requests, f.saves)} des sauvegardes`} />
           <FunnelStep icon="cash-outline"          label="Locations payées"  value={f.bookings} sub={`${formatPct(f.bookings, f.requests)} des demandes`} isLast />
           <Text style={styles.footerNote}>
-            Les vues/sauvegardes sont des compteurs all-time sur tes annonces ; les demandes/locations sont filtrées sur ce mois. Cherche les chutes brutales pour identifier où tu perds des clients.
+            Les vues/sauvegardes sont des compteurs all-time sur vos annonces ; les demandes et locations sont filtrées sur ce mois. Repérez les chutes brutales pour voir où vous perdez des clients.
           </Text>
         </View>
 
@@ -380,7 +380,7 @@ export default function ProStatsScreen() {
             </TouchableOpacity>
           )}
           <Text style={styles.footerNote}>
-            Les revenus arrivent sur ton compte bancaire après le délai standard de {stripe.payouts_delay_days} jours fixé par Stripe Connect.
+            Les revenus arrivent sur votre compte bancaire après le délai standard de {stripe.payouts_delay_days} jours fixé par Stripe Connect.
           </Text>
         </View>
 

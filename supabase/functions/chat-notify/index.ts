@@ -13,7 +13,7 @@ function formatDate(iso: string): string {
 
 // Montants d'une demande, calculés comme create_booking_for_payment (prix de
 // la location, quantité et remise comprises) et create-payment-intent (frais
-// et commission au centime). Sert aux e-mails de demande et d'acceptation :
+// et commission au centime). Sert aux emails de demande et d'acceptation :
 // la réservation n'existe qu'au moment où le locataire touche « Payer ».
 function requestAmounts(conv: any, listing: any) {
   const startMs = new Date(conv.start_date).getTime();
@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
 
       if (event === "booking_accepted") {
         // La réservation n'existe pas encore (elle naît au « Payer ») : avant,
-        // l'e-mail partait avec des dates vides et « À payer : 0 € ».
+        // l'email partait avec des dates vides et « À payer : 0 € ».
         const amounts = requestAmounts(conv, (conv as any).listing ?? {});
         await dispatchEmail(renterEmail, "booking_accepted_renter", {
           listing_name: listingName,
@@ -191,8 +191,8 @@ Deno.serve(async (req: Request) => {
         [(conv as any).requester_id],
         event === "booking_accepted" ? "Demande acceptée 🎉" : "Demande refusée",
         event === "booking_accepted"
-          ? `${ownerName} a accepté ta demande pour « ${listingName} »`
-          : `${ownerName} a refusé ta demande pour « ${listingName} »`,
+          ? `${ownerName} a accepté votre demande pour « ${listingName} »`
+          : `${ownerName} a refusé votre demande pour « ${listingName} »`,
         `/chat/${conversation_id}`
       );
 
@@ -340,7 +340,7 @@ Deno.serve(async (req: Request) => {
       await dispatchPush(
         [(bookingRow as any).renter_id],
         "Caution libérée",
-        `Ta caution pour « ${(bookingRow.listing as any)?.name ?? "ta location"} » a été libérée`,
+        `Votre caution pour « ${(bookingRow.listing as any)?.name ?? "votre location"} » a été libérée`,
         "/reservations"
       );
 
@@ -458,7 +458,7 @@ Deno.serve(async (req: Request) => {
 
       const ownerProfile = (bookingRow as any).owner ?? {};
       const baseData = {
-        listing_name: (bookingRow.listing as any)?.name ?? "ta location",
+        listing_name: (bookingRow.listing as any)?.name ?? "votre location",
         booking_id,
         deposit_released: !!(bookingRow as any).deposit_released_at,
       };
@@ -513,7 +513,7 @@ Deno.serve(async (req: Request) => {
 
       if (!reviewRow) {
         return new Response(
-          JSON.stringify({ error: "Avis introuvable ou tu n'es pas son auteur" }),
+          JSON.stringify({ error: "Avis introuvable ou vous n'en êtes pas l'auteur" }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -524,7 +524,7 @@ Deno.serve(async (req: Request) => {
           rating: (reviewRow as any).rating,
           comment: (reviewRow as any).comment,
           reviewer_name: (reviewRow.reviewer as any)?.username ?? "Un utilisateur",
-          listing_name: (reviewRow.listing as any)?.name ?? "ton objet",
+          listing_name: (reviewRow.listing as any)?.name ?? "votre objet",
           reviewed_id: (reviewRow as any).reviewed_id,
         });
       }
@@ -532,7 +532,7 @@ Deno.serve(async (req: Request) => {
       await dispatchPush(
         [(reviewRow as any).reviewed_id],
         "Nouvel avis reçu ⭐",
-        `${(reviewRow.reviewer as any)?.username ?? "Un utilisateur"} a laissé un avis (${(reviewRow as any).rating}★) sur « ${(reviewRow.listing as any)?.name ?? "ton objet"} »`,
+        `${(reviewRow.reviewer as any)?.username ?? "Un utilisateur"} a laissé un avis (${(reviewRow as any).rating}★) sur « ${(reviewRow.listing as any)?.name ?? "votre objet"} »`,
         `/owner/${(reviewRow as any).reviewed_id}`
       );
 

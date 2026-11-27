@@ -202,7 +202,7 @@ export default function LoginScreen() {
           <GoogleButton onPress={handleGoogleLogin} loading={googleLoading} />
 
           <Text style={styles.consent}>
-            En créant un compte avec Apple ou Google, vous confirmez avoir 18 ans et acceptez les{' '}
+            En créant un compte avec {Platform.OS === 'ios' ? 'Apple ou Google' : 'Google'}, vous confirmez avoir 18 ans et acceptez les{' '}
             <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Conditions d'utilisation</Text>
             {' '}et la{' '}
             <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Politique de confidentialité</Text>.

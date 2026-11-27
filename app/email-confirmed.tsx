@@ -108,8 +108,8 @@ export default function EmailConfirmedScreen() {
           <Text style={styles.title}>{restoreFailed ? 'Lien expiré' : 'Email vérifié !'}</Text>
           <Text style={styles.subtitle}>
             {restoreFailed
-              ? "Le lien a expiré ou a déjà été utilisé. Connecte-toi pour accéder à ton compte."
-              : 'Ton adresse email a bien été confirmée. Tu peux maintenant accéder à ton compte.'}
+              ? "Le lien a expiré ou a déjà été utilisé. Connectez-vous pour accéder à votre compte."
+              : 'Votre adresse email a bien été confirmée. Vous pouvez maintenant accéder à votre compte.'}
           </Text>
         </Animated.View>
 
@@ -142,7 +142,7 @@ export default function EmailConfirmedScreen() {
         <Animated.View style={[styles.helpRow, { opacity: fadeAnim }]}>
           <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
           <Text style={styles.helpText}>
-            Tu seras redirigé vers la complétion de ton profil si ce n'est pas encore fait.
+            Si votre profil n'est pas encore complet, vous serez invité à le compléter.
           </Text>
         </Animated.View>
       </View>

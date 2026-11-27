@@ -158,12 +158,13 @@ Deno.serve(async (req: Request) => {
       } catch (e) {
         console.error("Push deposit_hold_failed failed:", e);
       }
-      for (const to of [renterEmail, ownerEmail]) {
+      // Même email pour les deux, adapté au rôle : seul le locataire doit agir.
+      for (const [to, role] of [[renterEmail, "renter"], [ownerEmail, "owner"]] as const) {
         if (!to) continue;
         try {
           await supabase.functions.invoke("send-email", {
             headers,
-            body: { to, template: "deposit_hold_failed", data },
+            body: { to, template: "deposit_hold_failed", data: { ...data, role } },
           });
         } catch (e) {
           console.error("Email failed:", e);

@@ -76,7 +76,7 @@ function FallbackUI({ error, onRetry, onHome }: FallbackUIProps) {
 
         <Text style={styles.title}>Une erreur est survenue</Text>
         <Text style={styles.description}>
-          Quelque chose s&apos;est mal passé. Tu peux réessayer ou revenir à l&apos;accueil.
+          Quelque chose s&apos;est mal passé. Vous pouvez réessayer ou revenir à l&apos;accueil.
         </Text>
 
         {__DEV__ && error ? (

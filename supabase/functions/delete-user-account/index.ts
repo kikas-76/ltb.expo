@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
 
     if (activeBookings && activeBookings.length > 0) {
       return jsonResponse(corsHeaders, {
-        error: "Tu as une location en cours. Termine ou annule la location avant de supprimer ton compte.",
+        error: "Vous avez une location en cours. Terminez ou annulez la location avant de supprimer votre compte.",
         blocking_booking_id: activeBookings[0].id,
         status: activeBookings[0].status,
       }, 400);
@@ -159,7 +159,7 @@ Deno.serve(async (req: Request) => {
 
     if (anonError) {
       console.error(`Profile anonymization failed for ${userId}:`, anonError.message);
-      return jsonResponse(corsHeaders, { error: "Anonymisation du profil échouée. Contacte le support." }, 500);
+      return jsonResponse(corsHeaders, { error: "La suppression du profil a échoué. Contactez le support." }, 500);
     }
 
     // ── 9b. Sign in with Apple : révocation du jeton (exigence App Store) ──

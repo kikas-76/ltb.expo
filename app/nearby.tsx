@@ -172,7 +172,7 @@ export default function NearbyPage() {
           </View>
           <Text style={styles.noLocationTitle}>Localisation manquante</Text>
           <Text style={styles.noLocationSubtitle}>
-            Ajoute ton adresse pour voir les objets autour de toi
+            Ajoutez votre adresse pour voir les objets autour de vous
           </Text>
           <TouchableOpacity
             style={styles.addAddressBtn}

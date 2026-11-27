@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
     }
     if (booking.renter_id !== user.id) {
       return new Response(
-        JSON.stringify({ error: "Tu n'es pas le locataire de cette réservation" }),
+        JSON.stringify({ error: "Vous n'êtes pas le locataire de cette réservation" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -132,7 +132,7 @@ Deno.serve(async (req: Request) => {
     }
     if (pm.customer !== renter.stripe_customer_id) {
       return new Response(
-        JSON.stringify({ error: "Cette carte n'appartient pas à ton compte" }),
+        JSON.stringify({ error: "Cette carte n'appartient pas à votre compte" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

@@ -434,9 +434,9 @@ function MesAnnoncesScreen() {
               <Ionicons name="sparkles-outline" size={16} color={Colors.primaryDark} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.prelaunchBannerTitle}>Tu es en avant-première</Text>
+              <Text style={styles.prelaunchBannerTitle}>Vous êtes en avant-première</Text>
               <Text style={styles.prelaunchBannerText}>
-                La marketplace ouvre au public très bientôt. Tes annonces seront visibles dès l'ouverture. Plus tu en déposes maintenant, plus tu es visible au lancement.
+                La marketplace ouvre au public très bientôt. Vos annonces seront visibles dès l'ouverture. Plus vous en déposez maintenant, plus vous serez visible au lancement.
               </Text>
             </View>
           </View>

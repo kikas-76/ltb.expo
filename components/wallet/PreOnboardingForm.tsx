@@ -38,19 +38,19 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
 
   const handleSubmit = async () => {
     if (!displayName.trim()) {
-      setError('Indique ton prénom et nom légal.');
+      setError('Indiquez vos prénom et nom légaux.');
       return;
     }
     if (!phone.trim()) {
-      setError('Indique ton numéro de téléphone.');
+      setError('Indiquez votre numéro de téléphone.');
       return;
     }
     if (!city.trim()) {
-      setError('Indique ta ville.');
+      setError('Indiquez votre ville.');
       return;
     }
     if (isPro && !businessName.trim()) {
-      setError('Indique le nom de ton entreprise.');
+      setError('Indiquez le nom de votre entreprise.');
       return;
     }
 
@@ -93,7 +93,7 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
     setSaving(false);
 
     if (updateError) {
-      setError('Impossible de sauvegarder. Réessaie.');
+      setError('Impossible de sauvegarder. Réessayez.');
       return;
     }
 
@@ -109,7 +109,7 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
         <Text style={styles.title}>Quelques infos rapides</Text>
       </View>
       <Text style={styles.subtitle}>
-        Ces informations permettent à Stripe de préremplir ton dossier. Tu gagneras du temps dans les étapes suivantes.
+        Ces informations permettent à Stripe de préremplir votre dossier. Vous gagnerez du temps dans les étapes suivantes.
       </Text>
 
       {initialData.username ? (
@@ -131,7 +131,7 @@ export function PreOnboardingForm({ initialData, userId, onComplete }: Props) {
             autoCorrect={false}
           />
           <Text style={styles.helperText}>
-            Utilisé uniquement pour la vérification Stripe. Ton pseudo @{initialData.username ?? '...'} reste affiché publiquement.
+            Utilisé uniquement pour la vérification Stripe. Votre pseudo @{initialData.username ?? '...'} reste affiché publiquement.
           </Text>
         </View>
 

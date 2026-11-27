@@ -166,7 +166,7 @@ export default function OnboardingProfileScreen() {
       .maybeSingle();
 
     if (existingUser) {
-      setError("Ce nom d'utilisateur est déjà pris. Choisis-en un autre.");
+      setError("Ce nom d'utilisateur est déjà pris. Choisissez-en un autre.");
       return;
     }
 
@@ -225,7 +225,7 @@ export default function OnboardingProfileScreen() {
         </View>
 
         <View style={styles.body}>
-          <Text style={styles.title}>Complète ton profil</Text>
+          <Text style={styles.title}>Complétez votre profil</Text>
           <Text style={styles.subtitle}>
             Un dernier détail avant de louer ou prêter en toute confiance
           </Text>

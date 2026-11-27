@@ -267,7 +267,7 @@ function RootNavigator() {
     if (!profile?.onboarding_completed && !isOnboardingRoute) {
       // Lien /publier : l'inscription se termine sur /publier/terminer (pseudo,
       // puis publication de l'annonce préparée), y compris quand le lien de
-      // confirmation de l'e-mail s'ouvre dans un autre navigateur.
+      // confirmation de l'email s'ouvre dans un autre navigateur.
       if (seg === 'publier') return;
       if (resolveDraftToken(session.user?.user_metadata)) {
         router.replace('/publier/terminer' as any);

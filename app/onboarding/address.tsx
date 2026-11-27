@@ -255,11 +255,11 @@ export default function OnboardingAddressScreen() {
 
         <View style={styles.body}>
           <Text style={styles.title}>
-            {isPro ? "Adresse de ton commerce" : "Définis ton adresse principale"}
+            {isPro ? "Adresse de votre commerce" : "Définissez votre adresse principale"}
           </Text>
           <Text style={styles.subtitle}>
             {isPro
-              ? "L'adresse de ton établissement sera affichée sur ton profil professionnel"
+              ? "L'adresse de votre établissement sera affichée sur votre profil professionnel"
               : "Cette adresse facilitera les échanges d'objets avec les autres utilisateurs"}
           </Text>
 

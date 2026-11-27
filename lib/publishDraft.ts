@@ -6,7 +6,7 @@
 // - Sur le serveur (fonction listing-draft) : au moment de « Publier », le
 //   brouillon et ses photos, retrouvés par un jeton secret. Le jeton est gardé
 //   ici et dans user_metadata.publish_draft : le lien de confirmation de
-//   l'e-mail peut s'ouvrir dans un autre navigateur (appli Gmail…), qui n'a
+//   l'email peut s'ouvrir dans un autre navigateur (appli Gmail…), qui n'a
 //   pas ce brouillon local.
 
 import { Platform } from 'react-native';
@@ -56,7 +56,7 @@ export function clearDraftToken() {
   ls()?.removeItem(TOKEN_KEY);
 }
 
-/** Jeton à reprendre après connexion : cet appareil, sinon le compte (lien d'e-mail). */
+/** Jeton à reprendre après connexion : cet appareil, sinon le compte (lien d'email). */
 export function resolveDraftToken(userMetadata?: Record<string, any> | null): string | null {
   const meta = userMetadata?.publish_draft;
   return getDraftToken() ?? (typeof meta === 'string' && meta ? meta : null);

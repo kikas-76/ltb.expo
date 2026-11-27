@@ -547,8 +547,8 @@ export default function ListingDetailScreen() {
     try {
       const title = listing?.name ?? 'LoueTonBien';
       const text = listing?.name
-        ? `Découvre "${listing.name}" sur LoueTonBien !`
-        : 'Découvre cette annonce sur LoueTonBien !';
+        ? `Découvrez "${listing.name}" sur LoueTonBien !`
+        : 'Découvrez cette annonce sur LoueTonBien !';
 
       if (Platform.OS === 'web') {
         const webUrl = typeof window !== 'undefined' ? window.location.href : `https://app.louetonbien.fr/listing/${id}`;
@@ -968,7 +968,7 @@ export default function ListingDetailScreen() {
                         <View style={styles.alreadyRentedPill}>
                           <Ionicons name="checkmark-circle" size={11} color="#065F46" />
                           <Text style={styles.alreadyRentedText}>
-                            Tu as déjà loué ici{priorBookingsCount > 1 ? ` · ${priorBookingsCount} fois` : ''}
+                            Vous avez déjà loué ici{priorBookingsCount > 1 ? ` · ${priorBookingsCount} fois` : ''}
                           </Text>
                         </View>
                       )}
@@ -1719,7 +1719,7 @@ export default function ListingDetailScreen() {
                     <View style={styles.alreadyRentedPill}>
                       <Ionicons name="checkmark-circle" size={11} color="#065F46" />
                       <Text style={styles.alreadyRentedText}>
-                        Tu as déjà loué ici{priorBookingsCount > 1 ? ` · ${priorBookingsCount} fois` : ''}
+                        Vous avez déjà loué ici{priorBookingsCount > 1 ? ` · ${priorBookingsCount} fois` : ''}
                       </Text>
                     </View>
                   )}

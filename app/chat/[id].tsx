@@ -771,7 +771,7 @@ export default function ChatScreen() {
       .eq('id', id);
 
     if (updateError) {
-      setStatusError("Impossible d'annuler ta demande. Réessaie.");
+      setStatusError("Impossible d'annuler votre demande. Réessayez.");
       setStatusUpdating(false);
       return;
     }
@@ -1345,7 +1345,7 @@ export default function ChatScreen() {
             <View style={styles.reviewBannerLeft}>
               {myReview ? (
                 <>
-                  <Text style={styles.reviewBannerTitle}>Ta note</Text>
+                  <Text style={styles.reviewBannerTitle}>Votre note</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <RatingStars value={myReview.rating} readonly size={16} />
                     <Text style={styles.reviewBannerSub}>
@@ -1355,9 +1355,9 @@ export default function ChatScreen() {
                 </>
               ) : (
                 <>
-                  <Text style={styles.reviewBannerTitle}>Note ta location</Text>
+                  <Text style={styles.reviewBannerTitle}>Notez votre location</Text>
                   <Text style={styles.reviewBannerSub}>
-                    Aide la communauté en partageant ton expérience.
+                    Aidez la communauté en partageant votre expérience.
                   </Text>
                 </>
               )}
@@ -1407,7 +1407,7 @@ export default function ChatScreen() {
           <Text style={styles.handoverSub}>
             {meta.isOwner
               ? 'Affiche le QR à scanner par le locataire pour démarrer la location.'
-              : 'Scanne le QR affiché par le loueur pour récupérer l\'objet.'}
+              : 'Scannez le QR code affiché par le loueur pour récupérer l\'objet.'}
           </Text>
           <TouchableOpacity
             style={styles.confirmBtn}
@@ -1434,7 +1434,7 @@ export default function ChatScreen() {
           </View>
           <Text style={styles.handoverSub}>
             {meta.isOwner
-              ? 'Scanne le QR affiché par le locataire pour confirmer la restitution.'
+              ? 'Scannez le QR code affiché par le locataire pour confirmer la restitution.'
               : 'Affiche le QR à scanner par le loueur pour confirmer la restitution.'}
           </Text>
           <TouchableOpacity
@@ -1516,7 +1516,7 @@ export default function ChatScreen() {
           >
             <View style={styles.payBannerGreenLeft}>
               <Text style={styles.payBannerGreenTitle}>
-                Demande acceptée · Finalise ta réservation
+                Demande acceptée · Finalisez votre réservation
               </Text>
               <Text style={styles.payBannerGreenSub}>
                 Paiement requis sous 2h, sinon la réservation est annulée

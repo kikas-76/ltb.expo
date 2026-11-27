@@ -137,7 +137,7 @@ function CheckoutForm({
       if (!finalizeRes.ok || finalizeJson.success !== true) {
         throw new Error(
           finalizeJson.error ??
-            "Le paiement a été traité mais la réservation n'a pas pu être finalisée. Contacte le support.",
+            "Le paiement a été traité mais la réservation n'a pas pu être finalisée. Contactez le support.",
         );
       }
 
@@ -348,7 +348,7 @@ export default function PaymentScreen() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
-          throw new Error('Session expirée. Reconnecte-toi pour payer.');
+          throw new Error('Session expirée. Reconnectez-vous pour payer.');
         }
         const response = await fetch(
           `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-intent`,
@@ -515,7 +515,7 @@ export default function PaymentScreen() {
                   <Text style={styles.stripeAccountErrorTitle}>Paiement impossible</Text>
                 </View>
                 <Text style={styles.stripeAccountErrorBody}>
-                  Le loueur n'a pas encore activé son compte de paiement. Contacte-le via la messagerie pour qu'il configure son compte Stripe.
+                  Le loueur n'a pas encore activé son compte de paiement. Contactez-le via la messagerie pour qu'il configure son compte Stripe.
                 </Text>
                 <TouchableOpacity
                   style={styles.stripeAccountErrorBtn}
@@ -541,7 +541,7 @@ export default function PaymentScreen() {
                   <Text style={styles.oneClickTitle}>Paiement en 1 clic</Text>
                 </View>
                 <Text style={styles.oneClickSub}>
-                  Tu as déjà payé chez nous — utilise ta carte enregistrée.
+                  Vous avez déjà payé chez nous : utilisez votre carte enregistrée.
                 </Text>
                 <View style={styles.oneClickCardRow}>
                   <View style={styles.oneClickBrandPill}>
@@ -586,13 +586,13 @@ export default function PaymentScreen() {
                       const result = await res.json();
                       if (!res.ok || result.error) {
                         // Fall back to full form for any issue (3DS, decline, etc.)
-                        setOneClickError(result.error ? translatePaymentError(result.error) : 'La carte enregistrée n\'a pas pu être utilisée. Saisis une autre carte.');
+                        setOneClickError(result.error ? translatePaymentError(result.error) : 'La carte enregistrée n\'a pas pu être utilisée. Saisissez une autre carte.');
                         setForceFullForm(true);
                         return;
                       }
                       if (result.requires_action) {
                         // Defer to Elements which handles 3DS natively.
-                        setOneClickError('Une vérification 3D Secure est nécessaire — confirme via le formulaire ci-dessous.');
+                        setOneClickError('Une vérification 3D Secure est nécessaire : confirmez via le formulaire ci-dessous.');
                         setForceFullForm(true);
                         return;
                       }

@@ -78,7 +78,7 @@ export default function PublierScreen() {
           return;
         }
         if (status !== 'error') clearDraftToken();
-        // Publiée depuis un autre navigateur (lien de l'e-mail) : rien à reprendre.
+        // Publiée depuis un autre navigateur (lien de l'email) : rien à reprendre.
         if (status && status !== 'error' && status.status === 'published') {
           await clearLocalDraft();
           if (cancelled) return;

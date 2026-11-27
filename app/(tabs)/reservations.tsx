@@ -163,7 +163,7 @@ function getConvSubtext(displayStatus: ConvDisplayStatus, isRequester: boolean):
       return null;
     case 'accepted':
       return isRequester
-        ? 'Finalise ta réservation en payant'
+        ? 'Finalisez votre réservation en payant'
         : 'En attente du paiement du locataire';
     case 'pending_payment':
       return isRequester
@@ -171,14 +171,14 @@ function getConvSubtext(displayStatus: ConvDisplayStatus, isRequester: boolean):
         : 'En attente du paiement du locataire';
     case 'active':
       return isRequester
-        ? 'Confirme la remise sur place avec le loueur'
-        : 'Confirme la remise sur place avec le locataire';
+        ? 'Confirmez la remise sur place avec le loueur'
+        : 'Confirmez la remise sur place avec le locataire';
     case 'in_progress':
       return 'Location en cours';
     case 'pending_return':
       return isRequester
-        ? 'Confirme le retour sur place avec le loueur'
-        : 'Confirme le retour sur place avec le locataire';
+        ? 'Confirmez le retour sur place avec le loueur'
+        : 'Confirmez le retour sur place avec le locataire';
     case 'pending_owner_validation':
       return isRequester
         ? 'En attente de la validation du propriétaire'
@@ -476,8 +476,8 @@ function MessagesScreen() {
         const raw = cancelError.message ?? '';
         setDeleteError(
           raw.toLowerCase().includes('permission')
-            ? "Tu n'as pas le droit d'annuler cette demande."
-            : 'Annulation impossible. Réessaie dans un instant.',
+            ? "Vous n'avez pas le droit d'annuler cette demande."
+            : 'Annulation impossible. Réessayez dans un instant.',
         );
         setDeleteLoading(false);
         return;
@@ -505,8 +505,8 @@ function MessagesScreen() {
       const friendly = raw.includes('encore active') || raw.includes('Réservation associée')
         ? raw
         : raw.toLowerCase().includes('permission')
-          ? "Tu n'as pas le droit de supprimer cette conversation."
-          : 'Suppression impossible. Réessaie dans un instant.';
+          ? "Vous n'avez pas le droit de supprimer cette conversation."
+          : 'Suppression impossible. Réessayez dans un instant.';
       setDeleteError(friendly);
       setDeleteLoading(false);
       return;
@@ -850,7 +850,7 @@ function MessagesScreen() {
           </Text>
           <Text style={styles.modalDesc}>
             {isCancelMode
-              ? 'Le loueur ne verra plus ta demande. Tu pourras refaire une demande plus tard si besoin.'
+              ? 'Le loueur ne verra plus votre demande. Vous pourrez en refaire une plus tard si besoin.'
               : 'Cette action supprimera définitivement la conversation et tous ses messages. Cette action est irréversible.'}
           </Text>
           {deleteError && (

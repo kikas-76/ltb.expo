@@ -42,7 +42,7 @@ function confirmRedirectUrl(): string {
 /**
  * Dernière étape du lien /publier : créer le compte qui publiera l'annonce.
  * Le jeton du brouillon est déjà enregistré (cet appareil) ; il part aussi
- * dans user_metadata pour le cas où le lien de l'e-mail s'ouvre ailleurs.
+ * dans user_metadata pour le cas où le lien de l'email s'ouvre ailleurs.
  */
 export default function AccountStep({
   token,
@@ -88,7 +88,7 @@ export default function AccountStep({
     setExistingAccount(false);
     const cleanEmail = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      setError('Adresse e-mail invalide.');
+      setError('Adresse email invalide.');
       return;
     }
     const weak = passwordProblem(password);
@@ -107,7 +107,7 @@ export default function AccountStep({
       const msg = signUpError.message.toLowerCase();
       if (msg.includes('already registered') || msg.includes('user already')) {
         setExistingAccount(true);
-        setError('Un compte existe déjà avec cet e-mail.');
+        setError('Un compte existe déjà avec cet email.');
       } else if (signUpError.code === 'weak_password') {
         setError(passwordProblem(password) ?? 'Mot de passe trop faible.');
       } else {
@@ -115,10 +115,10 @@ export default function AccountStep({
       }
       return;
     }
-    // Supabase renvoie un utilisateur sans identité quand l'e-mail est déjà pris.
+    // Supabase renvoie un utilisateur sans identité quand l'email est déjà pris.
     if (data.user && (data.user.identities?.length ?? 0) === 0) {
       setExistingAccount(true);
-      setError('Un compte existe déjà avec cet e-mail.');
+      setError('Un compte existe déjà avec cet email.');
       return;
     }
     if (data.session) {
@@ -187,7 +187,7 @@ export default function AccountStep({
               </View>
               <View style={styles.separator}>
                 <View style={styles.separatorLine} />
-                <Text style={styles.separatorText}>ou avec votre e-mail</Text>
+                <Text style={styles.separatorText}>ou avec votre email</Text>
                 <View style={styles.separatorLine} />
               </View>
             </>
@@ -195,7 +195,7 @@ export default function AccountStep({
 
           <TextInput
             style={styles.input}
-            placeholder="Adresse e-mail"
+            placeholder="Adresse email"
             placeholderTextColor={Colors.textMuted}
             value={email}
             onChangeText={setEmail}
@@ -260,7 +260,7 @@ export default function AccountStep({
 }
 
 /**
- * E-mail de confirmation envoyé. Le lien peut s'ouvrir dans une autre appli :
+ * Email de confirmation envoyé. Le lien peut s'ouvrir dans une autre appli :
  * l'annonce y sera publiée. Ici on surveille le brouillon pour le dire.
  */
 function CheckEmail({ email, token, onChangeEmail }: { email: string; token: string; onChangeEmail: () => void }) {
@@ -295,7 +295,7 @@ function CheckEmail({ email, token, onChangeEmail }: { email: string; token: str
     const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: confirmRedirectUrl() } });
     setResending(false);
     if (error) {
-      setResendError(frenchError(error, "L'e-mail n'a pas pu être renvoyé. Réessayez dans quelques minutes."));
+      setResendError(frenchError(error, "L'email n'a pas pu être renvoyé. Réessayez dans quelques minutes."));
       return;
     }
     setResent(true);
@@ -329,7 +329,7 @@ function CheckEmail({ email, token, onChangeEmail }: { email: string; token: str
           </>
         ) : (
           <>
-            <Text style={styles.title}>Confirmez votre e-mail</Text>
+            <Text style={styles.title}>Confirmez votre email</Text>
             <Text style={styles.subtitle}>
               Nous avons envoyé un lien à <Text style={styles.bold}>{email}</Text>. Touchez-le pour publier votre
               annonce : elle sera mise en ligne même si le lien s'ouvre dans une autre application.
@@ -339,7 +339,7 @@ function CheckEmail({ email, token, onChangeEmail }: { email: string; token: str
               <Text style={styles.tipsText}>Pas reçu ? Regardez dans les spams ou les promotions.</Text>
             </View>
             <TouchableOpacity onPress={resend} disabled={resending || resent} style={styles.linkBtn} activeOpacity={0.6}>
-              <Text style={styles.linkText}>{resent ? 'E-mail renvoyé' : resending ? 'Envoi…' : 'Renvoyer l\'e-mail'}</Text>
+              <Text style={styles.linkText}>{resent ? 'Email renvoyé' : resending ? 'Envoi…' : 'Renvoyer l\'email'}</Text>
             </TouchableOpacity>
             {resendError && <Text style={[styles.errorText, styles.resendError]}>{resendError}</Text>}
             <TouchableOpacity onPress={onChangeEmail} style={styles.linkBtn} activeOpacity={0.6}>

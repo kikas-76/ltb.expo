@@ -399,7 +399,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
 
   const handleShare = async () => {
     if (!link || !startDate || !endDate) return;
-    const text = `Loue "${listingName}" du ${startDate.toLocaleDateString('fr-FR')} au ${endDate.toLocaleDateString('fr-FR')} pour ${totalPrice}€ sur LoueTonBien`;
+    const text = `Louez "${listingName}" du ${startDate.toLocaleDateString('fr-FR')} au ${endDate.toLocaleDateString('fr-FR')} pour ${totalPrice}€ sur LoueTonBien`;
     if (Platform.OS === 'web' && typeof (navigator as any)?.share !== 'undefined') {
       try {
         await (navigator as any).share({ title: listingName, text, url: link });
@@ -433,7 +433,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
       </View>
 
       <Text style={styles.subtitle}>
-        Sélectionne les dates et partage le lien. Le locataire pourra réserver et payer directement.
+        Sélectionnez les dates et partagez le lien. Le locataire pourra réserver et payer directement.
       </Text>
 
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -463,7 +463,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
               ) : (
                 <View style={styles.hintBox}>
                   <Ionicons name="calendar-outline" size={28} color={Colors.primary} />
-                  <Text style={styles.hintText}>Sélectionne des dates pour générer le lien</Text>
+                  <Text style={styles.hintText}>Sélectionnez des dates pour générer le lien</Text>
                 </View>
               )}
 
@@ -512,7 +512,7 @@ export default function ShareLinkModal({ visible, onClose, listingId, listingNam
             ) : (
               <View style={styles.hintBox}>
                 <Ionicons name="calendar-outline" size={28} color={Colors.primary} />
-                <Text style={styles.hintText}>Sélectionne des dates pour générer le lien</Text>
+                <Text style={styles.hintText}>Sélectionnez des dates pour générer le lien</Text>
               </View>
             )}
           </>
@@ -571,7 +571,7 @@ function PriceBox({ pricePerDay, days, basePrice, discount, discountAmt, totalWi
       <View style={styles.ownerReceivesRow}>
         <Ionicons name="wallet-outline" size={13} color={Colors.primaryDark} />
         <Text style={styles.ownerReceivesText}>
-          Tu recevras environ {ownerReceives}€ (après 8% de commission)
+          Vous recevrez environ {formatPrice(ownerReceives)} (après 8 % de commission)
         </Text>
       </View>
     </View>

@@ -99,7 +99,7 @@ export default function RegisterScreen() {
 
     if (signUpError) {
       if (signUpError.message.toLowerCase().includes('already registered') || signUpError.message.toLowerCase().includes('user already')) {
-        setError('Un compte existe déjà avec cet email. Connecte-toi.');
+        setError('Un compte existe déjà avec cet email. Connectez-vous.');
       } else {
         setError(frenchError(signUpError, 'Création du compte impossible. Réessayez.'));
       }
@@ -232,7 +232,7 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           <Text style={styles.consent}>
-            En créant un compte ({Platform.OS === 'ios' ? 'e-mail, Apple ou Google' : 'e-mail ou Google'}), vous confirmez avoir 18 ans et acceptez les{' '}
+            En créant un compte ({Platform.OS === 'ios' ? 'email, Apple ou Google' : 'email ou Google'}), vous confirmez avoir 18 ans et acceptez les{' '}
             <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Conditions d'utilisation</Text>
             {' '}et la{' '}
             <Text style={styles.consentLink} onPress={() => router.push('/legal')}>Politique de confidentialité</Text>.

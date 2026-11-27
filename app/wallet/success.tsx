@@ -60,7 +60,7 @@ export default function WalletSuccessScreen() {
   const benefits = [
     'Paiements sécurisés par Stripe',
     `Virements automatiques tous les ${PAYOUT_INTERVAL_LABEL}`,
-    'Tu reçois 92% du montant de chaque location',
+    'Vous recevez 92 % du montant de chaque location',
   ];
 
   return (
@@ -72,7 +72,7 @@ export default function WalletSuccessScreen() {
 
         <Text style={styles.title}>Compte activé !</Text>
         <Text style={styles.subtitle}>
-          Tu peux maintenant recevoir des paiements sur LoueTonBien.
+          Vous pouvez maintenant recevoir des paiements sur LoueTonBien.
         </Text>
 
         <View style={styles.card}>

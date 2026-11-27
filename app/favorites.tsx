@@ -44,7 +44,7 @@ export default function FavoritesScreen() {
     return (
       <PreviewUnavailable
         title="Favoris pas encore disponibles"
-        description="La page Favoris s'ouvrira avec la marketplace. En attendant, continue à déposer tes annonces."
+        description="La page Favoris s'ouvrira avec la marketplace. En attendant, continuez à déposer vos annonces."
       />
     );
   }

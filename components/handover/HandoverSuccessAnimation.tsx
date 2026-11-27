@@ -18,7 +18,7 @@ const PALETTE = {
     accent: Colors.primaryDark,
     accentSoft: Colors.primaryDark + '22',
     title: 'Location démarrée',
-    subtitle: 'Bonne location ! Pense à profiter.',
+    subtitle: 'Bonne location, profitez-en bien !',
     icon: 'rocket-outline' as const,
     particles: ['🎉', '✨', '⭐'],
   },

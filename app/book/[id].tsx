@@ -126,7 +126,7 @@ export default function DirectBookPage() {
     const user = session.user;
 
     if (user.id === listing.owner?.id) {
-      setError("Tu ne peux pas réserver ton propre objet.");
+      setError("Vous ne pouvez pas réserver votre propre objet.");
       return;
     }
 

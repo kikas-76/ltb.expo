@@ -71,7 +71,7 @@ export default function ReviewModal({
 
   const handleSubmit = async () => {
     if (rating < 1 || rating > 5) {
-      setError('Choisis une note entre 1 et 5 étoiles.');
+      setError('Choisissez une note entre 1 et 5 étoiles.');
       return;
     }
     setSubmitting(true);
@@ -93,7 +93,7 @@ export default function ReviewModal({
         raw.includes('verrouillée') ||
         raw.includes('1 et 5')
           ? raw
-          : 'Envoi impossible. Réessaie dans un instant.',
+          : 'Envoi impossible. Réessayez dans un instant.',
       );
       setSubmitting(false);
       return;
@@ -148,7 +148,7 @@ export default function ReviewModal({
         <View style={[styles.sheet, isDesktop && styles.sheetDesktop]}>
           <View style={styles.header}>
             <Text style={styles.title}>
-              {existing ? 'Modifier ma note' : 'Note ta location'}
+              {existing ? 'Modifier ma note' : 'Notez votre location'}
             </Text>
             <TouchableOpacity onPress={close} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="close-outline" size={22} color={Colors.textMuted} />
@@ -156,14 +156,14 @@ export default function ReviewModal({
           </View>
 
           <Text style={styles.subtitle}>
-            Quelle expérience as-tu eu avec {subjectLabel} ?
+            Comment s'est passée votre location avec {subjectLabel} ?
           </Text>
 
           <View style={styles.starsBlock}>
             <RatingStars value={rating} onChange={setRating} size={36} />
             <Text style={styles.starsHint}>
               {rating === 0
-                ? 'Tape sur une étoile'
+                ? 'Touchez une étoile'
                 : rating === 5
                   ? 'Excellent'
                   : rating === 4
@@ -197,7 +197,7 @@ export default function ReviewModal({
 
           {existing && (
             <Text style={styles.editHint}>
-              Tu peux éditer ta note pendant 7 jours après l'avoir publiée.
+              Vous pourrez modifier votre note pendant 7 jours après sa publication.
             </Text>
           )}
 

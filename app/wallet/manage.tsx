@@ -144,7 +144,7 @@ function WalletManageContent() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
-          throw new Error('Session expirée. Reconnecte-toi pour accéder à ton compte paiement.');
+          throw new Error('Session expirée. Reconnectez-vous pour accéder à votre compte de paiement.');
         }
         const response = await fetch(
           `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-account-details`,
@@ -220,7 +220,7 @@ function WalletManageContent() {
     return (
       <View style={[styles.root, styles.center, { paddingTop: insets.top }]}>
         <LoadingBlock fill={false} />
-        <Text style={styles.loadingText}>Chargement de ton compte...</Text>
+        <Text style={styles.loadingText}>Chargement de votre compte…</Text>
       </View>
     );
   }
@@ -250,7 +250,7 @@ function WalletManageContent() {
           <Ionicons name="alert-circle-outline" size={18} color="#92400E" style={{ flexShrink: 0 }} />
           <View style={{ flex: 1, gap: 10 }}>
             <Text style={styles.warningText}>
-              Des informations supplémentaires sont requises par Stripe. Complète ton profil pour continuer à recevoir des paiements.
+              Des informations supplémentaires sont requises par Stripe. Complétez votre profil pour continuer à recevoir des paiements.
             </Text>
             <TouchableOpacity
               style={styles.warningBtn}

@@ -3,7 +3,7 @@ import { frenchError, looksFrench, GENERIC_ERROR, NETWORK_ERROR, SESSION_ERROR, 
 
 describe('frenchError', () => {
   it('traduit les erreurs Supabase Auth par code', () => {
-    expect(frenchError({ code: 'invalid_credentials', message: 'Invalid login credentials' })).toBe('E-mail ou mot de passe incorrect.');
+    expect(frenchError({ code: 'invalid_credentials', message: 'Invalid login credentials' })).toBe('Email ou mot de passe incorrect.');
     expect(frenchError({ code: 'same_password', message: 'New password should be different from the old password.' })).toBe(
       "Le nouveau mot de passe doit être différent de l'ancien.",
     );
@@ -14,12 +14,12 @@ describe('frenchError', () => {
   });
 
   it('traduit les anciens messages Auth sans code', () => {
-    expect(frenchError(new Error('Invalid login credentials'))).toBe('E-mail ou mot de passe incorrect.');
+    expect(frenchError(new Error('Invalid login credentials'))).toBe('Email ou mot de passe incorrect.');
     expect(frenchError({ message: 'Email not confirmed' })).toMatch(/pas encore confirmée/);
     expect(frenchError({ message: 'For security purposes, you can only request this after 42 seconds.' })).toBe(
       'Par sécurité, patientez 42 secondes avant de réessayer.',
     );
-    expect(frenchError({ message: 'Email rate limit exceeded' })).toMatch(/^Trop d'e-mails/);
+    expect(frenchError({ message: 'Email rate limit exceeded' })).toMatch(/^Trop d'emails/);
     expect(frenchError({ message: 'Auth session missing!' })).toBe(SESSION_ERROR);
   });
 

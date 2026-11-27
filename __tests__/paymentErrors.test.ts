@@ -19,7 +19,7 @@ describe('translatePaymentError', () => {
   });
 
   it('falls back to generic on unknown English errors', () => {
-    expect(translatePaymentError(new Error('Some random Stripe gibberish'))).toMatch(/réessaie/i);
+    expect(translatePaymentError(new Error('Some random Stripe gibberish'))).toMatch(/réessayez/i);
   });
 
   it('passes French messages through unchanged', () => {

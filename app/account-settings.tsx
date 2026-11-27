@@ -261,7 +261,7 @@ export default function AccountSettingsScreen() {
     const { error } = await supabase.auth.updateUser({ email: trimmed });
     setEmailSaving(false);
     if (error) {
-      setEmailError(frenchError(error, "Le changement d'adresse e-mail a échoué. Réessayez."));
+      setEmailError(frenchError(error, "Le changement d'adresse email a échoué. Réessayez."));
       return;
     }
     setEmailSuccess(true);
@@ -341,7 +341,7 @@ export default function AccountSettingsScreen() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        setDeleteError('Session expirée. Reconnecte-toi pour supprimer ton compte.');
+        setDeleteError('Session expirée. Reconnectez-vous pour supprimer votre compte.');
         setDeleteLoading(false);
         return;
       }
@@ -667,7 +667,7 @@ export default function AccountSettingsScreen() {
           <Text style={styles.fieldDescription}>
             Un email de confirmation sera envoyé à la nouvelle adresse.
           </Text>
-          {emailSuccess && <SuccessBanner message="Lien de confirmation envoyé. L'email sera modifié uniquement après que tu aies cliqué sur le lien reçu sur la nouvelle adresse." />}
+          {emailSuccess && <SuccessBanner message="Lien de confirmation envoyé. L'email ne sera modifié qu'après un clic sur le lien reçu à la nouvelle adresse." />}
           {emailError && <ErrorBanner message={emailError} />}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nouvelle adresse email</Text>

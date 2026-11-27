@@ -66,7 +66,7 @@ export default function WalletRefreshScreen() {
       router.replace('/wallet/onboarding');
     } else {
       if (!accessToken) {
-        Alert.alert('Erreur', 'Reconnecte-toi');
+        Alert.alert('Erreur', 'Session expirée. Reconnectez-vous.');
         return;
       }
       setLoading(true);
@@ -89,10 +89,10 @@ export default function WalletRefreshScreen() {
           await WebBrowser.openAuthSessionAsync(data.url, 'louetonbien://wallet/success');
           router.replace('/wallet');
         } else {
-          Alert.alert('Erreur', frenchError(data.error, "Impossible d'ouvrir l'activation des paiements. Réessaie."));
+          Alert.alert('Erreur', frenchError(data.error, "Impossible d'ouvrir l'activation des paiements. Réessayez."));
         }
       } catch (err) {
-        Alert.alert('Erreur', frenchError(err, 'Une erreur est survenue. Réessaie.'));
+        Alert.alert('Erreur', frenchError(err, 'Une erreur est survenue. Réessayez.'));
       } finally {
         setLoading(false);
       }
@@ -131,7 +131,7 @@ export default function WalletRefreshScreen() {
 
         <Text style={styles.title}>Inscription incomplète</Text>
         <Text style={styles.subtitle}>
-          Tu n'as pas terminé la configuration de ton compte Stripe.{'\n'}Reprends où tu t'es arrêté.
+          Vous n'avez pas terminé la configuration de votre compte Stripe.{'\n'}Reprenez là où vous vous êtes arrêté.
         </Text>
 
         <View style={styles.card}>
